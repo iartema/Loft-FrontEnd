@@ -17,7 +17,7 @@ export default function RegisterPage() {
                     />
                 </div>
     </OverlayPortal>
-      <section className="flex flex-col justify-start px-12 w-full md:w-1/2 mt-24 z-10">
+      <section className="flex flex-col justify-start px-12 w-full md:w-1/2 mt-54 z-10">
         <RegisterForm />
       </section>
     </main>

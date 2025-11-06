@@ -277,3 +277,50 @@ export async function addComment(productId: ID, userId: ID, content: string): Pr
   comments.unshift(c);
   return c;
 }
+
+// Lightweight product search mock until backend is ready
+export interface SearchFilters {
+  query?: string;
+  categoryId?: ID | null;
+  priceMin?: number | null;
+  priceMax?: number | null;
+  color?: string | null;
+}
+
+export async function searchProducts(filters: SearchFilters = {}): Promise<Product[]> {
+  await delay(80);
+  const { query, categoryId, priceMin, priceMax, color } = filters;
+
+  // Helper: map productId -> attribute map for quick lookup
+  const attrByProduct = new Map<ID, Record<string, string>>();
+  for (const a of productAttributes) {
+    if (a.ID_Product == null) continue;
+    if (!attrByProduct.has(a.ID_Product)) attrByProduct.set(a.ID_Product, {});
+    attrByProduct.get(a.ID_Product)![a.Name.toLowerCase()] = a.Value;
+  }
+
+  let result = products.filter((p) => p.Status === "active");
+
+  if (query && query.trim()) {
+    const q = query.trim().toLowerCase();
+    result = result.filter((p) => p.Name.toLowerCase().includes(q));
+  }
+
+  if (categoryId) {
+    result = result.filter((p) => p.ID_Category === categoryId);
+  }
+
+  if (priceMin != null) {
+    result = result.filter((p) => p.Price >= priceMin);
+  }
+  if (priceMax != null) {
+    result = result.filter((p) => p.Price <= priceMax);
+  }
+
+  if (color && color.trim()) {
+    const c = color.trim().toLowerCase();
+    result = result.filter((p) => (attrByProduct.get(p.ID)?.["color"] ?? "").toLowerCase() === c);
+  }
+
+  return result;
+}

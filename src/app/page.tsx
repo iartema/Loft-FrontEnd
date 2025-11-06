@@ -1,20 +1,31 @@
 "use client";
 import { useEffect, useState } from "react";
+import { getMyProfile } from "./components/lib/api";
 
 export default function HomePage() {
-  const [user, setUser] = useState<{ name?: string } | null>(null);
+  const [user, setUser] = useState<{ email?: string; name?: string } | null>(null);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
+    let mounted = true;
+    (async () => {
+      try {
+        const me = await getMyProfile();
+        if (mounted) setUser(me);
+      } catch {
+        // not logged in or fetch failed; ignore
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen bg-[#111] text-white">
-      <h1 className="text-5xl font-bold mb-4">Welcome{user ? `, ${user.name}` : "!"}</h1>
-      {!user && <p>Please log in to continue.</p>}
+      <h1 className="text-5xl font-bold mb-4">
+        {user?.email ? `Welcome, ${user.email}` : "Welcome!"}
+      </h1>
+      {!user?.email && <p>Please log in to continue.</p>}
     </main>
   );
 }

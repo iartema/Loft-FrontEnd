@@ -8,6 +8,9 @@ interface AvatarProps {
 }
 
 export default function Avatar({ src, size = 124, onClick }: AvatarProps) {
+  const isExternal = /^https?:\/\//i.test(src);
+  const proxied = isExternal ? `/api/proxy/image?url=${encodeURIComponent(src)}` : src;
+  const displaySrc = proxied || "/default-avatar.jpg";
   return (
     <div
       className={`relative rounded-full overflow-hidden group cursor-pointer`}
@@ -15,7 +18,7 @@ export default function Avatar({ src, size = 124, onClick }: AvatarProps) {
       onClick={onClick}
     >
       <Image
-        src={src}
+        src={displaySrc}
         alt="User avatar"
         fill
         className="object-cover transition-opacity duration-300 group-hover:opacity-50"
