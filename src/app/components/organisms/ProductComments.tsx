@@ -31,15 +31,17 @@ export default function ProductComments({ productId }: { productId: number }) {
   return (
     <div className="space-y-4 mt-7">
       {rows.map((c) => (
-        <div key={c.ID} className="bg-[#161616] border border-[#2a2a2a] rounded-xl p-4">
-          <div className="flex items-center justify-between text-xs opacity-70 mb-2">
+        <div key={c.ID} className="bg-[#222222] border border-[#222222] rounded-xl p-4">
+          <div className="flex items-center text-xs mb-2 gap-x-5">
             <div>{new Date(c.DatePosted).toLocaleString()}</div>
             <div>{c.username}</div>
           </div>
-          <p className="text-sm opacity-90">{c.Content}</p>
-          <div className="flex items-center gap-4 mt-3 text-xs opacity-75">
-            <span>👍 {c.Likes ?? 0}</span>
-            <span>👎 {c.Dislikes ?? 0}</span>
+          <div className="flex items-center text-xs mb-2 gap-x-20">
+            <div className="flex items-center gap-4 text-xs opacity-75">
+              <span>👍 {c.Likes ?? 0}</span>
+              <span>👎 {c.Dislikes ?? 0}</span>
+            </div>
+            <p className="text-sm opacity-90">{c.Content}</p>
           </div>
         </div>
       ))}

@@ -22,11 +22,7 @@ export default function LoginForm() {
     setError("");
 
     try {
-      const { token, user } = await loginUser(email, password);
-
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user));
-
+      await loginUser(email, password); // cookies set server-side
       router.push("/");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {

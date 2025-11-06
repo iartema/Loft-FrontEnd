@@ -1,23 +1,20 @@
 import { NextResponse } from "next/server";
-
-export async function GET() {
-  return NextResponse.json({ message: "register route up" });
-}
+import { cookies } from "next/headers";
 
 export async function POST(req: Request) {
   const { email, password } = await req.json();
-  const confirmPassword = password;
 
   try {
-    const res = await fetch("https://www.loft-shop.pp.ua/api/auth/register/", {
+    const res = await fetch("https://www.loft-shop.pp.ua/api/auth/login", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ email, password, confirmPassword }),
+      body: JSON.stringify({ email, password }),
     });
 
     const text = await res.text();
+
     let data: unknown;
     try {
       data = JSON.parse(text);
@@ -35,9 +32,12 @@ export async function POST(req: Request) {
       );
     }
 
+    // data is expected to contain { token, user, ... }
     const token = (data as any)?.token as string | undefined;
     const user = (data as any)?.user as any | undefined;
+
     const response = NextResponse.json(data, { status: res.status });
+
     if (token) {
       response.cookies.set("auth_token", token, {
         httpOnly: true,
@@ -54,12 +54,16 @@ export async function POST(req: Request) {
         path: "/",
       });
     }
+
     return response;
   } catch (err) {
     return NextResponse.json(
-      { message: "Local fallback: register route works (backend unreachable)" },
+      { message: "Local fallback: login route works (backend unreachable)" },
       { status: 200 }
     );
   }
 }
 
+export async function GET() {
+  return NextResponse.json({ message: "login route up" });
+}

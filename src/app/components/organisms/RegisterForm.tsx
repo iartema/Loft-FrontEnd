@@ -23,11 +23,7 @@ export default function RegisterForm() {
     setError("");
 
     try {
-      const { token, user } = await registerUser(email, password);
-
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user));
-
+      await registerUser(email, password); // cookies set server-side
       router.push("/");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
