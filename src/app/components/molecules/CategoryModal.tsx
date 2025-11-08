@@ -55,7 +55,7 @@ export default function CategoryModal({ open, categories, selectedId, onClose, o
         }}
       />
 
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#161616] border border-[#2a2a2a] rounded-2xl p-6 w-[900px] max-w-[95vw]">
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--bg-elev-1)] border border-[var(--border)] rounded-2xl p-6 w-[900px] max-w-[95vw]">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-xl font-bold">Choose category</h3>
           <button
@@ -115,7 +115,7 @@ function Column({
   if (hidden) return <div className="space-y-2 opacity-40 pointer-events-none" />;
   return (
     <div className="space-y-2">
-      {items.length === 0 && <div className="text-[#A9A9B7] text-sm">—</div>}
+      {items.length === 0 && <div className="text-[var(--fg-muted)] text-sm">No items</div>}
       {items.map((c) => {
         const isActive = activeId === c.ID;
         const isSelected = selectedId === c.ID;
@@ -123,16 +123,18 @@ function Column({
           <button
             key={c.ID}
             type="button"
-            className={`w-full text-left px-3 py-2 rounded-xl hover:bg-[#2b2b2b] flex items-center justify-between ${
-              isActive || isSelected ? "bg-[#2b2b2b] border border-[#FFC107]" : ""
+            className={`w-full text-left px-3 py-2 rounded-xl hover:bg-[var(--bg-hover)] flex items-center justify-between ${
+              isActive || isSelected ? "bg-[var(--bg-hover)] border border-[var(--brand)]" : ""
             }`}
             onClick={() => onClick(c.ID)}
           >
             <span>{c.Name}</span>
-            <span className="opacity-70">›</span>
+            <span className="opacity-70"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg></span>
           </button>
         );
       })}
     </div>
   );
 }
+
+

@@ -14,7 +14,7 @@ export default function ProductInfo({
   const [showAll, setShowAll] = useState(false);
 
   return (
-    <div className="bg-[#222222] rounded-2xl border border-[#222222] w-[70%] mx-auto">
+    <div className="bg-[var(--bg-frame)] rounded-2xl border border-[var(--bg-frame)] w-[70%] mx-auto">
       <div className="px-6 py-4 text-center font-semibold">Information</div>
 
       <div className="p-6 space-y-6">

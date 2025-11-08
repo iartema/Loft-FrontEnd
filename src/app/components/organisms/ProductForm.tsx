@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 // import Divider from "../atoms/Divider";
 import InputField from "../molecules/InputField";
 import Button from "../atoms/Button";
@@ -9,7 +9,9 @@ import ProgressBar from "../molecules/ProgressBar";
 import CategoryModal from "../molecules/CategoryModal";
 import AttributeFields from "../molecules/AttributeFields";
 import ImageUploader from "../molecules/ImageUploader";
-import { mockCategories, mockFetchAttributesByCategory } from "../lib/mockCatalog";
+import { fetchCategories, fetchCategoryAttributes } from "../lib/api";
+import type { CategoryDto, CategoryAttributeFullDto } from "../lib/api";
+import type { AttributeDef } from "../molecules/AttributeFields";
 
 
 type Currency = "USD" | "EUR" | "GBP";
@@ -36,26 +38,70 @@ export default function ProductForm() {
     photos: [],
   });
 
-  const [attributeDefs, setAttributeDefs] = useState(mockFetchAttributesByCategory(null));
+  const [attributeDefs, setAttributeDefs] = useState<AttributeDef[]>([]);
   const [catOpen, setCatOpen] = useState(false);
+  const [allCategories, setAllCategories] = useState<{ ID: number; Name: string; ParentCategoryId: number | null }[]>([]);
 
-  const onSelectCategory = (id: number) => {
-  const defs = mockFetchAttributesByCategory(id);
-  setAttributeDefs(defs);
-  setForm((prev) => ({
-    ...prev,
-    categoryId: id,
-    attributes: Object.fromEntries(
-    defs.map((a) => {
-        if (a.Type === "multiselect" || a.Type === "color") return [a.ID, []];
-        if (a.Type === "boolean") return [a.ID, null]; // 👈 start unset
-        return [a.ID, ""];
-    })
-    ),
-  }));
-  setCatOpen(false);
-};
+  
+    useEffect(() => {
+    const flatten = (list: CategoryDto[], acc: { ID: number; Name: string; ParentCategoryId: number | null }[] = []) => {
+      for (const c of list) {
+        acc.push({ ID: c.id, Name: c.name, ParentCategoryId: c.parentCategoryId ?? null });
+        if (c.subCategories && c.subCategories.length) flatten(c.subCategories, acc);
+      }
+      return acc;
+    };
+    fetchCategories().then((cats) => setAllCategories(flatten(cats))).catch(() => setAllCategories([]));
+  }, []);
 
+  const onSelectCategory = async (id: number) => {
+    try {
+      const full: CategoryAttributeFullDto[] = await fetchCategoryAttributes(id);
+      const mapped: AttributeDef[] = full
+        .sort((a, b) => a.orderIndex - b.orderIndex)
+        .map((a) => {
+          const opts = a.optionsJson ? safeParseOptions(a.optionsJson) : [];
+          const lower = a.attributeName.toLowerCase();
+          let Type: AttributeDef["Type"] = "text";
+          const t: unknown = a.type as unknown;
+          if (typeof t === "number") {
+            // Backend enum AttributeType: 0=String, 1=Number, 2=List
+            if (t === 1) Type = "number";
+            else if (t === 2) Type = "select";
+            else Type = "text";
+          } else {
+            const ts = String(a.type).toLowerCase();
+            if (ts === "number") Type = "number";
+            else if (ts === "list") Type = "select";
+          }
+          if (lower === "color" || lower === "colour") Type = "color";
+          return { ID: a.attributeId, Name: a.attributeName, Type, Value: opts.join("|") || undefined } as AttributeDef;
+        });
+      setAttributeDefs(mapped);
+      setForm((prev) => ({
+        ...prev,
+        categoryId: id,
+        attributes: Object.fromEntries(
+          mapped.map((a) => {
+            if (a.Type === "multiselect" || a.Type === "color") return [a.ID, []];
+            if (a.Type === "boolean") return [a.ID, null];
+            return [a.ID, ""];
+          })
+        ),
+      }));
+    } finally {
+      setCatOpen(false);
+    }
+  };
+
+  function safeParseOptions(json: string): string[] {
+    try {
+      const arr = JSON.parse(json);
+      return Array.isArray(arr) ? arr.map((x) => String(x)) : [];
+    } catch {
+      return [];
+    }
+  }
 
   const onAttrChange = (attrId: number, value: AttributeValue) => {
     setForm((f) => ({ ...f, attributes: { ...f.attributes, [attrId]: value } }));
@@ -75,11 +121,11 @@ export default function ProductForm() {
   const categoryLabel = useMemo(() => {
     if (!form.categoryId) return "Choose a category";
     const path: string[] = [];
-    let cur = mockCategories.find((c) => c.ID === form.categoryId);
+    let cur = allCategories.find((c) => c.ID === form.categoryId);
     while (cur) {
       path.unshift(cur.Name);
       cur = cur.ParentCategoryId
-        ? mockCategories.find((c) => c.ID === cur!.ParentCategoryId)
+        ? allCategories.find((c) => c.ID === cur!.ParentCategoryId)
         : undefined;
     }
     return path.join(" › ");
@@ -144,7 +190,7 @@ export default function ProductForm() {
                 <label className="block mb-2">Category</label>
                 <button
                 type="button"
-                className="w-full bg-[#2d2d30] rounded-[15px] px-4 py-2 text-left text-[20px]"
+                className="w-full bg-[var(--bg-input)] rounded-[15px] px-4 py-2 text-left text-[20px]"
                 onClick={() => setCatOpen(true)}
                 >
                 {categoryLabel}
@@ -176,7 +222,7 @@ export default function ProductForm() {
         <ProgressBar value={calculateProgress()} />
 
         <section className="ml-0">
-          <div className="bg-[#161616] border border-[#2a2a2a] rounded-2xl p-6 max-w-xl">
+          <div className="bg-[var(--bg-elev-1)] border border-[var(--border)] rounded-2xl p-6 max-w-xl">
             <div className="grid grid-cols-12 gap-6">
               <div className="col-span-7">
                 <InputField
@@ -195,7 +241,7 @@ export default function ProductForm() {
                   value={form.currency}
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value as any }))}
-                  className="w-full bg-[#2d2d30] rounded-[15px] px-4 py-2 text-[20px] text-white outline-none"
+                  className="w-full bg-[var(--bg-input)] rounded-[15px] px-4 py-2 text-[20px] text-white outline-none"
                 >
                   <option value="USD">USD $</option>
                   <option value="EUR">EUR €</option>
@@ -216,7 +262,7 @@ export default function ProductForm() {
           <div className="flex-1 flex justify-end">
             <Button
               type="button"
-              className="max-w-[160px] bg-[#1b1b1b] hover:bg-[#232323]"
+              className="max-w-[160px] bg-[var(--bg-elev-2)] hover:bg-[var(--bg-elev-3)]"
               onClick={() =>
                 setForm({
                   name: "",
@@ -237,7 +283,7 @@ export default function ProductForm() {
 
       <CategoryModal
         open={catOpen}
-        categories={mockCategories}
+        categories={allCategories}
         selectedId={form.categoryId}
         onClose={() => setCatOpen(false)}
         onSelect={onSelectCategory}
@@ -245,3 +291,8 @@ export default function ProductForm() {
     </>
   );
 }
+
+
+
+
+

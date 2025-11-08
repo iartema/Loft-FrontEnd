@@ -29,14 +29,14 @@ export default function Input({
 
   const shapeClass = shape === "office" ? "rounded-[15px]" : "rounded-full";
   const size = shape === "office" ? "px-4 py-2" : "px-5 py-3";
-  const bgColor = value ? "bg-[#3a3a3d]" : "bg-[#2d2d30]";
+  const bgColor = value ? "bg-[var(--bg-hover)]" : "bg-[var(--bg-input)]";
 
   return (
     <input
       {...props}
       value={value}
       onChange={handleChange}
-      className={`${akatab.className} w-full ${bgColor} ${shapeClass} ${size} outline-none text-[20px] text-white placeholder-[#666666] ${className}`}
+      className={`${akatab.className} w-full ${bgColor} ${shapeClass} ${size} outline-none text-[20px] text-white placeholder-[var(--icon-dim)] ${className}`}
       style={{
         WebkitAppearance: "none",
         WebkitBoxShadow: "0 0 0px 1000px transparent inset",

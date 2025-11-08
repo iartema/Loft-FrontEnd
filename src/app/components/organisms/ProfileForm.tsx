@@ -4,6 +4,7 @@ import Title from "../atoms/Title";
 import InputField from "../molecules/InputField";
 import ProfileHeader from "../molecules/ProfileHeader";
 import { getMyProfile, updateMyProfile, uploadAvatar } from "../lib/api";
+import { getCurrentUserCached, setCurrentUserCached } from "../lib/userCache";
 
 export default function ProfileForm() {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -28,7 +29,7 @@ export default function ProfileForm() {
       setLoading(true);
       setError(null);
       try {
-        const me = await getMyProfile();
+        const me = await getCurrentUserCached();
         // me is expected to have firstName, lastName, email, phone, avatarUrl
         if (mounted) {
           const normalizeAvatar = (u?: string) => {
@@ -99,6 +100,7 @@ export default function ProfileForm() {
           const ok = await tryLoad(remoteUrl);
           if (ok) {
             setFormData((prev) => ({ ...prev, avatar: remoteUrl }));
+            setCurrentUserCached((prev: any) => ({ ...(prev || {}), avatarUrl: remoteUrl }));
           } else {
             // keep preview; backend will serve soon or on next visit
             // optionally, surface a soft message
@@ -121,6 +123,12 @@ export default function ProfileForm() {
         lastName: formData.surname || null,
         phone: formData.phone || null,
       });
+      setCurrentUserCached((prev: any) => ({
+        ...(prev || {}),
+        firstName: formData.name || null,
+        lastName: formData.surname || null,
+        phone: formData.phone || null,
+      }));
     } catch (e: any) {
       setError(e?.message || "Failed to update profile");
     } finally {

@@ -1,6 +1,7 @@
 import "./globals.css";
 import { Ysabeau_Infant } from "next/font/google";
 import Header from "./components/Header";
+import Footer from "./components/Footer";
 
 const ysabeau = Ysabeau_Infant({ subsets: ["latin"], weight: ["400", "600"] });
 
@@ -16,9 +17,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${ysabeau.className} bg-[#111111] text-white overflow-hidden`}>
+      <body suppressHydrationWarning className={`${ysabeau.className} bg-[var(--bg-body)] text-white overflow-x-hidden`}>
         <Header />
         {children}
+        <Footer />
       </body>
     </html>
   );

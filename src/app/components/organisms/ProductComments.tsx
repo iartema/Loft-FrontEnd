@@ -31,7 +31,7 @@ export default function ProductComments({ productId }: { productId: number }) {
   return (
     <div className="space-y-4 mt-7">
       {rows.map((c) => (
-        <div key={c.ID} className="bg-[#222222] border border-[#222222] rounded-xl p-4">
+        <div key={c.ID} className="bg-[var(--bg-frame)] border border-[var(--bg-frame)] rounded-xl p-4">
           <div className="flex items-center text-xs mb-2 gap-x-5">
             <div>{new Date(c.DatePosted).toLocaleString()}</div>
             <div>{c.username}</div>
@@ -48,11 +48,11 @@ export default function ProductComments({ productId }: { productId: number }) {
 
       {/* pagination */}
       <div className="flex items-center justify-center gap-2 pt-2">
-        <Button className="max-w-[80px] bg-[#1b1b1b] hover:bg-[#232323]" onClick={() => setPage(p => Math.max(1, p-1))}>
+        <Button className="max-w-[80px] bg-[var(--bg-elev-2)] hover:bg-[var(--bg-elev-3)]" onClick={() => setPage(p => Math.max(1, p-1))}>
           Prev
         </Button>
         <div className="text-sm opacity-80">Page {page} / {totalPages}</div>
-        <Button className="max-w-[80px] bg-[#1b1b1b] hover:bg-[#232323]" onClick={() => setPage(p => Math.min(totalPages, p+1))}>
+        <Button className="max-w-[80px] bg-[var(--bg-elev-2)] hover:bg-[var(--bg-elev-3)]" onClick={() => setPage(p => Math.min(totalPages, p+1))}>
           Next
         </Button>
       </div>

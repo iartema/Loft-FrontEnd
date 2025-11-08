@@ -28,7 +28,7 @@ export default function AttributeFields({ attributes, values, onChange }: Props)
   if (!attributes.length) {
     return (
       <div
-        className={`${akatab.className} text-[#A9A9B7] ml-0 md:ml-9`}
+        className={`${akatab.className} text-[var(--fg-muted)] ml-0 md:ml-9`}
       >
         Choose a category to see attributes.
       </div>
@@ -51,7 +51,7 @@ export default function AttributeFields({ attributes, values, onChange }: Props)
               <select
                 value={String(v || "")}
                 onChange={(e) => onChange(a.ID, e.target.value)}
-                className={`w-full bg-[#2d2d30] rounded-[15px] px-4 py-2 text-[20px] text-white outline-none ${akatab.className}`}
+                className={`w-full bg-[var(--bg-input)] rounded-[15px] px-4 py-2 text-[20px] text-white outline-none ${akatab.className}`}
               >
                 <option value="">Choose…</option>
                 {options.map((o) => (
@@ -94,8 +94,8 @@ export default function AttributeFields({ attributes, values, onChange }: Props)
                         type="button"
                         className={`${akatab.className} px-4 py-2 rounded-lg transition ${
                           active
-                            ? "bg-[#FFC107] text-black"
-                            : "bg-[#232323] hover:bg-[#2b2b2b]"
+                            ? "bg-[var(--brand)] text-black"
+                            : "bg-[var(--bg-elev-3)] hover:bg-[var(--bg-hover)]"
                         }`}
                         onClick={() => onChange(a.ID, val)}
                       >
@@ -186,26 +186,26 @@ function CompactMultiSelect({
       <label className="block mb-2">{label}</label>
       <button
         type="button"
-        className="w-full bg-[#2d2d30] rounded-[15px] px-4 py-2 text-left text-[20px]"
+        className="w-full bg-[var(--bg-input)] rounded-[15px] px-4 py-2 text-left text-[20px]"
         onClick={() => setOpen((o) => !o)}
       >
         {labelText}
       </button>
 
       {open && (
-        <div className="absolute z-20 mt-2 w-full bg-[#1b1b1b] border border-[#2a2a2a] rounded-xl p-2 max-h-64 overflow-auto">
+        <div className="absolute z-20 mt-2 w-full bg-[var(--bg-elev-2)] border border-[var(--border)] rounded-xl p-2 max-h-64 overflow-auto">
           {options.map((o) => {
             const checked = value.includes(o);
             return (
               <label
                 key={o}
-                className="flex items-center gap-3 px-2 py-2 rounded hover:bg-[#2b2b2b]"
+                className="flex items-center gap-3 px-2 py-2 rounded hover:bg-[var(--bg-hover)]"
               >
                 <input
                   type="checkbox"
                   checked={checked}
                   onChange={() => toggle(o)}
-                  className="accent-[#FFC107]"
+                  className="accent-[var(--brand)]"
                 />
                 <span>{o}</span>
               </label>
@@ -258,7 +258,7 @@ function ColorPickerList({
             type="button"
             title={hex}
             onClick={() => remove(hex)}
-            className="w-8 h-8 rounded-full border border-[#2a2a2a] relative"
+            className="w-8 h-8 rounded-full border border-[var(--border)] relative"
             style={{ backgroundColor: hex }}
           >
             <span className="sr-only">{hex}</span>
@@ -272,12 +272,12 @@ function ColorPickerList({
           <button
             type="button"
             onClick={() => setOpen((o) => !o)}
-            className="px-3 py-2 rounded-lg bg-[#232323] hover:bg-[#2b2b2b]"
+            className="px-3 py-2 rounded-lg bg-[var(--bg-elev-3)] hover:bg-[var(--bg-hover)]"
           >
             + Add color
           </button>
           {open && (
-            <div className="absolute z-20 mt-2 p-3 bg-[#1b1b1b] border border-[#2a2a2a] rounded-xl">
+            <div className="absolute z-20 mt-2 p-3 bg-[var(--bg-elev-2)] border border-[var(--border)] rounded-xl">
               <input
                 type="color"
                 value={draft}
@@ -287,7 +287,7 @@ function ColorPickerList({
               <div className="flex justify-end mt-2">
                 <button
                   type="button"
-                  className="px-3 py-1 rounded bg-[#FFC107] text-black"
+                  className="px-3 py-1 rounded bg-[var(--brand)] text-black"
                   onClick={add}
                 >
                   Add
@@ -300,3 +300,4 @@ function ColorPickerList({
     </div>
   );
 }
+

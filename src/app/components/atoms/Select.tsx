@@ -43,19 +43,23 @@ export default function Select({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full bg-[#2d2d30] text-white rounded-md px-3 py-2 text-sm text-left flex items-center justify-between"
+        className="w-full bg-[var(--bg-filter-inner)] text-white rounded-[12px] px-3 py-2 text-sm text-left flex items-center justify-between"
       >
         <span>{current?.label ?? placeholder}</span>
-        <span className={`ml-2 transition-transform ${open ? "rotate-180" : "rotate-0"}`}>v</span>
+        <span className={`ml-2 transition-transform ${open ? "rotate-180" : "rotate-0"}`} aria-hidden>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </span>
       </button>
 
       {open && (
-        <ul className="absolute z-50 mt-2 w-full max-h-64 overflow-auto bg-[#1f1f20] text-white border border-[#3a3a3d] rounded-md shadow-lg">
+        <ul className="absolute z-50 mt-2 w-full max-h-64 overflow-auto bg-[var(--bg-filter-inner)] text-white border border-[var(--divider)] rounded-[12px] overflow-auto shadow-lg">
           {options.map((opt) => (
             <li
               key={opt.value + "_opt"}
-              className={`px-3 py-2 cursor-pointer hover:bg-[#2a2a2d] ${
-                value === opt.value ? "bg-[#262628]" : ""
+              className={`px-3 py-2 cursor-pointer hover:bg-[var(--bg-filter)] ${
+                value === opt.value ? "bg-[var(--bg-elev-3)]" : ""
               }`}
               onClick={() => {
                 onChange(opt.value);

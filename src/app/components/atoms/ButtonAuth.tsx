@@ -39,8 +39,8 @@ export default function ButtonAuth({
         {...props}
         className={`${ysabeau_office.className} 
           w-full flex items-center justify-center gap-3
-          bg-[#2b2b2b] rounded-full px-6 py-3
-          border border-[#555] text-white text-lg font-semibold
+          bg-[var(--bg-hover)] rounded-full px-6 py-3
+          border border-[var(--icon-dim-2)] text-white text-lg font-semibold
           hover:opacity-90 transition`}
       >
         <img
@@ -59,7 +59,7 @@ export default function ButtonAuth({
         type="button"
         onClick={handleGoogleLogin}
         {...props}
-        className="bg-[#2b2b2b] rounded-full px-8 py-2 flex items-center justify-center border border-[#7C7C7C] hover:opacity-90 transition"
+        className="bg-[var(--bg-hover)] rounded-full px-8 py-2 flex items-center justify-center border border-[var(--muted-1)] hover:opacity-90 transition"
       >
         <img
           src="/google-logo.svg"
@@ -91,8 +91,8 @@ export default function ButtonAuth({
       className={`${ysabeau_office.className}
         w-full
         bg-transparent text-white font-bold text-2xl px-10 py-2 rounded-full
-        border border-[#888]
-        hover:bg-[#1a1a1a] transition`}
+        border border-[var(--muted-2)]
+        hover:bg-[var(--bg-elev-1)] transition`}
     >
       {label}
     </button>

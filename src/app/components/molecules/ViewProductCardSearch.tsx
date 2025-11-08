@@ -13,7 +13,7 @@ interface ProductCardProps {
   name: string;
   description: string;
   price: string;
-  image: string;
+  image?: string;
   onClick?: () => void;
   buttonLabel?: string;
 }
@@ -26,18 +26,34 @@ export default function ViewProductCardSearch({
   onClick,
   buttonLabel = "View",
 }: ProductCardProps) {
+  const normalizeImageSrc = (src?: string) => {
+    if (!src) return "/default-product.jpg";
+    const s = src.trim();
+    if (
+      s.startsWith("http://") ||
+      s.startsWith("https://") ||
+      s.startsWith("data:") ||
+      s.startsWith("blob:") ||
+      s.startsWith("/")
+    ) {
+      return s;
+    }
+    return "/" + s;
+  };
+  const resolvedImage = normalizeImageSrc(image);
   return (
     <div
-      className={`${almarai.className} bg-[#2D2D30] rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all flex flex-col`}
+      className={`${almarai.className} bg-[var(--bg-input)] rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all flex flex-col`}
       style={{ height: "300px" }}
     >
       <div className="relative w-full h-[180px] flex-shrink-0 cursor-pointer" onClick={onClick}>
         <Image
-          src={image}
+          src={resolvedImage}
           alt={name}
           fill
           className="object-cover"
           sizes="(max-width: 768px) 100vw, 20vw"
+          unoptimized
         />
       </div>
 

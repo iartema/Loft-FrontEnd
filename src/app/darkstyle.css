@@ -1,0 +1,61 @@
+/*
+  Dark theme variables extracted from current components.
+  This file does not change existing components; it only defines tokens.
+  Later, components can swap hardcoded colors for these variables.
+*/
+
+:root {
+  color-scheme: dark;
+
+  /* Backgrounds */
+  --bg-body: #111111;       /* main app background */
+  --bg-subtle: #0f0f0f;     /* large containers/backdrops */
+  --bg-elev-1: #161616;     /* sidebars/panels */
+  --bg-elev-2: #1b1b1b;     /* menus/dropdowns/cards */
+  --bg-elev-3: #232323;     /* secondary surfaces/badges */
+  --bg-filter: #191919;     /* filters frame and elements */
+  --bg-filter-inner: #3B3B3B; /* inputs/selects inside expanded filters */
+  --bg-card: #5e5e5e;       /* product cards background */
+  --bg-frame: #222222;      /* product/view frames background */
+  --bg-input: #2d2d30;      /* inputs/search fields */
+  --bg-hover: #2b2b2b;      /* hover/active states */
+
+  /* Foregrounds */
+  --fg-primary: #ffffff;    /* primary text */
+  --fg-secondary: #ededed;  /* secondary text */
+  --fg-muted: #a9a9b7;      /* muted/tertiary text */
+  --fg-inverse: #000000;    /* text on bright accents */
+
+  /* Borders and dividers */
+  --border: #2a2a2a;
+  --divider: #1f1f1f;
+
+  /* Accents and state colors */
+  --brand: #ffc107;         /* brand/yellow CTA */
+  --success: #78FF7E;       /* canonical success/green */
+  --link: #6695ff;          /* link/interactive blue */
+  --link-alt: #596bc2;      /* alternate link */
+  --danger: #eb4335;        /* errors/destructive */
+  --danger-alt: #ff6666;    /* alt error */
+  --warning: #ffb266;       /* warnings */
+
+  /* Icon and muted tones found in SVGs */
+  --icon-dim: #666;
+  --icon-dim-2: #444;
+  --muted-1: #7c7c7c;
+  --muted-2: #888;
+
+  /* Scrollbar */
+  --scrollbar-track: #111111;
+  --scrollbar-thumb: #2d2d30;
+  --scrollbar-thumb-hover: #3a3a3d;
+}
+
+/* Optional usage examples (uncomment when wiring up) */
+/*
+body { background: var(--bg-body); color: var(--fg-primary); }
+::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+::-webkit-scrollbar-thumb { background-color: var(--scrollbar-thumb); border: 2px solid var(--scrollbar-track); }
+::-webkit-scrollbar-thumb:hover { background-color: var(--scrollbar-thumb-hover); }
+*/
+

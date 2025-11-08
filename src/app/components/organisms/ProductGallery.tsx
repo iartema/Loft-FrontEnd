@@ -17,13 +17,13 @@ export default function ProductGallery({ images, height = 420 }: Props) {
     <div className="grid grid-cols-12 gap-3">
       {/* main image */}
       <div
-        className="relative col-span-9 w-full bg-[#161616] rounded-2xl border border-[#2a2a2a] overflow-hidden"
+        className="relative col-span-9 w-full bg-[var(--bg-elev-1)] rounded-2xl border border-[var(--border)] overflow-hidden"
         style={{ height }}
       >
         {images[active] ? (
           <Image src={images[active]} alt="product" fill className="object-cover" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-[#A9A9B7]">
+          <div className="w-full h-full flex items-center justify-center text-[var(--fg-muted)]">
             No image
           </div>
         )}
@@ -37,7 +37,7 @@ export default function ProductGallery({ images, height = 420 }: Props) {
             type="button"
             onClick={() => setActive(i)}
             className={`relative rounded-xl overflow-hidden border ${
-              active === i ? "border-[#FFC107]" : "border-[#2a2a2a]"
+              active === i ? "border-[var(--brand)]" : "border-[var(--border)]"
             }`}
             style={{ width: thumbSize, height: thumbSize }}
             aria-label={`thumb ${i + 1}`}
@@ -49,7 +49,7 @@ export default function ProductGallery({ images, height = 420 }: Props) {
           <div
             key={k}
             style={{ width: thumbSize, height: thumbSize }}
-            className="rounded-xl border border-dashed border-[#2a2a2a] bg-[#161616]"
+            className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--bg-elev-1)]"
           />
         ))}
       </div>

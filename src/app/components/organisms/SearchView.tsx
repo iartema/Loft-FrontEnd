@@ -1,39 +1,24 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Almarai } from "next/font/google";
 import { useRouter, useSearchParams } from "next/navigation";
+import SimpleSelect from "../molecules/SimpleSelect";
+import FilterSection from "../molecules/FilterSection";
+import ActiveFilterChips from "../molecules/ActiveFilterChips";
 import ViewProductCardSearch from "../molecules/ViewProductCardSearch";
 import {
-  searchProducts,
-  type Product,
-  currencySymbol,
-  type ID,
-} from "../lib/mockProduct";
-import { mockCategories, mockFetchAttributesByCategory } from "../lib/mockCatalog";
+  fetchCategories,
+  fetchCategoryAttributes,
+  type CategoryDto,
+  type CategoryAttributeFullDto,
+  type ProductDto,
+  searchProductsExternal,
+  type ProductAttributeFilterDto,
+} from "../lib/api";
+// import { mockCategories, mockFetchAttributesByCategory } from "../lib/mockCatalog";
 
-function FilterSection({
-  title,
-  children,
-  defaultOpen = true,
-}: {
-  title: string;
-  children: React.ReactNode;
-  defaultOpen?: boolean;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div className="border border-[#1f1f1f] rounded-lg">
-      <button
-        className="w-full flex items-center justify-between px-3 py-2 bg-[#181818] hover:bg-[#1c1c1c] text-sm"
-        onClick={() => setOpen((v) => !v)}
-      >
-        <span className="opacity-80">{title}</span>
-        <span className={`transition-transform ${open ? "rotate-180" : "rotate-0"}`}>v</span>
-      </button>
-      {open && <div className="p-3 bg-[#161616]">{children}</div>}
-    </div>
-  );
-}
+const almarai = Almarai({ subsets: ["latin"], weight: ["400", "700"] });
 
 export default function SearchView() {
   const params = useSearchParams();
@@ -41,11 +26,13 @@ export default function SearchView() {
   const router = useRouter();
 
   const [query, setQuery] = useState(qParam);
-  const [categoryId, setCategoryId] = useState<ID | null>(null);
+  const [categoryId, setCategoryId] = useState<number | null>(null);
   const [priceMin, setPriceMin] = useState<number | null>(null);
   const [priceMax, setPriceMax] = useState<number | null>(null);
-  const [color, setColor] = useState<string | null>(null);
-  const [items, setItems] = useState<Product[]>([]);
+  const [attrFilters, setAttrFilters] = useState<Record<number, string | number | boolean | string[] | null>>({});
+  const [allCategories, setAllCategories] = useState<{ ID: number; Name: string; ParentCategoryId: number | null; Status?: string }[]>([]);
+  const [categoryAttrs, setCategoryAttrs] = useState<{ ID: number; Name: string; Type: "text" | "number" | "select" | "multiselect" | "boolean" | "color"; Value?: string }[]>([]);
+  const [items, setItems] = useState<ProductDto[]>([]);
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
@@ -53,27 +40,87 @@ export default function SearchView() {
     setQuery(qParam);
   }, [qParam]);
 
-  const categoryAttrs = useMemo(
-    () => mockFetchAttributesByCategory(categoryId ?? null),
-    [categoryId]
-  );
-  const colorOptions = useMemo(() => {
-    const colorAttr = categoryAttrs.find((a) => a.Name.toLowerCase() === "color");
-    if (!colorAttr || !colorAttr.Value) return [] as string[];
-    return colorAttr.Value.split("|");
+  useEffect(() => {
+    const flatten = (list: CategoryDto[], acc: { ID: number; Name: string; ParentCategoryId: number | null; Status?: string }[] = []) => {
+      for (const c of list) {
+        acc.push({ ID: c.id, Name: c.name, ParentCategoryId: c.parentCategoryId ?? null, Status: c.status ?? undefined });
+        if (c.subCategories && c.subCategories.length) flatten(c.subCategories, acc);
+      }
+      return acc;
+    };
+    fetchCategories().then((cats) => setAllCategories(flatten(cats))).catch(() => setAllCategories([]));
+  }, []);
+
+  useEffect(() => {
+    if (!categoryId) { setCategoryAttrs([]); return; }
+    fetchCategoryAttributes(Number(categoryId))
+      .then((full: CategoryAttributeFullDto[]) => {
+        const mapped = full
+          .sort((a,b)=>a.orderIndex-b.orderIndex)
+          .map(a => {
+            const opts = a.optionsJson ? safeParseOptions(a.optionsJson) : [];
+            const lower = a.attributeName.toLowerCase();
+            // Backend enum mapping (AttributeType): 0:String, 1:Number, 2:List
+            let Type: "text"|"number"|"select"|"multiselect"|"boolean"|"color" = "text";
+            const tval = a.type as unknown as number;
+            if (typeof tval === "number") {
+              if (tval === 0) Type = "text";      // String
+              else if (tval === 1) Type = "number"; // Number
+              else if (tval === 2) Type = "select"; // List
+            } else {
+              const ts = String(a.type).toLowerCase();
+              if (ts === "string" || ts === "text") Type = "text";
+              else if (ts === "number") Type = "number";
+              else if (ts === "list") Type = "select";
+            }
+            if (lower === "color" || lower === "colour") Type = "color";
+            return { ID: a.attributeId, Name: a.attributeName, Type, Value: opts.join("|") || undefined };
+          });
+        setCategoryAttrs(mapped);
+      })
+      .catch(()=> setCategoryAttrs([]));
+  }, [categoryId]);
+
+  function safeParseOptions(json: string): string[] {
+    try { const arr = JSON.parse(json); return Array.isArray(arr) ? arr.map(String) : []; } catch { return []; }
+  }
+    // initialize attribute filters when category changes
+  useEffect(() => {
+    const next: Record<number, string | number | boolean | string[] | null> = {};
+    for (const a of categoryAttrs) {
+      if (a.Type === "multiselect" || a.Type === "color") next[a.ID] = [];
+      else if (a.Type === "boolean") next[a.ID] = null;
+      else next[a.ID] = "";
+    }
+    setAttrFilters(next);
   }, [categoryAttrs]);
 
   const doSearch = useCallback(async () => {
-    const res = await searchProducts({
-      query,
+    const attrs: ProductAttributeFilterDto[] = Object.entries(attrFilters).flatMap(([id, value]) => {
+      if (value == null) return [];
+      if (typeof value === "string" && value.trim() === "") return [];
+      if (Array.isArray(value)) {
+        if (value.length === 0) return [];
+        return [{ attributeId: Number(id), values: value.map(String) }];
+      }
+      if (typeof value === "boolean") {
+        return [{ attributeId: Number(id), value: String(value) }];
+      }
+      return [{ attributeId: Number(id), value: String(value) }];
+    });
+
+    const res = await searchProductsExternal({
+      search: query || undefined,
       categoryId: categoryId ?? undefined,
       priceMin: priceMin ?? undefined,
       priceMax: priceMax ?? undefined,
-      color: color ?? undefined,
+      attributes: attrs.length ? attrs : undefined,
+      page: 1,
+      pageSize,
     });
-    setItems(res);
+    setItems(res || []);
     setPage(1);
-  }, [query, categoryId, priceMin, priceMax, color]);
+  }, [query, categoryId, priceMin, priceMax, attrFilters]);
 
   useEffect(() => {
     doSearch();
@@ -83,7 +130,7 @@ export default function SearchView() {
     setCategoryId(null);
     setPriceMin(null);
     setPriceMax(null);
-    setColor(null);
+    setAttrFilters({});
   };
 
   const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
@@ -93,54 +140,130 @@ export default function SearchView() {
   }, [items, page]);
 
   const categoryName = useMemo(
-    () => mockCategories.find((c) => c.ID === (categoryId ?? -1))?.Name,
-    [categoryId]
+    () => allCategories.find((c) => c.ID === (categoryId ?? -1))?.Name,
+    [categoryId, allCategories]
   );
 
   return (
-    <main className="min-h-screen w-full bg-[#111111] text-white px-8 py-6">
+    <main className="min-h-screen w-full bg-[var(--bg-body)] text-white px-8 py-6">
+      {/* Active filters chips spanning full width, above sidebar/results */}
+      <ActiveFilterChips query={query} categoryName={categoryName} priceMin={priceMin} priceMax={priceMax} onClearQuery={() => setQuery("")} onClearCategory={() => setCategoryId(null)} onClearMin={() => setPriceMin(null)} onClearMax={() => setPriceMax(null)} />
+
       <div className="grid grid-cols-[240px_1fr] gap-6">
         {/* Filters (no local search field here as per spec) */}
-        <aside className="bg-[#161616] rounded-2xl p-2 space-y-2 h-fit sticky top-4">
+        <aside className={`rounded-2xl p-0 space-y-0 h-fit sticky top-4 ${almarai.className}` }>
           <FilterSection title="Category">
-            <select
-              value={categoryId ?? ""}
-              onChange={(e) => setCategoryId(e.target.value ? Number(e.target.value) : null)}
-              className="w-full bg-[#2d2d30] text-white rounded-md px-3 py-2 text-sm outline-none"
-            >
-              <option value="">All</option>
-              {mockCategories
-                .filter((c) => c.Status === "active")
-                .map((c) => (
-                  <option key={c.ID} value={c.ID}>
-                    {c.Name}
-                  </option>
-                ))}
-            </select>
+            <SimpleSelect
+              value={categoryId != null ? String(categoryId) : ""}
+              onChange={(val) => setCategoryId(val ? Number(val) : null)}
+              options={allCategories
+                .filter((c) => (c.Status ?? "approved") !== "rejected")
+                .map((c) => ({ value: String(c.ID), label: c.Name }))}
+              placeholder="All"
+              className={`${almarai.className}`}
+            />
           </FilterSection>
-          <FilterSection title="Color">
-            <select
-              value={color ?? ""}
-              onChange={(e) => setColor(e.target.value || null)}
-              disabled={colorOptions.length === 0}
-              className="w-full bg-[#2d2d30] text-white rounded-md px-3 py-2 text-sm outline-none"
-            >
-              <option value="">Any</option>
-              {colorOptions.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
-          </FilterSection>
-          <FilterSection title="Price">
+          {categoryId && categoryAttrs.map((a) => (
+            <FilterSection key={a.ID} title={a.Name}>
+              {a.Type === "text" && (
+                <input
+                  type="text"
+                  placeholder={`Type the ${a.Name.toLowerCase()}...`}
+                  value={(attrFilters[a.ID] as string) ?? ""}
+                  onChange={(e) => setAttrFilters((s) => ({ ...s, [a.ID]: e.target.value }))}
+                  className={`w-full bg-[var(--bg-filter-inner)] text-white px-3 py-2 text-sm rounded-[12px] outline-none border border-transparent focus:outline-none focus:border-[var(--divider)] ${almarai.className}`}
+                />
+              )}
+              {a.Type === "number" && (
+                <input
+                  type="number"
+                  placeholder={`Type the ${a.Name.toLowerCase()}...`}
+                  value={String((attrFilters[a.ID] as number) ?? "")}
+                  onChange={(e) => setAttrFilters((s) => ({ ...s, [a.ID]: e.target.value }))}
+                  className={`w-full bg-[var(--bg-filter-inner)] text-white px-3 py-2 text-sm rounded-[12px] outline-none border border-transparent focus:outline-none focus:border-[var(--divider)] ${almarai.className}`}
+                />
+              )}
+              {a.Type === "select" && (
+                <SimpleSelect
+                  value={String((attrFilters[a.ID] as string) ?? "")}
+                  onChange={(val) => setAttrFilters((s) => ({ ...s, [a.ID]: val }))}
+                  options={(a.Value || "").split("|").filter(Boolean).map((opt) => ({ value: opt, label: opt }))}
+                  placeholder="Any"
+                  className={`${almarai.className}`}
+                />
+              )}
+              {a.Type === "multiselect" && (
+                <div className="space-y-1">
+                  {(a.Value || "").split("|").filter(Boolean).map((opt) => {
+                    const arr = (attrFilters[a.ID] as string[]) || [];
+                    const checked = arr.includes(opt);
+                    return (
+                      <label key={opt} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => {
+                            setAttrFilters((s) => {
+                              const cur = (s[a.ID] as string[]) || [];
+                              const next = checked ? cur.filter((v) => v !== opt) : [...cur, opt];
+                              return { ...s, [a.ID]: next };
+                            });
+                          }}
+                        />
+                        <span className="opacity-80">{opt}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+              {a.Type === "boolean" && (
+                <div className="flex gap-2">
+                  {[{ label: "Yes", val: true }, { label: "No", val: false }].map(({ label, val }) => (
+                    <button
+                      key={String(val)}
+                      type="button"
+                      className={`px-3 py-1 rounded ${attrFilters[a.ID] === val ? "bg-[var(--brand)] text-black" : "bg-[var(--bg-elev-3)]"}`}
+                      onClick={() => setAttrFilters((s) => ({ ...s, [a.ID]: val }))}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {a.Type === "color" && (
+                <div className="flex flex-wrap gap-2">
+                  {(a.Value || "").split("|").filter(Boolean).map((opt) => {
+                    const arr = (attrFilters[a.ID] as string[]) || [];
+                    const active = arr.includes(opt);
+                    return (
+                      <button
+                        type="button"
+                        key={opt}
+                        onClick={() =>
+                          setAttrFilters((s) => {
+                            const cur = (s[a.ID] as string[]) || [];
+                            const next = active ? cur.filter((v) => v !== opt) : [...cur, opt];
+                            return { ...s, [a.ID]: next };
+                          })
+                        }
+                        className={`px-2 py-1 rounded ${active ? "bg-[var(--brand)] text-black" : "bg-[var(--bg-elev-3)]"}`}
+                      >
+                        {opt}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </FilterSection>
+          ))}
+          {categoryId && ( <FilterSection title="Price">
             <div className="flex items-center gap-2">
               <input
                 type="number"
                 placeholder="Min"
                 value={priceMin ?? ""}
                 onChange={(e) => setPriceMin(e.target.value === "" ? null : Number(e.target.value))}
-                className="w-full bg-[#2d2d30] text-white rounded-md px-3 py-2 text-sm outline-none border border-transparent focus:ring-0 focus:outline-none focus:border-[#3a3a3d]"
+                className={`w-full bg-[var(--bg-filter-inner)] text-white px-3 py-2 text-sm rounded-[12px] outline-none border border-transparent focus:ring-0 focus:outline-none focus:border-[var(--divider)] ${almarai.className}` }
               />
               <span className="opacity-50">-</span>
               <input
@@ -148,13 +271,13 @@ export default function SearchView() {
                 placeholder="Max"
                 value={priceMax ?? ""}
                 onChange={(e) => setPriceMax(e.target.value === "" ? null : Number(e.target.value))}
-                className="w-full bg-[#2d2d30] text-white rounded-md px-3 py-2 text-sm outline-none border border-transparent focus:ring-0 focus:outline-none focus:border-[#3a3a3d]"
+                className={`w-full bg-[var(--bg-filter-inner)] text-white px-3 py-2 text-sm rounded-[12px] outline-none border border-transparent focus:ring-0 focus:outline-none focus:border-[var(--divider)] ${almarai.className}` }
               />
             </div>
-          </FilterSection>
+          </FilterSection> )}
           <button
             onClick={clearFilters}
-            className="w-full bg-[#2d2d30] hover:bg-[#3a3a3d] text-white rounded-md px-3 py-2 text-sm"
+            className={`w-full bg-[var(--bg-filter)] text-white px-3 py-2 text-sm border-b border-[var(--divider)] ${almarai.className}` }
           >
             Clear filters
           </button>
@@ -165,19 +288,7 @@ export default function SearchView() {
           <div className="flex items-center justify-between">
           </div>
 
-          {/* Active filters chips */}
-          <div className="flex flex-wrap gap-2 border-b border-[#1f1f1f] pb-2">
-            {query && <span className="px-3 py-1 bg-[#1a1a1a] rounded-full text-sm">{query}</span>}
-            {categoryName && (
-              <span className="px-3 py-1 bg-[#1a1a1a] rounded-full text-sm">{categoryName}</span>
-            )}
-            {color && <span className="px-3 py-1 bg-[#1a1a1a] rounded-full text-sm">{color}</span>}
-            {(priceMin != null || priceMax != null) && (
-              <span className="px-3 py-1 bg-[#1a1a1a] rounded-full text-sm">
-                {priceMin ?? 0} - {priceMax ?? "max"}
-              </span>
-            )}
-          </div>
+
 
           {/* 5 columns per row to match spec */}
           <div className="grid grid-cols-5 gap-4">
@@ -186,13 +297,13 @@ export default function SearchView() {
             )}
             {paged.map((p) => (
               <ViewProductCardSearch
-                key={p.ID}
-                name={p.Name}
-                description={`${p.Views ?? 0} views`}
-                price={`${currencySymbol[p.Currency]}${p.Price}`}
-                image="/default-product.jpg"
+                key={p.id}
+                name={p.name}
+                description={`${p.viewCount ?? 0} views`}
+                price={`${({ USD: "$", EUR: "€", UAH: "₴", GBP: "£" } as Record<string, string>)[p.currency] ?? ""}${p.price}`}
+                image={(p.mediaFiles && p.mediaFiles[0]?.url) || "/default-product.jpg"}
                 buttonLabel="View"
-                onClick={() => router.push(`/product/${p.ID}`)}
+                onClick={() => router.push(`/product/${p.id}`)}
               />
             ))}
           </div>
@@ -200,7 +311,7 @@ export default function SearchView() {
           {/* Pagination (ASCII arrows to avoid encoding issues) */}
           <div className="flex items-center justify-center gap-2 py-4 select-none">
             <button
-              className="px-3 py-1 rounded bg-[#1a1a1a] hover:bg-[#202020] disabled:opacity-40"
+              className="px-3 py-1 rounded bg-[var(--bg-elev-1)] hover:bg-[var(--bg-elev-1)] disabled:opacity-40"
               disabled={page === 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
@@ -213,7 +324,7 @@ export default function SearchView() {
                   key={n}
                   onClick={() => setPage(n)}
                   className={`px-3 py-1 rounded ${
-                    page === n ? "bg-[#2d2d30]" : "bg-[#1a1a1a] hover:bg-[#202020]"
+                    page === n ? "bg-[var(--bg-input)]" : "bg-[var(--bg-elev-1)] hover:bg-[var(--bg-elev-1)]"
                   }`}
                 >
                   {n}
@@ -224,7 +335,7 @@ export default function SearchView() {
               <span className="px-2 opacity-60">... {totalPages}</span>
             )}
             <button
-              className="px-3 py-1 rounded bg-[#1a1a1a] hover:bg-[#202020] disabled:opacity-40"
+              className="px-3 py-1 rounded bg-[var(--bg-elev-1)] hover:bg-[var(--bg-elev-1)] disabled:opacity-40"
               disabled={page === totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             >
@@ -236,3 +347,20 @@ export default function SearchView() {
     </main>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

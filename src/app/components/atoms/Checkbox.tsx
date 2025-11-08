@@ -42,7 +42,7 @@ export default function Checkbox({ showForgotPassword = false }: CheckboxProps) 
       {showForgotPassword && (
         <Link
           href="/forgot-password"
-          className={`${almarai.className} text-sm text-[#A9A9B7] hover:text-white transition`}
+          className={`${almarai.className} text-sm text-[var(--fg-muted)] hover:text-white transition`}
         >
           Forgot password?
         </Link>

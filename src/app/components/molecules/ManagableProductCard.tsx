@@ -29,7 +29,7 @@ export default function ManagableProductCard({
 }: ProductCardProps) {
   return (
     <div
-      className={`${almarai.className} bg-[#1a1a1a] rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all flex flex-col`}
+      className={`${almarai.className} bg-[var(--bg-elev-1)] rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all flex flex-col`}
       style={{ height: "300px" }} // set stable height
     >
       {/* Image */}

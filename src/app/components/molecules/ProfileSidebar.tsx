@@ -1,12 +1,28 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Button from "../atoms/Button";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
+import { getCurrentUserCached } from "../lib/userCache";
 
 export default function ProfileSidebar() {
   const router = useRouter();
+  const [email, setEmail] = useState<string>("");
+
+  useEffect(() => {
+    let mounted = true;
+    getCurrentUserCached()
+      .then((me: any) => {
+        if (mounted) setEmail((me?.email as string) || "");
+      })
+      .catch(() => {
+        // ignore
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
   const pathname = usePathname(); // 👈 gives us current URL path (e.g. "/profile")
 
   const menuItems = [
@@ -24,9 +40,9 @@ export default function ProfileSidebar() {
   ];
 
   return (
-    <div className="flex flex-col justify-between h-full w-full bg-[#161616] rounded-2xl px-3 py-6 shadow-lg">
+    <div className="flex flex-col justify-between h-full w-full bg-[var(--bg-elev-1)] rounded-2xl px-3 py-6 shadow-lg">
       {/* User info */}
-      <div className="flex items-center gap-4 mb-8">
+      <div className="flex flex-col items-center gap-3 mb-8">
         <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
           <Image
             src="/default-avatar.jpg"
@@ -37,7 +53,7 @@ export default function ProfileSidebar() {
           />
         </div>
         <div>
-          <p className="font-semibold text-base">Reed Anthony</p>
+          <p className="font-semibold text-base text-center">{email || ""}</p>
         </div>
       </div>
 
@@ -50,7 +66,7 @@ export default function ProfileSidebar() {
               key={i}
               label={item.label}
               className={`text-sm py-2 ${
-                isActive ? "text-[#78FF7E]" : "text-white"
+                isActive ? "text-[var(--success)]" : "text-white"
               }`}
               onClick={() => item.path && router.push(item.path)}
             />
@@ -67,7 +83,7 @@ export default function ProfileSidebar() {
               key={i}
               label={item.label}
               className={`text-sm py-2 ${
-                isActive ? "text-[#78FF7E]" : "text-white"
+                isActive ? "text-[var(--success)]" : "text-white"
               }`}
               onClick={() => item.path && router.push(item.path)}
             />

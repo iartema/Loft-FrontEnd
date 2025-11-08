@@ -26,14 +26,14 @@ export default function ImageUploader({ photos, onAdd, onRemove, height = 420 }:
     <div className="grid grid-cols-12 gap-3">
       {/* Main image area */}
       <div
-        className="relative col-span-9 w-full bg-[#161616] rounded-2xl border border-[#2a2a2a] flex items-center justify-center cursor-pointer overflow-hidden"
+        className="relative col-span-9 w-full bg-[var(--bg-elev-1)] rounded-2xl border border-[var(--border)] flex items-center justify-center cursor-pointer overflow-hidden"
         style={{ height }}
         onClick={() => fileRef.current?.click()}
       >
         {photos[0] ? (
           <Image src={photos[0]} alt="cover" fill className="object-cover" />
         ) : (
-          <span className="text-[#A9A9B7]">Click to add photos</span>
+          <span className="text-[var(--fg-muted)]">Click to add photos</span>
         )}
       </div>
 
@@ -59,7 +59,7 @@ export default function ImageUploader({ photos, onAdd, onRemove, height = 420 }:
           <button
             key={`add-slot-${k}`}
             type="button"
-            className="rounded-xl bg-[#161616] border border-dashed border-[#2a2a2a] text-[#A9A9B7] hover:text-white hover:border-[#3a3a3a] flex items-center justify-center"
+            className="rounded-xl bg-[var(--bg-elev-1)] border border-dashed border-[var(--border)] text-[var(--fg-muted)] hover:text-white hover:border-[var(--bg-hover)] flex items-center justify-center"
             style={{ width: thumbSize, height: thumbSize }}
             onClick={() => fileRef.current?.click()}
           >

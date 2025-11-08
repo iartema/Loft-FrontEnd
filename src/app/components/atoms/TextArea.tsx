@@ -9,7 +9,7 @@ export default function Textarea({ className = "", ...props }: Props) {
     <textarea
       {...props}
       rows={6}
-      className={`${akatab.className} w-full bg-[#2d2d30] rounded-[15px] px-4 py-3 outline-none text-[20px] text-white placeholder-[#666666] ${className}`}
+      className={`${akatab.className} w-full bg-[var(--bg-input)] rounded-[15px] px-4 py-3 outline-none text-[20px] text-white placeholder-[var(--icon-dim)] ${className}`}
       style={{
         WebkitAppearance: "none",
         WebkitBoxShadow: "0 0 0px 1000px transparent inset",
