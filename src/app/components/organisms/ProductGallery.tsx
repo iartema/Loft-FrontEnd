@@ -12,6 +12,7 @@ export default function ProductGallery({ images, height = 420 }: Props) {
   const [active, setActive] = useState(0);
   const thumbs = images.slice(0, 5);
   const thumbSize = height / 5 - 8;
+  const [errored, setErrored] = useState<Record<number, boolean>>({});
 
   return (
     <div className="grid grid-cols-12 gap-3">
@@ -21,7 +22,16 @@ export default function ProductGallery({ images, height = 420 }: Props) {
         style={{ height }}
       >
         {images[active] ? (
-          <Image src={images[active]} alt="product" fill className="object-cover" />
+          <Image
+            src={errored[active] ? "/default-product.jpg" : images[active]}
+            alt="product"
+            fill
+            className="object-cover"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 50vw"
+            loading="eager"
+            quality={70}
+            onError={() => setErrored((s) => ({ ...s, [active]: true }))}
+          />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-[var(--fg-muted)]">
             No image
@@ -42,7 +52,16 @@ export default function ProductGallery({ images, height = 420 }: Props) {
             style={{ width: thumbSize, height: thumbSize }}
             aria-label={`thumb ${i + 1}`}
           >
-            <Image src={src} alt={`thumb-${i}`} fill className="object-cover" />
+            <Image
+              src={errored[i] ? "/default-product.jpg" : src}
+              alt={`thumb-${i}`}
+              fill
+              className="object-cover"
+              sizes="80px"
+              loading="lazy"
+              quality={60}
+              onError={() => setErrored((s) => ({ ...s, [i]: true }))}
+            />
           </button>
         ))}
         {Array.from({ length: Math.max(0, 5 - thumbs.length) }).map((_, k) => (

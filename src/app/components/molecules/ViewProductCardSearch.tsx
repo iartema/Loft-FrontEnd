@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import Image from "next/image";
 import { Almarai } from "next/font/google";
 
@@ -41,6 +41,7 @@ export default function ViewProductCardSearch({
     return "/" + s;
   };
   const resolvedImage = normalizeImageSrc(image);
+  const [imgSrc, setImgSrc] = useState<string>(resolvedImage);
   return (
     <div
       className={`${almarai.className} bg-[var(--bg-input)] rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all flex flex-col`}
@@ -48,7 +49,7 @@ export default function ViewProductCardSearch({
     >
       <div className="relative w-full h-[180px] flex-shrink-0 cursor-pointer" onClick={onClick}>
         <Image
-          src={resolvedImage}
+          src={imgSrc}
           alt={name}
           fill
           className="object-cover"
@@ -57,6 +58,7 @@ export default function ViewProductCardSearch({
           loading="lazy"
           priority={false}
           quality={60}
+          onError={() => setImgSrc("/default-product.jpg")}
         />
       </div>
 
