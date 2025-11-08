@@ -131,24 +131,44 @@ export default function ProductForm() {
     return path.join(" › ");
   }, [form.categoryId]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+      const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = {
-      Name: form.name,
-      Price: Number(form.price),
-      Currency: form.currency,
-      ID_Category: form.categoryId,
-      Attributes: attributeDefs.map((def) => ({
-        ID: def.ID,
-        Name: def.Name,
-        Type: def.Type,
-        Value: form.attributes[def.ID],
-      })),
-      Photos: form.photos,
-      Description: form.description,
-    };
-    console.log("Create product payload:", payload);
-    alert("Check console for payload 👍");
+    if (!form.name.trim()) { alert('Please enter the product name.'); return; }
+    if (!form.categoryId) { alert('Please choose a category.'); return; }
+    const priceNum = Number(form.price);
+    if (isNaN(priceNum) || priceNum < 0) { alert('Please enter a valid price.'); return; }
+
+    const attributeValues = attributeDefs.map((def) => {
+      const v = form.attributes[def.ID];
+      let value = '';
+      if (Array.isArray(v)) value = v.map(String).join('|');
+      else if (v === null || v === undefined) value = '';
+      else value = String(v);
+      return { attributeId: def.ID, value };
+    });
+    const mediaFiles = (form.photos || []).map((url) => ({ url, mediaTyp: 'image' }));
+
+    const res = await fetch('/api/products/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: form.name.trim(),
+        categoryId: form.categoryId,
+        description: form.description,
+        price: priceNum,
+        currency: form.currency,
+        quantity: 1,
+        attributeValues,
+        mediaFiles,
+      }),
+    });
+    if (!res.ok) {
+      const txt = await res.text();
+      alert(txt || 'Failed to create product');
+      return;
+    }
+    window.location.href = '/myproducts';
+  };
   };
 
   const calculateProgress = () => {
@@ -291,6 +311,8 @@ export default function ProductForm() {
     </>
   );
 }
+
+
 
 
 
