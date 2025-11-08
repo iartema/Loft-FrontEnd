@@ -110,7 +110,7 @@ export default function SearchView() {
       return [{ attributeId, value: String(value) }];
     });
 
-    const res = await searchProductsExternal({
+    let res = await searchProductsExternal({
       categoryId: categoryId ?? undefined,
       minPrice: priceMin ?? undefined,
       maxPrice: priceMax ?? undefined,
@@ -118,6 +118,10 @@ export default function SearchView() {
       page: 1,
       pageSize,
     });
+    if (query && query.trim()) {
+      const q = query.trim().toLowerCase();
+      res = (res || []).filter((p) => p.name?.toLowerCase().includes(q));
+    }
     setItems(res || []);
     setPage(1);
   }, [query, categoryId, priceMin, priceMax, attrFilters]);
