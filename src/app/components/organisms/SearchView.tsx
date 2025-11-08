@@ -35,6 +35,7 @@ export default function SearchView() {
   const [items, setItems] = useState<ProductDto[]>([]);
   const [page, setPage] = useState(1);
   const pageSize = 20;
+  const [attrSuggestions, setAttrSuggestions] = useState<Record<number, string[]>>({});
 
   useEffect(() => {
     setQuery(qParam);
@@ -79,6 +80,32 @@ export default function SearchView() {
         setCategoryAttrs(mapped);
       })
       .catch(()=> setCategoryAttrs([]));
+  }, [categoryId]);
+
+  // Build attribute value suggestions from products within the selected category
+  useEffect(() => {
+    if (!categoryId) { setAttrSuggestions({}); return; }
+    (async () => {
+      try {
+        const sample = await searchProductsExternal({ categoryId, page: 1, pageSize: 200 });
+        const map: Record<number, Set<string>> = {};
+        for (const p of sample || []) {
+          for (const av of (p.attributeValues ?? [])) {
+            const id = av.attributeId;
+            const val = String(av.value || "").trim();
+            if (!val) continue;
+            if (!map[id]) map[id] = new Set<string>();
+            // Split pipe-delimited values if present
+            val.split("|").map((s) => s.trim()).filter(Boolean).forEach((v) => map[id].add(v));
+          }
+        }
+        const obj: Record<number, string[]> = {};
+        for (const [k, v] of Object.entries(map)) obj[Number(k)] = Array.from(v).sort();
+        setAttrSuggestions(obj);
+      } catch {
+        setAttrSuggestions({});
+      }
+    })();
   }, [categoryId]);
 
   function safeParseOptions(json: string): string[] {
@@ -228,13 +255,32 @@ export default function SearchView() {
           {categoryId && categoryAttrs.map((a) => (
             <FilterSection key={a.ID} title={a.Name}>
               {a.Type === "text" && (
-                <input
-                  type="text"
-                  placeholder={`Type the ${a.Name.toLowerCase()}...`}
-                  value={(attrFilters[a.ID] as string) ?? ""}
-                  onChange={(e) => setAttrFilters((s) => ({ ...s, [a.ID]: e.target.value }))}
-                  className={`w-full bg-[var(--bg-filter-inner)] text-white px-3 py-2 text-sm rounded-[12px] outline-none border border-transparent focus:outline-none focus:border-[var(--divider)] ${almarai.className}`}
-                />
+                <div className="space-y-1">
+                  <input
+                    type="text"
+                    placeholder={`Type the ${a.Name.toLowerCase()}...`}
+                    value={(attrFilters[a.ID] as string) ?? ""}
+                    onChange={(e) => setAttrFilters((s) => ({ ...s, [a.ID]: e.target.value }))}
+                    className={`w-full bg-[var(--bg-filter-inner)] text-white px-3 py-2 text-sm rounded-[12px] outline-none border border-transparent focus:outline-none focus:border-[var(--divider)] ${almarai.className}`}
+                  />
+                  {!!(attrSuggestions[a.ID]?.length) && (
+                    <div className="bg-[var(--bg-elev-3)] rounded-[10px] border border-[var(--divider)] max-h-32 overflow-auto p-1 text-sm">
+                      {(attrSuggestions[a.ID] || [])
+                        .filter((v) => v.toLowerCase().includes(String(attrFilters[a.ID] || "").toLowerCase()))
+                        .slice(0, 8)
+                        .map((opt) => (
+                          <button
+                            type="button"
+                            key={opt}
+                            onClick={() => setAttrFilters((s) => ({ ...s, [a.ID]: opt }))}
+                            className="w-full text-left px-2 py-1 rounded hover:bg-[var(--bg-elev-2)]"
+                          >
+                            {opt}
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
               )}
               {a.Type === "number" && (
                 <input
@@ -249,7 +295,8 @@ export default function SearchView() {
                 <SimpleSelect
                   value={String((attrFilters[a.ID] as string) ?? "")}
                   onChange={(val) => setAttrFilters((s) => ({ ...s, [a.ID]: val }))}
-                  options={(a.Value || "").split("|").filter(Boolean).map((opt) => ({ value: opt, label: opt }))}
+                  options={(a.Value && a.Value.split("|").filter(Boolean).length ? a.Value.split("|").filter(Boolean) : (attrSuggestions[a.ID] || []))
+                    .map((opt) => ({ value: opt, label: opt }))}
                   placeholder="Any"
                   className={`${almarai.className}`}
                 />
@@ -294,7 +341,7 @@ export default function SearchView() {
               )}
               {a.Type === "color" && (
                 <div className="flex flex-wrap gap-2">
-                  {(a.Value || "").split("|").filter(Boolean).map((opt) => {
+                  {((a.Value && a.Value.split("|").filter(Boolean).length ? a.Value.split("|").filter(Boolean) : (attrSuggestions[a.ID] || []))).map((opt) => {
                     const arr = (attrFilters[a.ID] as string[]) || [];
                     const active = arr.includes(opt);
                     return (
