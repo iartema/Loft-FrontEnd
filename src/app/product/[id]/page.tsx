@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { fetchProductById, type ProductDto } from "../../components/lib/api";
+import { fetchProductById, fetchCategoryAttributes, type ProductDto, type CategoryAttributeFullDto } from "../../components/lib/api";
 import ProductGallery from "../../components/organisms/ProductGallery";
 import ProductCard from "../../components/organisms/ProductCard";
 import ProductInfo from "../../components/organisms/ProductInfo";
@@ -12,12 +12,22 @@ import { useParams } from "next/navigation";
 export default function ProductViewPage() {
   const { id } = useParams<{ id: string }>();
   const [data, setData] = useState<ProductDto | undefined>(undefined);
+  const [attrNames, setAttrNames] = useState<Record<number, string>>({});
 
   useEffect(() => {
     const run = async () => {
       try {
         const p = await fetchProductById(Number(id));
         setData(p);
+        // fetch attribute metadata for names
+        try {
+          const meta: CategoryAttributeFullDto[] = await fetchCategoryAttributes(p.categoryId);
+          const map: Record<number, string> = {};
+          for (const a of meta) map[a.attributeId] = a.attributeName;
+          setAttrNames(map);
+        } catch {
+          setAttrNames({});
+        }
       } catch {
         setData(undefined);
       }
@@ -64,7 +74,7 @@ export default function ProductViewPage() {
             description={data.name}
             longDescription={data.description ?? ""}
             specs={(data.attributeValues ?? []).map(a => ({
-              label: String(a.attributeId),
+              label: attrNames[a.attributeId] ?? String(a.attributeId),
               value: a.value,
             }))}
           />
