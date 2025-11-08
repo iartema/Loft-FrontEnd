@@ -256,13 +256,27 @@ export default function SearchView() {
             <FilterSection key={a.ID} title={a.Name}>
               {a.Type === "text" && (
                 <div className="space-y-1">
-                  <input
-                    type="text"
-                    placeholder={`Type the ${a.Name.toLowerCase()}...`}
-                    value={(attrFilters[a.ID] as string) ?? ""}
-                    onChange={(e) => setAttrFilters((s) => ({ ...s, [a.ID]: e.target.value }))}
-                    className={`w-full bg-[var(--bg-filter-inner)] text-white px-3 py-2 text-sm rounded-[12px] outline-none border border-transparent focus:outline-none focus:border-[var(--divider)] ${almarai.className}`}
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder={`Type the ${a.Name.toLowerCase()}...`}
+                      value={(attrFilters[a.ID] as string) ?? ""}
+                      onChange={(e) => setAttrFilters((s) => ({ ...s, [a.ID]: e.target.value }))}
+                      className={`w-full bg-[var(--bg-filter-inner)] text-white pr-8 px-3 py-2 text-sm rounded-[12px] outline-none border border-transparent focus:outline-none focus:border-[var(--divider)] ${almarai.className}`}
+                    />
+                    {String(attrFilters[a.ID] || "").length > 0 && (
+                      <button
+                        type="button"
+                        aria-label="Clear"
+                        onClick={() => setAttrFilters((s) => ({ ...s, [a.ID]: "" }))}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M3 3l6 6M9 3L3 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                        </svg>
+                      </button>
+                    )}
+                  </div>
                   {!!(attrSuggestions[a.ID]?.length) && (
                     <div className="bg-[var(--bg-elev-3)] rounded-[10px] border border-[var(--divider)] max-h-32 overflow-auto p-1 text-sm">
                       {(attrSuggestions[a.ID] || [])
@@ -367,21 +381,49 @@ export default function SearchView() {
           ))}
           <FilterSection title="Price">
             <div className="flex items-center gap-2">
-              <input
-                type="number"
-                placeholder="Min"
-                value={priceMin ?? ""}
-                onChange={(e) => setPriceMin(e.target.value === "" ? null : Number(e.target.value))}
-                className={`w-full bg-[var(--bg-filter-inner)] text-white px-3 py-2 text-sm rounded-[12px] outline-none border border-transparent focus:ring-0 focus:outline-none focus:border-[var(--divider)] ${almarai.className}` }
-              />
+              <div className="relative w-full">
+                <input
+                  type="number"
+                  placeholder="Min"
+                  value={priceMin ?? ""}
+                  onChange={(e) => setPriceMin(e.target.value === "" ? null : Number(e.target.value))}
+                  className={`w-full bg-[var(--bg-filter-inner)] text-white pr-8 px-3 py-2 text-sm rounded-[12px] outline-none border border-transparent focus:ring-0 focus:outline-none focus:border-[var(--divider)] ${almarai.className}` }
+                />
+                {(priceMin ?? null) !== null && (
+                  <button
+                    type="button"
+                    aria-label="Clear min price"
+                    onClick={() => setPriceMin(null)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M3 3l6 6M9 3L3 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                    </svg>
+                  </button>
+                )}
+              </div>
               <span className="opacity-50">-</span>
-              <input
-                type="number"
-                placeholder="Max"
-                value={priceMax ?? ""}
-                onChange={(e) => setPriceMax(e.target.value === "" ? null : Number(e.target.value))}
-                className={`w-full bg-[var(--bg-filter-inner)] text-white px-3 py-2 text-sm rounded-[12px] outline-none border border-transparent focus:ring-0 focus:outline-none focus:border-[var(--divider)] ${almarai.className}` }
-              />
+              <div className="relative w-full">
+                <input
+                  type="number"
+                  placeholder="Max"
+                  value={priceMax ?? ""}
+                  onChange={(e) => setPriceMax(e.target.value === "" ? null : Number(e.target.value))}
+                  className={`w-full bg-[var(--bg-filter-inner)] text-white pr-8 px-3 py-2 text-sm rounded-[12px] outline-none border border-transparent focus:ring-0 focus:outline-none focus:border-[var(--divider)] ${almarai.className}` }
+                />
+                {(priceMax ?? null) !== null && (
+                  <button
+                    type="button"
+                    aria-label="Clear max price"
+                    onClick={() => setPriceMax(null)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M3 3l6 6M9 3L3 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                    </svg>
+                  </button>
+                )}
+              </div>
             </div>
           </FilterSection>
           <button
