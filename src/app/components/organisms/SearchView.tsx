@@ -82,7 +82,16 @@ export default function SearchView() {
   }, [categoryId]);
 
   function safeParseOptions(json: string): string[] {
-    try { const arr = JSON.parse(json); return Array.isArray(arr) ? arr.map(String) : []; } catch { return []; }
+    try {
+      const arr = JSON.parse(json);
+      return Array.isArray(arr) ? arr.map(String) : [];
+    } catch {
+      // Fallback for pipe-delimited options (e.g., "Black|White|Red")
+      if (typeof json === "string" && json.includes("|")) {
+        return json.split("|").map((s) => s.trim()).filter(Boolean);
+      }
+      return [];
+    }
   }
     // initialize attribute filters when category changes
   useEffect(() => {
@@ -309,7 +318,7 @@ export default function SearchView() {
               )}
             </FilterSection>
           ))}
-          {categoryId && ( <FilterSection title="Price">
+          <FilterSection title="Price">
             <div className="flex items-center gap-2">
               <input
                 type="number"
@@ -327,7 +336,7 @@ export default function SearchView() {
                 className={`w-full bg-[var(--bg-filter-inner)] text-white px-3 py-2 text-sm rounded-[12px] outline-none border border-transparent focus:ring-0 focus:outline-none focus:border-[var(--divider)] ${almarai.className}` }
               />
             </div>
-          </FilterSection> )}
+          </FilterSection>
           <button
             onClick={clearFilters}
             className={`w-full bg-[var(--bg-filter)] text-white px-3 py-2 text-sm border-b border-[var(--divider)] ${almarai.className}` }
