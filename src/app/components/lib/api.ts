@@ -168,35 +168,33 @@ export async function fetchProductById(id: number): Promise<ProductDto> {
 
 export type ProductAttributeFilterDto = {
   attributeId: number;
-  value?: string;
-  values?: string[];
+  value: string;
 };
 
 export type ProductFilterDto = {
-  search?: string;
   categoryId?: number;
-  priceMin?: number;
-  priceMax?: number;
-  attributes?: ProductAttributeFilterDto[];
+  sellerId?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  attributeFilters?: ProductAttributeFilterDto[];
   page?: number;
   pageSize?: number;
 };
 
 export async function searchProductsExternal(filter: ProductFilterDto): Promise<ProductDto[]> {
-  // Backend expects PascalCase keys; map from our camelCase input
+  // Backend expects PascalCase keys matching ProductFilterDto
   const payload: any = {
-    Search: filter.search ?? undefined,
     CategoryId: filter.categoryId ?? undefined,
-    PriceMin: filter.priceMin ?? undefined,
-    PriceMax: filter.priceMax ?? undefined,
+    SellerId: filter.sellerId ?? undefined,
+    MinPrice: filter.minPrice ?? undefined,
+    MaxPrice: filter.maxPrice ?? undefined,
     Page: filter.page ?? 1,
     PageSize: filter.pageSize ?? 20,
   };
-  if (filter.attributes && filter.attributes.length) {
-    payload.Attributes = filter.attributes.map((a) => ({
+  if (filter.attributeFilters && filter.attributeFilters.length) {
+    payload.AttributeFilters = filter.attributeFilters.map((a) => ({
       AttributeId: a.attributeId,
       Value: a.value,
-      Values: a.values,
     }));
   }
 

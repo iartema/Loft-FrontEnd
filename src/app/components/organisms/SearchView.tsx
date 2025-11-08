@@ -97,24 +97,24 @@ export default function SearchView() {
 
   const doSearch = useCallback(async () => {
     const attrs: ProductAttributeFilterDto[] = Object.entries(attrFilters).flatMap(([id, value]) => {
+      const attributeId = Number(id);
       if (value == null) return [];
-      if (typeof value === "string" && value.trim() === "") return [];
+      if (typeof value === "string") {
+        const v = value.trim();
+        if (!v) return [];
+        return [{ attributeId, value: v }];
+      }
       if (Array.isArray(value)) {
-        if (value.length === 0) return [];
-        return [{ attributeId: Number(id), values: value.map(String) }];
+        return value.filter((v) => String(v).trim()).map((v) => ({ attributeId, value: String(v).trim() }));
       }
-      if (typeof value === "boolean") {
-        return [{ attributeId: Number(id), value: String(value) }];
-      }
-      return [{ attributeId: Number(id), value: String(value) }];
+      return [{ attributeId, value: String(value) }];
     });
 
     const res = await searchProductsExternal({
-      search: query || undefined,
       categoryId: categoryId ?? undefined,
-      priceMin: priceMin ?? undefined,
-      priceMax: priceMax ?? undefined,
-      attributes: attrs.length ? attrs : undefined,
+      minPrice: priceMin ?? undefined,
+      maxPrice: priceMax ?? undefined,
+      attributeFilters: attrs.length ? attrs : undefined,
       page: 1,
       pageSize,
     });
@@ -148,10 +148,55 @@ export default function SearchView() {
     [categoryId, allCategories]
   );
 
+  // Build attribute chips for UI (Brand: Nike, Color: Black, etc.)
+  const attributeChips = useMemo(() => {
+    const chips: { label: string; onClear: () => void }[] = [];
+    for (const def of categoryAttrs) {
+      const val = attrFilters[def.ID];
+      if (val == null) continue;
+      if (Array.isArray(val)) {
+        for (const v of val) {
+          if (!String(v).trim()) continue;
+          chips.push({
+            label: `${def.Name}: ${v}`,
+            onClear: () =>
+              setAttrFilters((s) => {
+                const cur = (s[def.ID] as string[]) || [];
+                return { ...s, [def.ID]: cur.filter((x) => x !== v) };
+              }),
+          });
+        }
+      } else if (typeof val === "string") {
+        const v = val.trim();
+        if (!v) continue;
+        chips.push({
+          label: `${def.Name}: ${v}`,
+          onClear: () => setAttrFilters((s) => ({ ...s, [def.ID]: "" })),
+        });
+      } else {
+        chips.push({
+          label: `${def.Name}: ${String(val)}`,
+          onClear: () => setAttrFilters((s) => ({ ...s, [def.ID]: "" })),
+        });
+      }
+    }
+    return chips;
+  }, [categoryAttrs, attrFilters]);
+
   return (
     <main className="min-h-screen w-full bg-[var(--bg-body)] text-white px-8 py-6">
       {/* Active filters chips spanning full width, above sidebar/results */}
-      <ActiveFilterChips query={query} categoryName={categoryName} priceMin={priceMin} priceMax={priceMax} onClearQuery={() => setQuery("")} onClearCategory={() => setCategoryId(null)} onClearMin={() => setPriceMin(null)} onClearMax={() => setPriceMax(null)} />
+      <ActiveFilterChips
+        query={query}
+        categoryName={categoryName}
+        priceMin={priceMin}
+        priceMax={priceMax}
+        onClearQuery={() => setQuery("")}
+        onClearCategory={() => setCategoryId(null)}
+        onClearMin={() => setPriceMin(null)}
+        onClearMax={() => setPriceMax(null)}
+        attributes={attributeChips}
+      />
 
       <div className="grid grid-cols-[240px_1fr] gap-6">
         {/* Filters (no local search field here as per spec) */}

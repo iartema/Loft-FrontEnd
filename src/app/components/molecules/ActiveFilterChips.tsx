@@ -9,6 +9,7 @@ interface Props {
   onClearCategory: () => void;
   onClearMin: () => void;
   onClearMax: () => void;
+  attributes?: { label: string; onClear: () => void }[];
   className?: string;
 }
 
@@ -27,6 +28,7 @@ export default function ActiveFilterChips({
   onClearCategory,
   onClearMin,
   onClearMax,
+  attributes = [],
   className = "",
 }: Props) {
   return (
@@ -55,7 +57,12 @@ export default function ActiveFilterChips({
           <span className="text-[var(--fg-muted)]">Max: {priceMax}</span>
         </button>
       )}
+      {attributes.map((c, i) => (
+        <button key={i} type="button" onClick={c.onClear} className="flex items-center gap-2 text-sm opacity-90 hover:opacity-100">
+          <Cross />
+          <span className="text-[var(--fg-muted)]">{c.label}</span>
+        </button>
+      ))}
     </div>
   );
 }
-
