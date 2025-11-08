@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { Almarai } from "next/font/google";
 
@@ -42,6 +42,11 @@ export default function ViewProductCardSearch({
   };
   const resolvedImage = normalizeImageSrc(image);
   const [imgSrc, setImgSrc] = useState<string>(resolvedImage);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    setLoading(true);
+  }, [imgSrc]);
   return (
     <div
       className={`${almarai.className} bg-[var(--bg-input)] rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all flex flex-col`}
@@ -58,8 +63,17 @@ export default function ViewProductCardSearch({
           loading="lazy"
           priority={false}
           quality={60}
-          onError={() => setImgSrc("/default-product.jpg")}
+          onError={() => {
+            setImgSrc("/default-product.jpg");
+            setLoading(false);
+          }}
+          onLoadingComplete={() => setLoading(false)}
         />
+        {loading && (
+          <div className="absolute inset-0 grid place-items-center bg-black/10">
+            <span className="block h-6 w-6 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+          </div>
+        )}
       </div>
 
       <div className="p-2 flex flex-col justify-between flex-1">
