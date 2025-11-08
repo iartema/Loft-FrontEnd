@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-// import Divider from "../atoms/Divider";
+import { useRouter } from "next/navigation";
 import InputField from "../molecules/InputField";
 import Button from "../atoms/Button";
 import Textarea from "../atoms/TextArea";
@@ -12,7 +12,6 @@ import ImageUploader from "../molecules/ImageUploader";
 import { fetchCategories, fetchCategoryAttributes } from "../lib/api";
 import type { CategoryDto, CategoryAttributeFullDto } from "../lib/api";
 import type { AttributeDef } from "../molecules/AttributeFields";
-
 
 type Currency = "USD" | "EUR" | "GBP";
 type AttributeValue = string | number | boolean | string[];
@@ -28,6 +27,7 @@ interface ProductFormState {
 }
 
 export default function ProductForm() {
+  const router = useRouter();
   const [form, setForm] = useState<ProductFormState>({
     name: "",
     categoryId: null,
@@ -40,50 +40,72 @@ export default function ProductForm() {
 
   const [attributeDefs, setAttributeDefs] = useState<AttributeDef[]>([]);
   const [catOpen, setCatOpen] = useState(false);
-  const [allCategories, setAllCategories] = useState<{ ID: number; Name: string; ParentCategoryId: number | null }[]>([]);
+  const [allCategories, setAllCategories] = useState<
+    { ID: number; Name: string; ParentCategoryId: number | null }[]
+  >([]);
+  const [requiredAttrIds, setRequiredAttrIds] = useState<number[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  
-    useEffect(() => {
-    const flatten = (list: CategoryDto[], acc: { ID: number; Name: string; ParentCategoryId: number | null }[] = []) => {
+  useEffect(() => {
+    const flatten = (
+      list: CategoryDto[],
+      acc: { ID: number; Name: string; ParentCategoryId: number | null }[] = []
+    ) => {
       for (const c of list) {
-        acc.push({ ID: c.id, Name: c.name, ParentCategoryId: c.parentCategoryId ?? null });
-        if (c.subCategories && c.subCategories.length) flatten(c.subCategories, acc);
+        acc.push({
+          ID: c.id,
+          Name: c.name,
+          ParentCategoryId: c.parentCategoryId ?? null,
+        });
+        if (c.subCategories && c.subCategories.length)
+          flatten(c.subCategories, acc);
       }
       return acc;
     };
-    fetchCategories().then((cats) => setAllCategories(flatten(cats))).catch(() => setAllCategories([]));
+    fetchCategories()
+      .then((cats) => setAllCategories(flatten(cats)))
+      .catch(() => setAllCategories([]));
   }, []);
 
   const onSelectCategory = async (id: number) => {
     try {
       const full: CategoryAttributeFullDto[] = await fetchCategoryAttributes(id);
+
       const mapped: AttributeDef[] = full
         .sort((a, b) => a.orderIndex - b.orderIndex)
         .map((a) => {
           const opts = a.optionsJson ? safeParseOptions(a.optionsJson) : [];
-          const lower = a.attributeName.toLowerCase();
+
+          // FIX: convert "2" -> 2 (type may come as string)
+          const tNum = parseInt(a.type as unknown as string, 10);
           let Type: AttributeDef["Type"] = "text";
-          const t: unknown = a.type as unknown;
-          if (typeof t === "number") {
-            // Backend enum AttributeType: 0=String, 1=Number, 2=List
-            if (t === 1) Type = "number";
-            else if (t === 2) Type = "select";
-            else Type = "text";
+
+          if (opts.length > 0) {
+            // if it has options and type 2 → multiselect
+            Type = tNum === 2 ? "multiselect" : "select";
           } else {
-            const ts = String(a.type).toLowerCase();
-            if (ts === "number") Type = "number";
-            else if (ts === "list") Type = "select";
+            if (tNum === 1) Type = "number"; // numeric type
+            else if (tNum === 2) Type = "multiselect"; // list type, no options
+            else Type = "text"; // fallback string
           }
-          if (lower === "color" || lower === "colour") Type = "color";
-          return { ID: a.attributeId, Name: a.attributeName, Type, Value: opts.join("|") || undefined } as AttributeDef;
+
+          return {
+            ID: a.attributeId,
+            Name: a.attributeName,
+            Type,
+            Value: opts.join("|") || undefined,
+          } as AttributeDef;
         });
+
       setAttributeDefs(mapped);
+      setRequiredAttrIds(full.filter((f) => f.isRequired).map((f) => f.attributeId));
       setForm((prev) => ({
         ...prev,
         categoryId: id,
         attributes: Object.fromEntries(
           mapped.map((a) => {
-            if (a.Type === "multiselect" || a.Type === "color") return [a.ID, []];
+            if (a.Type === "multiselect") return [a.ID, []];
             if (a.Type === "boolean") return [a.ID, null];
             return [a.ID, ""];
           })
@@ -110,11 +132,16 @@ export default function ProductForm() {
   const onAddPhotos = (urls: string[]) => {
     setForm((f) => ({ ...f, photos: [...f.photos, ...urls].slice(0, 10) }));
   };
+
   const onRemovePhoto = (idx: number) =>
     setForm((f) => ({ ...f, photos: f.photos.filter((_, i) => i !== idx) }));
 
   const canPublish = useMemo(
-    () => form.name.trim() && form.categoryId && form.price !== "" && Number(form.price) >= 0,
+    () =>
+      form.name.trim() &&
+      form.categoryId &&
+      form.price !== "" &&
+      Number(form.price) >= 0,
     [form.name, form.categoryId, form.price]
   );
 
@@ -129,46 +156,71 @@ export default function ProductForm() {
         : undefined;
     }
     return path.join(" › ");
-  }, [form.categoryId]);
+  }, [form.categoryId, allCategories]);
 
-      const handleSubmit = async (e: React.FormEvent) => {
+  const validate = (): string | null => {
+    if (!form.name.trim()) return "Please enter product name.";
+    if (!form.categoryId) return "Please choose a category.";
+    if (form.price === "" || isNaN(Number(form.price))) return "Please enter a valid price.";
+    if (Number(form.price) < 0) return "Price cannot be negative.";
+    if (form.photos.length === 0) return "Please add at least one image.";
+    for (const id of requiredAttrIds) {
+      const val = form.attributes[id];
+      if (val === undefined || val === null) return "Please fill all required attributes.";
+      if (Array.isArray(val)) {
+        if (val.length === 0) return "Please fill all required attributes.";
+      } else {
+        if (String(val).trim() === "") return "Please fill all required attributes.";
+      }
+    }
+    return null;
+  };
+
+  const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim()) { alert('Please enter the product name.'); return; }
-    if (!form.categoryId) { alert('Please choose a category.'); return; }
-    const priceNum = Number(form.price);
-    if (isNaN(priceNum) || priceNum < 0) { alert('Please enter a valid price.'); return; }
-
-    const attributeValues = attributeDefs.map((def) => {
-      const v = form.attributes[def.ID];
-      let value = '';
-      if (Array.isArray(v)) value = v.map(String).join('|');
-      else if (v === null || v === undefined) value = '';
-      else value = String(v);
-      return { attributeId: def.ID, value };
-    });
-    const mediaFiles = (form.photos || []).map((url) => ({ url, mediaTyp: 'image' }));
-
-    const res = await fetch('/api/products/create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: form.name.trim(),
-        categoryId: form.categoryId,
-        description: form.description,
-        price: priceNum,
-        currency: form.currency,
-        quantity: 1,
-        attributeValues,
-        mediaFiles,
-      }),
-    });
-    if (!res.ok) {
-      const txt = await res.text();
-      alert(txt || 'Failed to create product');
+    setError(null);
+    const err = validate();
+    if (err) {
+      setError(err);
       return;
     }
-    window.location.href = '/myproducts';
-  };
+    setSubmitting(true);
+    try {
+      const attributeValues = Object.entries(form.attributes)
+        .map(([k, v]) => ({ attributeId: Number(k), value: v as any }))
+        .filter(({ attributeId, value }) => {
+          const isReq = requiredAttrIds.includes(attributeId);
+          if (isReq) return true;
+          if (value == null) return false;
+          if (Array.isArray(value)) return value.length > 0;
+          return String(value).trim() !== "";
+        });
+
+      const res = await fetch("/api/products/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name.trim(),
+          categoryId: Number(form.categoryId),
+          description: form.description || "",
+          price: Number(form.price),
+          currency: form.currency,
+          quantity: 1,
+          attributeValues,
+          mediaFiles: form.photos.map((url) => ({ url })),
+        }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "Failed to create product");
+      }
+      router.push("/myproducts");
+    } catch (e) {
+      const anyErr: any = e;
+      setError(anyErr?.message || "Unexpected error");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const calculateProgress = () => {
@@ -176,54 +228,57 @@ export default function ProductForm() {
 
     const total = attributeDefs.length;
     const filled = attributeDefs.filter((a) => {
-        const val = form.attributes[a.ID];
-
-        if (a.Type === "boolean") return val === true || val === false;
-        if (Array.isArray(val)) return val.length > 0;
-        return val !== "" && val !== undefined && val !== null;
+      const val = form.attributes[a.ID];
+      if (a.Type === "boolean") return val === true || val === false;
+      if (Array.isArray(val)) return val.length > 0;
+      return val !== "" && val !== undefined && val !== null;
     }).length;
 
     return Math.round((filled / total) * 100);
-    };
-
+  };
 
   return (
     <>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-8">
+      <form onSubmit={handleCreateSubmit} className="flex flex-col gap-8">
         <section className="grid grid-cols-12 gap-x-12 gap-y-8 w-full">
           <div className="col-span-12 md:col-span-7">
-            <ImageUploader photos={form.photos} onAdd={onAddPhotos} onRemove={onRemovePhoto} />
+            <ImageUploader
+              photos={form.photos}
+              onAdd={onAddPhotos}
+              onRemove={onRemovePhoto}
+            />
           </div>
 
           <div className="col-span-12 md:col-span-5 flex flex-col w-[100%]">
             <InputField
-                label="Name"
-                type="text"
-                placeholder="Enter..."
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                required
-                shape="office"
+              label="Name"
+              type="text"
+              placeholder="Enter..."
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              required
+              shape="office"
             />
 
             <div className="mb-4 w-full">
-                <label className="block mb-2">Category</label>
-                <button
+              <label className="block mb-2">Category</label>
+              <button
                 type="button"
                 className="w-full bg-[var(--bg-input)] rounded-[15px] px-4 py-2 text-left text-[20px]"
                 onClick={() => setCatOpen(true)}
-                >
+              >
                 {categoryLabel}
-                </button>
+              </button>
             </div>
-        </div>
-
+          </div>
         </section>
 
-        {/* <Divider text="Attributes" /> */}
-
         <section>
-          <AttributeFields attributes={attributeDefs} values={form.attributes} onChange={onAttrChange} />
+          <AttributeFields
+            attributes={attributeDefs}
+            values={form.attributes}
+            onChange={onAttrChange}
+          />
         </section>
 
         <section>
@@ -232,14 +287,18 @@ export default function ProductForm() {
             <Textarea
               placeholder="Tell buyers about the product…"
               value={form.description}
-              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, description: e.target.value }))
+              }
             />
           </div>
         </section>
 
-        {/* <Divider text="Pricing" /> */}
-
         <ProgressBar value={calculateProgress()} />
+
+        {error && (
+          <div className="mt-3 text-[var(--danger,#ff6b6b)]">{error}</div>
+        )}
 
         <section className="ml-0">
           <div className="bg-[var(--bg-elev-1)] border border-[var(--border)] rounded-2xl p-6 max-w-xl">
@@ -250,7 +309,9 @@ export default function ProductForm() {
                   type="number"
                   placeholder="0"
                   value={form.price}
-                  onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, price: e.target.value }))
+                  }
                   required
                   shape="office"
                 />
@@ -259,8 +320,12 @@ export default function ProductForm() {
                 <label className="block mb-2">Currency</label>
                 <select
                   value={form.currency}
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value as any }))}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      currency: e.target.value as Currency,
+                    }))
+                  }
                   className="w-full bg-[var(--bg-input)] rounded-[15px] px-4 py-2 text-[20px] text-white outline-none"
                 >
                   <option value="USD">USD $</option>
@@ -275,8 +340,13 @@ export default function ProductForm() {
         <div className="flex items-center gap-4 pt-6">
           <div className="flex-1" />
           <div className="flex-1 flex justify-center">
-            <Button type="submit" variant="submit" disabled={!canPublish} className="max-w-[240px]">
-              Publish
+            <Button
+              type="submit"
+              variant="submit"
+              disabled={!canPublish || submitting}
+              className="max-w-[240px]"
+            >
+              {submitting ? "Publishing..." : "Publish"}
             </Button>
           </div>
           <div className="flex-1 flex justify-end">
@@ -311,10 +381,3 @@ export default function ProductForm() {
     </>
   );
 }
-
-
-
-
-
-
-

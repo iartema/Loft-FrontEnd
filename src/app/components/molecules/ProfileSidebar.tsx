@@ -4,7 +4,8 @@ import React, { useEffect, useState } from "react";
 import Button from "../atoms/Button";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
-import { getCurrentUserCached } from "../lib/userCache";
+import { getCurrentUserCached, clearCurrentUserCache } from "../lib/userCache";
+import { logout as logoutApi } from "../lib/api";
 
 export default function ProfileSidebar() {
   const router = useRouter();
@@ -85,7 +86,17 @@ export default function ProfileSidebar() {
               className={`text-sm py-2 ${
                 isActive ? "text-[var(--success)]" : "text-white"
               }`}
-              onClick={() => item.path && router.push(item.path)}
+              onClick={async () => {
+                if (item.label === "Log out") {
+                  try {
+                    await logoutApi();
+                  } catch {}
+                  clearCurrentUserCache();
+                  router.push("/login");
+                } else if (item.path) {
+                  router.push(item.path);
+                }
+              }}
             />
           );
         })}

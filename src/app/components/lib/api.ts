@@ -28,6 +28,11 @@ export async function loginUser(email: string, password: string) {
   return await res.json();
 }
 
+export async function logout() {
+  // Clear auth cookies via internal API and ignore response shape
+  await fetch(`/api/auth/logout`, { method: "POST" });
+}
+
 // Client cannot read httpOnly cookies; rely on internal API routes
 
 export async function getMyProfile() {
