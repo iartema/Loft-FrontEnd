@@ -52,8 +52,11 @@ export default function ViewProductCardSearch({
           alt={name}
           fill
           className="object-cover"
-          sizes="(max-width: 768px) 100vw, 20vw"
-          unoptimized
+          // Keep requested sizes small to avoid heavy downloads
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 33vw, 20vw"
+          loading="lazy"
+          priority={false}
+          quality={60}
         />
       </div>
 

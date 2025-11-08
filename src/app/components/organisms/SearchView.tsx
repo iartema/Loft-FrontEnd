@@ -122,8 +122,12 @@ export default function SearchView() {
     setPage(1);
   }, [query, categoryId, priceMin, priceMax, attrFilters]);
 
+  // Debounce fetches to avoid spamming the API and heavy rerenders
   useEffect(() => {
-    doSearch();
+    const t = setTimeout(() => {
+      void doSearch();
+    }, 300);
+    return () => clearTimeout(t);
   }, [doSearch]);
 
   const clearFilters = () => {
