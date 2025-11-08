@@ -5,6 +5,7 @@ const nextConfig = {
     domains: [
       'www.loft-shop.pp.ua',
       'loft-shop.pp.ua',
+      'images.unsplash.com',
     ],
     remotePatterns: [
       {
@@ -16,6 +17,11 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'loft-shop.pp.ua',
         pathname: '/avatars/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+        pathname: '/**',
       },
     ],
   },
