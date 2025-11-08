@@ -36,7 +36,7 @@ export default function SearchView() {
   const [page, setPage] = useState(1);
   const pageSize = 20;
   const [attrSuggestions, setAttrSuggestions] = useState<Record<number, string[]>>({});
-  const [loading, setLoading] = useState(false);
+  
 
   useEffect(() => {
     setQuery(qParam);
@@ -133,7 +133,6 @@ export default function SearchView() {
   }, [categoryAttrs]);
 
   const doSearch = useCallback(async () => {
-    setLoading(true);
     const attrs: ProductAttributeFilterDto[] = Object.entries(attrFilters).flatMap(([id, value]) => {
       const attributeId = Number(id);
       if (value == null) return [];
@@ -162,7 +161,6 @@ export default function SearchView() {
     }
     setItems(res || []);
     setPage(1);
-    setLoading(false);
   }, [query, categoryId, priceMin, priceMax, attrFilters]);
 
   // Debounce fetches to avoid spamming the API and heavy rerenders
@@ -442,14 +440,7 @@ export default function SearchView() {
           <div className="flex items-center justify-between">
           </div>
 
-          {loading && (
-            <div className="flex items-center justify-center py-10">
-              <span className="block h-8 w-8 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-            </div>
-          )}
-
           {/* 5 columns per row to match spec */}
-          {!loading && (
           <div className="grid grid-cols-5 gap-4">
             {paged.length === 0 && (
               <div className="opacity-70 col-span-full">No products match your filters.</div>
@@ -466,7 +457,6 @@ export default function SearchView() {
               />
             ))}
           </div>
-          )}
 
           {/* Pagination (ASCII arrows to avoid encoding issues) */}
           <div className="flex items-center justify-center gap-2 py-4 select-none">
