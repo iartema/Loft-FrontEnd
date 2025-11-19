@@ -7,7 +7,7 @@ import { Akatab } from "next/font/google";
 export interface AttributeDef {
   ID: number;
   Name: string;
-  Type: "text" | "number" | "select" | "multiselect" | "boolean" | "color";
+  Type: "text" | "number" | "select" | "multiselect" | "boolean";
   Value?: string; // For select/multiselect: "A|B|C"
 }
 
@@ -40,7 +40,7 @@ export default function AttributeFields({ attributes, values, onChange }: Props)
       {attributes.map((a) => {
         const v =
           values[a.ID] ??
-          (a.Type === "multiselect" || a.Type === "color" ? [] : "");
+          (a.Type === "multiselect" ? [] : "");
 
         // Dropdown (single)
         if (a.Type === "select") {
@@ -48,18 +48,25 @@ export default function AttributeFields({ attributes, values, onChange }: Props)
           return (
             <div key={a.ID} className="mb-4">
               <label className="block mb-2">{a.Name}</label>
-              <select
-                value={String(v || "")}
-                onChange={(e) => onChange(a.ID, e.target.value)}
-                className={`w-full bg-[var(--bg-input)] rounded-[15px] px-4 py-2 text-[20px] text-white outline-none ${akatab.className}`}
-              >
-                <option value="">Choose…</option>
-                {options.map((o) => (
-                  <option key={o} value={o}>
-                    {o}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <select
+                  value={String(v || "")}
+                  onChange={(e) => onChange(a.ID, e.target.value)}
+                  className={`appearance-none w-full bg-[var(--bg-input)] rounded-[15px] px-4 pr-12 py-2 text-[20px] text-white outline-none ${akatab.className}`}
+                >
+                  <option value="">Choose…</option>
+                  {options.map((o) => (
+                    <option key={o} value={o}>
+                      {o}
+                    </option>
+                  ))}
+                </select>
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-white opacity-70">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+              </div>
             </div>
           );
         }
@@ -109,18 +116,6 @@ export default function AttributeFields({ attributes, values, onChange }: Props)
           );
         }
 
-        // Color: swatch list + Add color with gradient picker (native)
-        if (a.Type === "color") {
-          return (
-            <ColorPickerList
-              key={a.ID}
-              label={a.Name}
-              value={Array.isArray(v) ? (v as string[]) : v ? [String(v)] : []}
-              onChange={(arr) => onChange(a.ID, arr)}
-            />
-          );
-        }
-
         // Text / Number
         return (
           <InputField
@@ -138,7 +133,6 @@ export default function AttributeFields({ attributes, values, onChange }: Props)
               )
             }
             shape="office"
-            className={akatab.className}
           />
         );
       })}
@@ -213,90 +207,6 @@ function CompactMultiSelect({
           })}
         </div>
       )}
-    </div>
-  );
-}
-
-/* ---------- Color picker list with swatches + Add Color ---------- */
-function ColorPickerList({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string[]; // hex colors
-  onChange: (val: string[]) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState("#ff0000");
-  const ref = useRef<HTMLDivElement>(null);
-
-  React.useEffect(() => {
-    const onDoc = (e: MouseEvent) => {
-      if (!ref.current) return;
-      if (!ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, []);
-
-  const add = () => {
-    if (!draft) return;
-    if (!value.includes(draft)) onChange([...value, draft]);
-    setOpen(false);
-  };
-
-  const remove = (hex: string) => onChange(value.filter((c) => c !== hex));
-
-  return (
-    <div className={`${akatab.className} mb-4`} ref={ref}>
-      <label className="block mb-2">{label}</label>
-      <div className="flex items-center gap-3 flex-wrap">
-        {value.map((hex) => (
-          <button
-            key={hex}
-            type="button"
-            title={hex}
-            onClick={() => remove(hex)}
-            className="w-8 h-8 rounded-full border border-[var(--border)] relative"
-            style={{ backgroundColor: hex }}
-          >
-            <span className="sr-only">{hex}</span>
-            <span className="absolute -top-2 -right-2 text-xs bg-black/70 rounded px-1">
-              ×
-            </span>
-          </button>
-        ))}
-
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setOpen((o) => !o)}
-            className="px-3 py-2 rounded-lg bg-[var(--bg-elev-3)] hover:bg-[var(--bg-hover)]"
-          >
-            + Add color
-          </button>
-          {open && (
-            <div className="absolute z-20 mt-2 p-3 bg-[var(--bg-elev-2)] border border-[var(--border)] rounded-xl">
-              <input
-                type="color"
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                className="w-40 h-10 rounded"
-              />
-              <div className="flex justify-end mt-2">
-                <button
-                  type="button"
-                  className="px-3 py-1 rounded bg-[var(--brand)] text-black"
-                  onClick={add}
-                >
-                  Add
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   );
 }

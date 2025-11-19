@@ -17,7 +17,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body suppressHydrationWarning className={`${ysabeau.className} bg-[var(--bg-body)] text-white overflow-x-hidden`}>
+      <body suppressHydrationWarning className={`${ysabeau.className} bg-[var(--bg-body)] text-[var(--fg-primary)] overflow-x-hidden`}>
         <Header />
         {children}
         <Footer />

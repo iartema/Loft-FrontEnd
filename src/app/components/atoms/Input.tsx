@@ -28,7 +28,7 @@ export default function Input({
   };
 
   const shapeClass = shape === "office" ? "rounded-[15px]" : "rounded-full";
-  const size = shape === "office" ? "px-4 py-2" : "px-5 py-3";
+  const size = shape === "office" ? "px-4 py-2" : "px-5 py-2.5";
   const bgColor = value ? "bg-[var(--bg-hover)]" : "bg-[var(--bg-input)]";
 
   return (

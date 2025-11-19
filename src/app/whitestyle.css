@@ -5,6 +5,7 @@
 
 [data-theme="light"] {
   color-scheme: light;
+  color: #000000;
 
   /* Backgrounds */
   --bg-body: #ffffff;       /* main app background */
@@ -48,6 +49,29 @@
   --scrollbar-track: #f1f1f1;
   --scrollbar-thumb: #d4d4d8;
   --scrollbar-thumb-hover: #bdbdbd;
+}
+
+[data-theme="light"] .text-white,
+[data-theme="light"] .text-gray-100,
+[data-theme="light"] .text-neutral-50,
+[data-theme="light"] .text-neutral-100 {
+  color: #000000 !important;
+}
+
+[data-theme="light"] .header-icon {
+  filter: none;
+  color: #ffffff;
+}
+
+[data-theme="light"] .header-icon svg,
+[data-theme="light"] .header-icon img {
+  filter: none !important;
+}
+
+[data-theme="light"] header,
+[data-theme="light"] footer {
+  background-color: #44553B;
+  color: #ffffff;
 }
 
 /* Optional usage examples (uncomment when wiring up) */

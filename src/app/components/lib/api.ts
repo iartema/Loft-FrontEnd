@@ -88,6 +88,8 @@ export async function uploadAvatar(file: File) {
 // --------- External Product API ---------
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "https://www.loft-shop.pp.ua/api";
+const USER_API_BASE = process.env.NEXT_PUBLIC_USER_API_BASE || "https://loft-shop.pp.ua/api";
+export const LOFT_PUBLIC_BASE = process.env.NEXT_PUBLIC_LOFT_PUBLIC_BASE || "https://www.loft-shop.pp.ua";
 
 export type CategoryDto = {
   id: number;
@@ -108,6 +110,15 @@ export type CategoryAttributeFullDto = {
   orderIndex: number;
 };
 
+export type AttributeDetailDto = {
+  id: number;
+  name: string;
+  type?: number | string;
+  typeDisplayName?: string | null;
+  optionsJson?: string | null;
+  status?: number | string | null;
+};
+
 export async function fetchCategories(): Promise<CategoryDto[]> {
   const res = await fetch(`${API_BASE}/category`, { cache: "no-store" });
   if (!res.ok) throw new Error(`Failed to fetch categories: ${res.status}`);
@@ -118,6 +129,70 @@ export async function fetchCategoryAttributes(categoryId: number): Promise<Categ
   const res = await fetch(`${API_BASE}/category/${categoryId}/attributes`, { cache: "no-store" });
   if (!res.ok) throw new Error(`Failed to fetch attributes for category ${categoryId}`);
   return res.json();
+}
+
+export async function fetchAttributeDetail(attributeId: number): Promise<AttributeDetailDto> {
+  const res = await fetch(`${API_BASE}/attribute/${attributeId}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Failed to fetch attribute ${attributeId}`);
+  return res.json();
+}
+
+export type CartItemDto = {
+  id: number;
+  cartId: number;
+  productId: number;
+  quantity: number;
+  price?: number;
+  productName?: string | null;
+  imageUrl?: string | null;
+  categoryId?: number | null;
+  category?: CategoryDto | null;
+  categoryName?: string | null;
+  attributeValues?: ProductAttributeValueDto[] | null;
+  addedAt?: string | null;
+};
+
+export type CartDto = {
+  id: number;
+  customerId: number;
+  createdAt: string;
+  cartItems: CartItemDto[];
+};
+
+export async function fetchCartByCustomer(customerId: number): Promise<CartDto | null> {
+  const res = await fetch(`/api/cart/customer/${customerId}`, {
+    cache: "no-store",
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function addCartItem(customerId: number, productId: number, quantity: number): Promise<CartDto> {
+  const res = await fetch(`/api/cart/${customerId}/items`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ productId, quantity }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function updateCartItem(customerId: number, productId: number, quantity: number): Promise<CartItemDto> {
+  const res = await fetch(`/api/cart/${customerId}/items`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ productId, quantity }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function removeCartItem(customerId: number, productId: number): Promise<void> {
+  const res = await fetch(`/api/cart/${customerId}/items/${productId}`, {
+    method: "DELETE",
+  });
+  if (!res.ok && res.status !== 404) throw new Error(await res.text());
 }
 
 export type CreateProductPayload = {
@@ -163,10 +238,30 @@ export type ProductDto = {
   mediaFiles?: MediaFileDto[];
 };
 
+export type PublicUserDto = {
+  id: number;
+  firstName: string;
+  lastName: string;
+  avatarUrl: string;
+};
+
 export async function fetchProductById(id: number): Promise<ProductDto> {
   const res = await fetch(`${API_BASE}/products/${id}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`Failed to fetch product ${id}`);
   return res.json();
+}
+
+export async function fetchPublicUserById(id: number): Promise<PublicUserDto> {
+  const res = await fetch(`${USER_API_BASE}/users/${id}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Failed to fetch user ${id}`);
+  return res.json();
+}
+
+export function resolvePublicAssetUrl(url?: string | null): string {
+  if (!url) return "";
+  if (/^https?:\/\//i.test(url)) return url;
+  const normalized = url.startsWith("/") ? url : `/${url}`;
+  return `${LOFT_PUBLIC_BASE}${normalized}`;
 }
 
 // --------- Product search/filter ---------

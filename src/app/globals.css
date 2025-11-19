@@ -45,3 +45,11 @@ body {
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
+.header-icon {
+  transition: filter 0.2s ease;
+}
+
+[data-theme="light"] .header-icon {
+  filter: invert(1) brightness(0.2);
+}
+

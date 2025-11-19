@@ -35,8 +35,6 @@ export default function SearchView() {
   const [items, setItems] = useState<ProductDto[]>([]);
   const [page, setPage] = useState(1);
   const pageSize = 20;
-  const [attrSuggestions, setAttrSuggestions] = useState<Record<number, string[]>>({});
-  
 
   useEffect(() => {
     setQuery(qParam);
@@ -62,20 +60,10 @@ export default function SearchView() {
           .map(a => {
             const opts = a.optionsJson ? safeParseOptions(a.optionsJson) : [];
             const lower = a.attributeName.toLowerCase();
-            // Backend enum mapping (AttributeType): 0:String, 1:Number, 2:List
             let Type: "text"|"number"|"select"|"multiselect"|"boolean"|"color" = "text";
-            const tval = a.type as unknown as number;
-            if (typeof tval === "number") {
-              if (tval === 0) Type = "text";      // String
-              else if (tval === 1) Type = "number"; // Number
-              else if (tval === 2) Type = "select"; // List
-            } else {
-              const ts = String(a.type).toLowerCase();
-              if (ts === "string" || ts === "text") Type = "text";
-              else if (ts === "number") Type = "number";
-              else if (ts === "list") Type = "select";
-            }
-            if (lower === "color" || lower === "colour") Type = "color";
+            if (a.type.toLowerCase()==="number") Type = "number";
+            else if (a.type.toLowerCase()==="list") Type = "select";
+            else if (lower === "color" || lower === "colour") Type = "color";
             return { ID: a.attributeId, Name: a.attributeName, Type, Value: opts.join("|") || undefined };
           });
         setCategoryAttrs(mapped);
@@ -83,43 +71,8 @@ export default function SearchView() {
       .catch(()=> setCategoryAttrs([]));
   }, [categoryId]);
 
-  // Build attribute value suggestions from products within the selected category
-  useEffect(() => {
-    if (!categoryId) { setAttrSuggestions({}); return; }
-    (async () => {
-      try {
-        const sample = await searchProductsExternal({ categoryId, page: 1, pageSize: 200 });
-        const map: Record<number, Set<string>> = {};
-        for (const p of sample || []) {
-          for (const av of (p.attributeValues ?? [])) {
-            const id = av.attributeId;
-            const val = String(av.value || "").trim();
-            if (!val) continue;
-            if (!map[id]) map[id] = new Set<string>();
-            // Split pipe-delimited values if present
-            val.split("|").map((s) => s.trim()).filter(Boolean).forEach((v) => map[id].add(v));
-          }
-        }
-        const obj: Record<number, string[]> = {};
-        for (const [k, v] of Object.entries(map)) obj[Number(k)] = Array.from(v).sort();
-        setAttrSuggestions(obj);
-      } catch {
-        setAttrSuggestions({});
-      }
-    })();
-  }, [categoryId]);
-
   function safeParseOptions(json: string): string[] {
-    try {
-      const arr = JSON.parse(json);
-      return Array.isArray(arr) ? arr.map(String) : [];
-    } catch {
-      // Fallback for pipe-delimited options (e.g., "Black|White|Red")
-      if (typeof json === "string" && json.includes("|")) {
-        return json.split("|").map((s) => s.trim()).filter(Boolean);
-      }
-      return [];
-    }
+    try { const arr = JSON.parse(json); return Array.isArray(arr) ? arr.map(String) : []; } catch { return []; }
   }
     // initialize attribute filters when category changes
   useEffect(() => {
@@ -134,41 +87,31 @@ export default function SearchView() {
 
   const doSearch = useCallback(async () => {
     const attrs: ProductAttributeFilterDto[] = Object.entries(attrFilters).flatMap(([id, value]) => {
-      const attributeId = Number(id);
       if (value == null) return [];
-      if (typeof value === "string") {
-        const v = value.trim();
-        if (!v) return [];
-        return [{ attributeId, value: v }];
-      }
+      if (typeof value === "string" && value.trim() === "") return [];
       if (Array.isArray(value)) {
-        return value.filter((v) => String(v).trim()).map((v) => ({ attributeId, value: String(v).trim() }));
+        if (value.length === 0) return [];
+        return [{ attributeId: Number(id), values: value.map(String) }];
       }
-      return [{ attributeId, value: String(value) }];
+      if (typeof value === "boolean") {
+        return [{ attributeId: Number(id), value: String(value) }];
+      }
+      return [{ attributeId: Number(id), value: String(value) }];
     });
 
-    let res = await searchProductsExternal({
+    const res = await searchProductsExternal({
+      search: query || undefined,
       categoryId: categoryId ?? undefined,
-      minPrice: priceMin ?? undefined,
-      maxPrice: priceMax ?? undefined,
-      attributeFilters: attrs.length ? attrs : undefined,
-      page: 1,
-      pageSize,
+      priceMin: priceMin ?? undefined,
+      priceMax: priceMax ?? undefined,
+      attributes: attrs.length ? attrs : undefined,
     });
-    if (query && query.trim()) {
-      const q = query.trim().toLowerCase();
-      res = (res || []).filter((p) => p.name?.toLowerCase().includes(q));
-    }
     setItems(res || []);
     setPage(1);
   }, [query, categoryId, priceMin, priceMax, attrFilters]);
 
-  // Debounce fetches to avoid spamming the API and heavy rerenders
   useEffect(() => {
-    const t = setTimeout(() => {
-      void doSearch();
-    }, 300);
-    return () => clearTimeout(t);
+    doSearch();
   }, [doSearch]);
 
   const clearFilters = () => {
@@ -189,55 +132,10 @@ export default function SearchView() {
     [categoryId, allCategories]
   );
 
-  // Build attribute chips for UI (Brand: Nike, Color: Black, etc.)
-  const attributeChips = useMemo(() => {
-    const chips: { label: string; onClear: () => void }[] = [];
-    for (const def of categoryAttrs) {
-      const val = attrFilters[def.ID];
-      if (val == null) continue;
-      if (Array.isArray(val)) {
-        for (const v of val) {
-          if (!String(v).trim()) continue;
-          chips.push({
-            label: `${def.Name}: ${v}`,
-            onClear: () =>
-              setAttrFilters((s) => {
-                const cur = (s[def.ID] as string[]) || [];
-                return { ...s, [def.ID]: cur.filter((x) => x !== v) };
-              }),
-          });
-        }
-      } else if (typeof val === "string") {
-        const v = val.trim();
-        if (!v) continue;
-        chips.push({
-          label: `${def.Name}: ${v}`,
-          onClear: () => setAttrFilters((s) => ({ ...s, [def.ID]: "" })),
-        });
-      } else {
-        chips.push({
-          label: `${def.Name}: ${String(val)}`,
-          onClear: () => setAttrFilters((s) => ({ ...s, [def.ID]: "" })),
-        });
-      }
-    }
-    return chips;
-  }, [categoryAttrs, attrFilters]);
-
   return (
     <main className="min-h-screen w-full bg-[var(--bg-body)] text-white px-8 py-6">
       {/* Active filters chips spanning full width, above sidebar/results */}
-      <ActiveFilterChips
-        query={query}
-        categoryName={categoryName}
-        priceMin={priceMin}
-        priceMax={priceMax}
-        onClearQuery={() => setQuery("")}
-        onClearCategory={() => setCategoryId(null)}
-        onClearMin={() => setPriceMin(null)}
-        onClearMax={() => setPriceMax(null)}
-        attributes={attributeChips}
-      />
+      <ActiveFilterChips query={query} categoryName={categoryName} priceMin={priceMin} priceMax={priceMax} onClearQuery={() => setQuery("")} onClearCategory={() => setCategoryId(null)} onClearMin={() => setPriceMin(null)} onClearMax={() => setPriceMax(null)} />
 
       <div className="grid grid-cols-[240px_1fr] gap-6">
         {/* Filters (no local search field here as per spec) */}
@@ -256,46 +154,13 @@ export default function SearchView() {
           {categoryId && categoryAttrs.map((a) => (
             <FilterSection key={a.ID} title={a.Name}>
               {a.Type === "text" && (
-                <div className="space-y-1">
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder={`Type the ${a.Name.toLowerCase()}...`}
-                      value={(attrFilters[a.ID] as string) ?? ""}
-                      onChange={(e) => setAttrFilters((s) => ({ ...s, [a.ID]: e.target.value }))}
-                      className={`w-full bg-[var(--bg-filter-inner)] text-white pr-8 px-3 py-2 text-sm rounded-[12px] outline-none border border-transparent focus:outline-none focus:border-[var(--divider)] ${almarai.className}`}
-                    />
-                    {String(attrFilters[a.ID] || "").length > 0 && (
-                      <button
-                        type="button"
-                        aria-label="Clear"
-                        onClick={() => setAttrFilters((s) => ({ ...s, [a.ID]: "" }))}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
-                      >
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M3 3l6 6M9 3L3 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-                  {!!(attrSuggestions[a.ID]?.length) && (
-                    <div className="bg-[var(--bg-elev-3)] rounded-[10px] border border-[var(--divider)] max-h-32 overflow-auto p-1 text-sm">
-                      {(attrSuggestions[a.ID] || [])
-                        .filter((v) => v.toLowerCase().includes(String(attrFilters[a.ID] || "").toLowerCase()))
-                        .slice(0, 8)
-                        .map((opt) => (
-                          <button
-                            type="button"
-                            key={opt}
-                            onClick={() => setAttrFilters((s) => ({ ...s, [a.ID]: opt }))}
-                            className="w-full text-left px-2 py-1 rounded hover:bg-[var(--bg-elev-2)]"
-                          >
-                            {opt}
-                          </button>
-                        ))}
-                    </div>
-                  )}
-                </div>
+                <input
+                  type="text"
+                  placeholder={`Type the ${a.Name.toLowerCase()}...`}
+                  value={(attrFilters[a.ID] as string) ?? ""}
+                  onChange={(e) => setAttrFilters((s) => ({ ...s, [a.ID]: e.target.value }))}
+                  className={`w-full bg-[var(--bg-filter-inner)] text-white px-3 py-2 text-sm rounded-[12px] outline-none border border-transparent focus:outline-none focus:border-[var(--divider)] ${almarai.className}`}
+                />
               )}
               {a.Type === "number" && (
                 <input
@@ -310,8 +175,7 @@ export default function SearchView() {
                 <SimpleSelect
                   value={String((attrFilters[a.ID] as string) ?? "")}
                   onChange={(val) => setAttrFilters((s) => ({ ...s, [a.ID]: val }))}
-                  options={(a.Value && a.Value.split("|").filter(Boolean).length ? a.Value.split("|").filter(Boolean) : (attrSuggestions[a.ID] || []))
-                    .map((opt) => ({ value: opt, label: opt }))}
+                  options={(a.Value || "").split("|").filter(Boolean).map((opt) => ({ value: opt, label: opt }))}
                   placeholder="Any"
                   className={`${almarai.className}`}
                 />
@@ -356,7 +220,7 @@ export default function SearchView() {
               )}
               {a.Type === "color" && (
                 <div className="flex flex-wrap gap-2">
-                  {((a.Value && a.Value.split("|").filter(Boolean).length ? a.Value.split("|").filter(Boolean) : (attrSuggestions[a.ID] || []))).map((opt) => {
+                  {(a.Value || "").split("|").filter(Boolean).map((opt) => {
                     const arr = (attrFilters[a.ID] as string[]) || [];
                     const active = arr.includes(opt);
                     return (
@@ -380,53 +244,25 @@ export default function SearchView() {
               )}
             </FilterSection>
           ))}
-          <FilterSection title="Price">
+          {categoryId && ( <FilterSection title="Price">
             <div className="flex items-center gap-2">
-              <div className="relative w-full">
-                <input
-                  type="number"
-                  placeholder="Min"
-                  value={priceMin ?? ""}
-                  onChange={(e) => setPriceMin(e.target.value === "" ? null : Number(e.target.value))}
-                  className={`w-full bg-[var(--bg-filter-inner)] text-white pr-8 px-3 py-2 text-sm rounded-[12px] outline-none border border-transparent focus:ring-0 focus:outline-none focus:border-[var(--divider)] ${almarai.className}` }
-                />
-                {(priceMin ?? null) !== null && (
-                  <button
-                    type="button"
-                    aria-label="Clear min price"
-                    onClick={() => setPriceMin(null)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
-                  >
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M3 3l6 6M9 3L3 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                    </svg>
-                  </button>
-                )}
-              </div>
+              <input
+                type="number"
+                placeholder="Min"
+                value={priceMin ?? ""}
+                onChange={(e) => setPriceMin(e.target.value === "" ? null : Number(e.target.value))}
+                className={`w-full bg-[var(--bg-filter-inner)] text-white px-3 py-2 text-sm rounded-[12px] outline-none border border-transparent focus:ring-0 focus:outline-none focus:border-[var(--divider)] ${almarai.className}` }
+              />
               <span className="opacity-50">-</span>
-              <div className="relative w-full">
-                <input
-                  type="number"
-                  placeholder="Max"
-                  value={priceMax ?? ""}
-                  onChange={(e) => setPriceMax(e.target.value === "" ? null : Number(e.target.value))}
-                  className={`w-full bg-[var(--bg-filter-inner)] text-white pr-8 px-3 py-2 text-sm rounded-[12px] outline-none border border-transparent focus:ring-0 focus:outline-none focus:border-[var(--divider)] ${almarai.className}` }
-                />
-                {(priceMax ?? null) !== null && (
-                  <button
-                    type="button"
-                    aria-label="Clear max price"
-                    onClick={() => setPriceMax(null)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
-                  >
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M3 3l6 6M9 3L3 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                    </svg>
-                  </button>
-                )}
-              </div>
+              <input
+                type="number"
+                placeholder="Max"
+                value={priceMax ?? ""}
+                onChange={(e) => setPriceMax(e.target.value === "" ? null : Number(e.target.value))}
+                className={`w-full bg-[var(--bg-filter-inner)] text-white px-3 py-2 text-sm rounded-[12px] outline-none border border-transparent focus:ring-0 focus:outline-none focus:border-[var(--divider)] ${almarai.className}` }
+              />
             </div>
-          </FilterSection>
+          </FilterSection> )}
           <button
             onClick={clearFilters}
             className={`w-full bg-[var(--bg-filter)] text-white px-3 py-2 text-sm border-b border-[var(--divider)] ${almarai.className}` }
@@ -436,9 +272,11 @@ export default function SearchView() {
         </aside>
 
         {/* Results */}
-        <section className="space-y-4">
+        <section className="space-y-4 flex flex-col min-h-[100vh]">
           <div className="flex items-center justify-between">
           </div>
+
+
 
           {/* 5 columns per row to match spec */}
           <div className="grid grid-cols-5 gap-4">
@@ -459,7 +297,7 @@ export default function SearchView() {
           </div>
 
           {/* Pagination (ASCII arrows to avoid encoding issues) */}
-          <div className="flex items-center justify-center gap-2 py-4 select-none">
+          <div className="flex items-center justify-center gap-2 py-4 select-none mt-auto">
             <button
               className="px-3 py-1 rounded bg-[var(--bg-elev-1)] hover:bg-[var(--bg-elev-1)] disabled:opacity-40"
               disabled={page === 1}
