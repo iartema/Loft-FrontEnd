@@ -6,16 +6,25 @@ import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import { getCurrentUserCached, clearCurrentUserCache } from "../lib/userCache";
 import { logout as logoutApi } from "../lib/api";
+import { resolveMediaUrl } from "../../lib/media";
 
 export default function ProfileSidebar() {
   const router = useRouter();
   const [email, setEmail] = useState<string>("");
+  const [avatar, setAvatar] = useState<string>("/default-avatar.jpg");
 
   useEffect(() => {
     let mounted = true;
     getCurrentUserCached()
       .then((me: any) => {
-        if (mounted) setEmail((me?.email as string) || "");
+        if (!mounted) return;
+        setEmail((me?.email as string) || "");
+        const resolvedAvatar = resolveMediaUrl(me?.avatarUrl as string);
+        if (resolvedAvatar) {
+          setAvatar(resolvedAvatar);
+        } else {
+          setAvatar("/default-avatar.jpg");
+        }
       })
       .catch(() => {
         // ignore
@@ -43,18 +52,19 @@ export default function ProfileSidebar() {
   return (
     <div className="flex flex-col justify-between h-full w-full bg-[var(--bg-elev-1)] rounded-2xl px-3 py-6 shadow-lg">
       {/* User info */}
-      <div className="flex flex-col items-center gap-3 mb-8">
-        <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
+      <div className="flex items-center gap-1 mb-8 w-full">
+        <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 border border-white/10">
           <Image
-            src="/default-avatar.jpg"
+            src={avatar || "/default-avatar.jpg"}
             alt="User avatar"
-            width={64}
-            height={64}
-            className="object-cover"
+            width={96}
+            height={96}
+            className="w-full h-full object-cover"
+            unoptimized={avatar?.startsWith("blob:") || avatar?.startsWith("data:") || false}
           />
         </div>
-        <div>
-          <p className="font-semibold text-base text-center">{email || ""}</p>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-base truncate">{email || ""}</p>
         </div>
       </div>
 

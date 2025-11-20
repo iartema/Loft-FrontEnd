@@ -1,42 +1,96 @@
 "use client";
-import React, { useState } from "react";
+
+import React, { useEffect, useMemo, useState } from "react";
 import Title from "../atoms/Title";
-import ManagableProductCard from "../molecules/ManagableProductCard";
+import ViewProductCardSearch from "../molecules/ViewProductCardSearch";
 import Button from "../atoms/Button";
 import { useRouter } from "next/navigation";
+import { getCurrentUserCached } from "../lib/userCache";
+import { getFirstPublicImageUrl } from "../../lib/media";
+import { ApiError, searchProductsExternal, type ProductDto } from "../lib/api";
 
-const products = [
-  {
-    id: 1,
-    name: "Lorem Ipsum",
-    description: "Lorem Ipsum is simply dummy and typesetting industry",
-    price: "$200",
-    image: "/default-product.jpg",
-    status: "Under review",
-  },
-  {
-    id: 2,
-    name: "Another Product",
-    description: "Active product example",
-    price: "$150",
-    image: "/default-product.jpg",
-    status: "Active",
-  },
-  {
-    id: 3,
-    name: "Rejected One",
-    description: "Rejected product example",
-    price: "$220",
-    image: "/default-product.jpg",
-    status: "Rejected",
-  },
-];
+type StatusFilter = "All" | "Active" | "Rejected" | "Under review";
+
+const STATUS_FILTERS: StatusFilter[] = ["All", "Active", "Rejected", "Under review"];
+
+const statusMatchesFilter = (status: string | null | undefined, filter: StatusFilter) => {
+  if (filter === "All") return true;
+  const normalized = ["rejected", "active", "pending"][status];
+  if (!normalized) return false;
+  if (filter === "Active") {
+    return normalized === "active";
+  }
+  if (filter === "Rejected") {
+    return normalized === "rejected";
+  }
+  if (filter === "Under review") {
+    return normalized === "pending";
+  }
+  return true;
+};
+
+const formatPrice = (price?: number | null, currency?: string | null) => {
+  if (price === null || price === undefined) return "—";
+  const curr = ['₴', '$'][currency];
+  return `${price.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })} ${curr}`;
+};
 
 export default function MyProducts() {
-  const [filter, setFilter] = useState("All");
+  const [filter, setFilter] = useState<StatusFilter>("All");
+  const [items, setItems] = useState<ProductDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  const filtered = filter === "All" ? products : products.filter(p => p.status === filter);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const me = await getCurrentUserCached();
+        if (!me?.id) {
+          if (!cancelled) {
+            setItems([]);
+            setError("Please log in to view your products.");
+          }
+          return;
+        }
+
+        const products = await searchProductsExternal({
+          sellerId: me.id,
+          pageSize: 100,
+        });
+        if (!cancelled) {
+          setItems(products ?? []);
+        }
+      } catch (err: any) {
+        if (cancelled) return;
+        if (err instanceof ApiError && err.status === 401) {
+          setError("Session expired. Please log in again.");
+          setItems([]);
+        } else {
+          setError(err?.message || "Failed to load products.");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const filtered = useMemo(() => {
+    if (!items.length) return [];
+    return items.filter((item) => statusMatchesFilter(item.status, filter));
+  }, [items, filter]);
 
   return (
     <div className="flex flex-col gap-8">
@@ -46,17 +100,17 @@ export default function MyProducts() {
         </Title>
 
         <div className="flex justify-end">
-        <Button
+          <Button
             variant="submit"
             label="New listing"
             className="px-6 py-2 rounded-xl"
             onClick={() => router.push("/product/new")}
-        />
+          />
         </div>
       </div>
 
       <div className="flex gap-6 text-gray-400 text-sm">
-        {["All", "Active", "Rejected", "Under review"].map((f) => (
+        {STATUS_FILTERS.map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
@@ -71,16 +125,23 @@ export default function MyProducts() {
 
       <div className="border-t border-neutral-800" />
 
+      {loading && <div className="text-sm text-gray-400">Loading your listings...</div>}
+      {error && !loading && <div className="text-sm text-red-400">{error}</div>}
+      {!loading && !error && filtered.length === 0 && (
+        <div className="text-sm text-gray-500">No products found for this filter.</div>
+      )}
+
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
         {filtered.map((product) => (
-          <ManagableProductCard
+          <ViewProductCardSearch
             key={product.id}
             name={product.name}
-            description={product.description}
-            price={product.price}
-            image={product.image}
+            description={" "}
+            price={formatPrice(product.price, product.currency)}
+            image={getFirstPublicImageUrl(product.mediaFiles) || "/default-product.jpg"}
             buttonLabel="Details"
-            onClick={() => console.log("Details product", product.name)}
+            productId={product.id}
+            onClick={() => router.push(`/product/${product.id}`)}
           />
         ))}
       </div>

@@ -8,6 +8,8 @@ interface ProfileHeaderProps {
   email: string;
   avatar: string;
   onAvatarClick: () => void;
+  saveDisabled?: boolean;
+  saveLabel?: string;
 }
 
 export default function ProfileHeader({
@@ -16,6 +18,8 @@ export default function ProfileHeader({
   email,
   avatar,
   onAvatarClick,
+  saveDisabled,
+  saveLabel,
 }: ProfileHeaderProps) {
   return (
     <div className="flex items-center justify-between">
@@ -32,8 +36,13 @@ export default function ProfileHeader({
 
       {/* Right side */}
       <div className="flex justify-end">
-        <Button type="submit" variant="submit" className="py-2 px-4 w-auto">
-          Save changes
+        <Button
+          type="submit"
+          variant="submit"
+          className="py-2 px-4 w-auto disabled:opacity-60 disabled:cursor-not-allowed"
+          disabled={saveDisabled}
+        >
+          {saveLabel ?? "Save changes"}
         </Button>
       </div>
     </div>

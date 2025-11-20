@@ -3,6 +3,22 @@
 
 import { Ysabeau_Office } from "next/font/google";
 
+type GoogleCredentialResponse = {
+  credential: string;
+};
+
+declare const google: {
+  accounts: {
+    id: {
+      initialize: (options: {
+        client_id: string;
+        callback: (response: GoogleCredentialResponse) => void;
+      }) => void;
+      prompt: () => void;
+    };
+  };
+};
+
 const ysabeau_office = Ysabeau_Office({
   subsets: ["latin"],
   weight: ["700", "800"],
@@ -23,11 +39,49 @@ export default function ButtonAuth({
   ...props
 }: ButtonProps) {
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleLogin = () => {
+    const clientId = "1031648550234-v296d5d0efagr4mlmpigha8kb1ufmouo.apps.googleusercontent.com";
+
+    if (!clientId) {
+      console.error("Google Client ID is not configured.");
+      return;
+    }
+
+    if (typeof window === "undefined" || typeof google === "undefined") {
+      console.error("Google Identity Services script has not loaded yet.");
+      return;
+    }
+
     try {
-      window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/google`;
+      /* global google */
+      google.accounts.id.initialize({
+        client_id: clientId,
+        callback: async (response) => {
+          const idToken = response.credential;
+
+          try {
+            const res = await fetch("/api/auth/google", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ idToken }),
+            });
+
+            const data = await res.json();
+
+            if (data.token) {
+              window.location.href = "/";
+            } else {
+              console.error("Google login failed:", data);
+            }
+          } catch (error) {
+            console.error("Google login failed:", error);
+          }
+        },
+      });
+
+      google.accounts.id.prompt();
     } catch (err) {
-      console.error("Google login failed:", err);
+      console.error("Google login initialization failed:", err);
     }
   };
 

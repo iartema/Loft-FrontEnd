@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation";
 import {
   addCartItem,
   fetchPublicUserById,
-  resolvePublicAssetUrl,
   type PublicUserDto,
 } from "../lib/api";
 import { getCurrentUserCached } from "../lib/userCache";
@@ -66,10 +65,10 @@ export default function ProductCard({
     [seller?.firstName, seller?.lastName].filter(Boolean).join(" ").trim() ||
     "Seller";
 
-  const normalizedAvatar = resolvePublicAssetUrl(seller?.avatarUrl);
-  const avatarSrc = normalizedAvatar
-    ? `/api/proxy/image?url=${encodeURIComponent(normalizedAvatar)}`
-    : "/default-avatar.jpg";
+  const avatarSrc =
+    (seller?.avatarUrl && seller.avatarUrl.trim().length
+      ? seller.avatarUrl
+      : "/default-avatar.jpg");
 
   const handleAddToCart = async () => {
     if (!inStock || !productId) return;

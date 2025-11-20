@@ -1,3 +1,11 @@
+export class ApiError extends Error {
+  status?: number;
+  constructor(message: string, status?: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
 export async function registerUser(email: string, password: string) {
   const res = await fetch(`/api/auth/register`, {
     method: "POST",
@@ -54,6 +62,7 @@ export type UpdateProfilePayload = {
   firstName?: string | null;
   lastName?: string | null;
   phone?: string | null;
+  avatarUrl?: string | null;
 };
 
 export async function updateMyProfile(payload: UpdateProfilePayload) {
@@ -73,8 +82,8 @@ export async function updateMyProfile(payload: UpdateProfilePayload) {
 
 export async function uploadAvatar(file: File) {
   const form = new FormData();
-  form.append("avatar", file, file.name);
-  const res = await fetch(`/api/users/me/avatar`, {
+  form.append("file", file, file.name);
+  const res = await fetch(`/api/media/avatar`, {
     method: "POST",
     body: form,
   });
@@ -97,6 +106,10 @@ export type CategoryDto = {
   name: string;
   imageUrl?: string | null;
   status?: string | null;
+  type?: number | string | null;
+  Type?: number | string | null;
+  productType?: number | string | null;
+  ProductType?: number | string | null;
   subCategories?: CategoryDto[] | null;
 };
 
@@ -126,9 +139,23 @@ export async function fetchCategories(): Promise<CategoryDto[]> {
 }
 
 export async function fetchCategoryAttributes(categoryId: number): Promise<CategoryAttributeFullDto[]> {
-  const res = await fetch(`${API_BASE}/category/${categoryId}/attributes`, { cache: "no-store" });
-  if (!res.ok) throw new Error(`Failed to fetch attributes for category ${categoryId}`);
-  return res.json();
+  const urls = [
+    `${API_BASE}/categories/${categoryId}/attributes`,
+    `${API_BASE}/category/${categoryId}/attributes`,
+  ];
+  let lastError: string | null = null;
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, { cache: "no-store" });
+      if (res.ok) {
+        return res.json();
+      }
+      lastError = await res.text();
+    } catch (err: any) {
+      lastError = err?.message || null;
+    }
+  }
+  throw new Error(lastError || `Failed to fetch attributes for category ${categoryId}`);
 }
 
 export async function fetchAttributeDetail(attributeId: number): Promise<AttributeDetailDto> {
@@ -246,7 +273,7 @@ export type PublicUserDto = {
 };
 
 export async function fetchProductById(id: number): Promise<ProductDto> {
-  const res = await fetch(`${API_BASE}/products/${id}`, { cache: "no-store" });
+  const res = await fetch(`/api/products/${id}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`Failed to fetch product ${id}`);
   return res.json();
 }
@@ -308,4 +335,49 @@ export async function searchProductsExternal(filter: ProductFilterDto): Promise<
   if (Array.isArray(data)) return data as ProductDto[];
   if (data && Array.isArray(data.items)) return data.items as ProductDto[];
   return [];
+}
+
+// --------- Favorites ----------
+
+export type FavoriteItemDto = {
+  id?: number;
+  productId?: number;
+  product?: ProductDto | null;
+};
+
+export async function fetchFavoriteItems(): Promise<number[]> {
+  const res = await fetch(`/api/favorite`, { cache: "no-store" });
+  if (res.status === 401) {
+    throw new ApiError("Unauthorized", 401);
+  }
+  if (!res.ok) {
+    throw new ApiError((await res.text()) || "Failed to load favorites", res.status);
+  }
+  const data = await res.json();
+  if (Array.isArray(data)) return data.map((entry) => Number(entry)).filter((id) => Number.isFinite(id));
+  if (data && Array.isArray((data as any).productIds)) {
+    return (data as any).productIds.map((id: any) => Number(id)).filter((id: number) => Number.isFinite(id));
+  }
+  return [];
+}
+
+async function mutateFavorite(productId: number, method: "POST" | "DELETE"): Promise<void> {
+  if (!productId) {
+    throw new Error("productId is required");
+  }
+  const res = await fetch(`/api/favorite/${productId}`, { method });
+  if (res.status === 401) {
+    throw new ApiError("Unauthorized", 401);
+  }
+  if (!res.ok) {
+    throw new ApiError((await res.text()) || "Favorite request failed", res.status);
+  }
+}
+
+export async function addFavoriteProduct(productId: number) {
+  return mutateFavorite(productId, "POST");
+}
+
+export async function removeFavoriteProduct(productId: number) {
+  return mutateFavorite(productId, "DELETE");
 }

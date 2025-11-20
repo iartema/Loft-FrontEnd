@@ -1,6 +1,8 @@
 "use client";
+"use client";
 import Image from "next/image";
 import { resolvePublicAssetUrl } from "../lib/api";
+import { resolveMediaUrl } from "../../lib/media";
 
 interface AvatarProps {
   src: string;
@@ -9,8 +11,19 @@ interface AvatarProps {
 }
 
 export default function Avatar({ src, size = 124, onClick }: AvatarProps) {
-  const remoteSrc = resolvePublicAssetUrl(src);
-  const displaySrc = remoteSrc ? `/api/proxy/image?url=${encodeURIComponent(remoteSrc)}` : "/default-avatar.jpg";
+  const trimmed = src?.trim() ?? "";
+  const mediaResolved = trimmed ? resolveMediaUrl(trimmed) : "";
+  let displaySrc =
+    mediaResolved ||
+    (trimmed.startsWith("http://") || trimmed.startsWith("https://")
+      ? trimmed
+      : trimmed.startsWith("/default")
+      ? trimmed
+      : resolvePublicAssetUrl(trimmed));
+  if (!displaySrc) displaySrc = "/default-avatar.jpg";
+  if (typeof window !== "undefined") {
+    console.log("[avatar] resolved source", { input: src, displaySrc });
+  }
   return (
     <div
       className={`relative rounded-full overflow-hidden group cursor-pointer`}

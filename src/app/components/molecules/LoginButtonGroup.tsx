@@ -8,7 +8,7 @@ export default function LoginButtonGroup() {
     <div className="flex flex-col gap-3 w-full mt-3">
       <Button label="Register" is_gradient={false} onClick={() => router.push("/register")} />
       <Divider text="or" />
-      <Button variant="google" />
+      <Button variant="google" label="Sign in with Google" />
     </div>
   );
 }

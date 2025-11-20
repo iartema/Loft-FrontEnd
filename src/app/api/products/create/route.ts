@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import {
+  normalizeProductType,
+  productTypeToEnumValue,
+} from "../../../lib/productTypes";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "https://www.loft-shop.pp.ua/api";
 
 type Incoming = {
   name: string;
   categoryId: number;
+  productType?: unknown;
   description?: string;
   price: number;
   currency: string; // USD/EUR/UAH/GBP
@@ -23,6 +28,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = (await req.json()) as Incoming;
+    const normalizedType = normalizeProductType(body.productType);
     if (!body || !body.name || !body.categoryId || body.price == null) {
       return NextResponse.json({ message: "Missing required fields" }, { status: 400 });
     }
@@ -35,7 +41,7 @@ export async function POST(req: NextRequest) {
       CategoryId: Number(body.categoryId),
       Name: String(body.name),
       Description: body.description ?? "",
-      Type: 0, // Physical
+      Type: productTypeToEnumValue(normalizedType),
       Price: Number(body.price),
       Currency: currencyMap[(body.currency || "USD").toUpperCase()] ?? 0,
       Quantity: Number(body.quantity ?? 1),

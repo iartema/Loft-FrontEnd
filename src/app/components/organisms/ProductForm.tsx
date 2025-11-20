@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import InputField from "../molecules/InputField";
 import Button from "../atoms/Button";
@@ -9,23 +9,41 @@ import Textarea from "../atoms/TextArea";
 import ProgressBar from "../molecules/ProgressBar";
 import CategoryModal from "../molecules/CategoryModal";
 import AttributeFields from "../molecules/AttributeFields";
-import ImageUploader from "../molecules/ImageUploader";
+import ImageUploader, { type UploadPreview } from "../molecules/ImageUploader";
 import { fetchCategories, fetchCategoryAttributes, fetchAttributeDetail } from "../lib/api";
 import type { CategoryDto, CategoryAttributeFullDto } from "../lib/api";
 import type { AttributeDef } from "../molecules/AttributeFields";
+import {
+  normalizeProductType,
+  productTypeLabel,
+  type ProductTypeKind,
+} from "../../lib/productTypes";
+import { extractMediaUrl } from "../../lib/media";
 
 type Currency = "USD" | "EUR" | "GBP";
 type AttributeValue = string | number | boolean | string[];
 
+type FlatCategory = {
+  ID: number;
+  Name: string;
+  ParentCategoryId: number | null;
+  Type?: ProductTypeKind;
+};
+
+type ProductPhoto = UploadPreview & {
+  file?: File;
+};
+
 interface ProductFormState {
   name: string;
   categoryId: number | null;
+  productType: ProductTypeKind | null;
   attributes: Record<number, AttributeValue>;
   description: string;
   price: string;
   currency: Currency;
   quantity: string;
-  photos: string[];
+  photos: ProductPhoto[];
 }
 
 export default function ProductForm() {
@@ -33,6 +51,7 @@ export default function ProductForm() {
   const [form, setForm] = useState<ProductFormState>({
     name: "",
     categoryId: null,
+    productType: null,
     attributes: {},
     description: "",
     price: "",
@@ -43,23 +62,50 @@ export default function ProductForm() {
 
   const [attributeDefs, setAttributeDefs] = useState<AttributeDef[]>([]);
   const [catOpen, setCatOpen] = useState(false);
-  const [allCategories, setAllCategories] = useState<
-    { ID: number; Name: string; ParentCategoryId: number | null }[]
-  >([]);
+  const [allCategories, setAllCategories] = useState<FlatCategory[]>([]);
   const [requiredAttrIds, setRequiredAttrIds] = useState<number[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const photosRef = useRef<ProductPhoto[]>([]);
+  useEffect(() => {
+    photosRef.current = form.photos;
+  }, [form.photos]);
+
+  useEffect(() => {
+    return () => {
+      photosRef.current.forEach((photo) => {
+        if (photo.previewUrl && photo.previewUrl.startsWith("blob:")) {
+          URL.revokeObjectURL(photo.previewUrl);
+        }
+      });
+    };
+  }, []);
+
+  const revokePhotoPreview = (photo?: ProductPhoto) => {
+    if (!photo?.previewUrl) return;
+    if (photo.previewUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(photo.previewUrl);
+    }
+  };
+
   useEffect(() => {
     const flatten = (
       list: CategoryDto[],
-      acc: { ID: number; Name: string; ParentCategoryId: number | null }[] = []
+      acc: FlatCategory[] = []
     ) => {
       for (const c of list) {
+        const normalizedType = normalizeProductType(
+          (c as any).type ??
+            (c as any).Type ??
+            (c as any).productType ??
+            (c as any).ProductType
+        );
         acc.push({
           ID: c.id,
           Name: c.name,
           ParentCategoryId: c.parentCategoryId ?? null,
+          Type: normalizedType,
         });
         if (c.subCategories && c.subCategories.length)
           flatten(c.subCategories, acc);
@@ -214,29 +260,97 @@ export default function ProductForm() {
     }
   };
 
+  const handleSelectProductType = (type: ProductTypeKind) => {
+    setForm((prev) => {
+      if (prev.productType === type) return prev;
+      return {
+        ...prev,
+        productType: type,
+        categoryId: null,
+        attributes: {},
+      };
+    });
+    setAttributeDefs([]);
+    setRequiredAttrIds([]);
+  };
+
   const onAttrChange = (attrId: number, value: AttributeValue) => {
     setForm((f) => ({ ...f, attributes: { ...f.attributes, [attrId]: value } }));
   };
 
-  const onAddPhotos = (urls: string[]) => {
-    setForm((f) => ({ ...f, photos: [...f.photos, ...urls].slice(0, 10) }));
+  const onAddPhotos = (files: File[]) => {
+    if (!files.length) return;
+    const mapped: ProductPhoto[] = files.map((file) => ({
+      id:
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      file,
+      previewUrl: file.type?.startsWith("image/") ? URL.createObjectURL(file) : undefined,
+    }));
+    setForm((f) => ({
+      ...f,
+      photos: [...f.photos, ...mapped].slice(0, 10),
+    }));
   };
 
-  const onRemovePhoto = (idx: number) =>
-    setForm((f) => ({ ...f, photos: f.photos.filter((_, i) => i !== idx) }));
+  const onRemovePhoto = (id: string) => {
+    setForm((f) => {
+      const target = f.photos.find((photo) => photo.id === id);
+      revokePhotoPreview(target);
+      return { ...f, photos: f.photos.filter((photo) => photo.id !== id) };
+    });
+  };
+
+  const uploadMediaFile = async (file: File) => {
+    const payload = new FormData();
+    payload.append("file", file, file.name || "upload");
+    payload.append("category", "products");
+    payload.append("isPrivate", "false");
+    const res = await fetch("/api/media/upload", {
+      method: "POST",
+      body: payload,
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || "Failed to upload file.");
+    }
+    const data = await res.json();
+    const url = data?.url ?? extractMediaUrl(data);
+    if (!url) {
+      throw new Error("Upload succeeded but no URL returned.");
+    }
+    return url;
+  };
+
+  const ensurePhotosUploaded = async (): Promise<ProductPhoto[]> => {
+    const uploaded = await Promise.all(
+      form.photos.map(async (photo) => {
+        if (photo.remoteUrl || !photo.file) return photo;
+        const url = await uploadMediaFile(photo.file);
+        return { ...photo, remoteUrl: url, file: undefined };
+      })
+    );
+    return uploaded;
+  };
 
   const canPublish = useMemo(
     () =>
       form.name.trim() &&
       form.categoryId &&
+      form.productType &&
       form.price !== "" &&
       Number(form.price) >= 0 &&
       form.quantity !== "" &&
       Number(form.quantity) > 0,
-    [form.name, form.categoryId, form.price, form.quantity]
+    [form.name, form.categoryId, form.productType, form.price, form.quantity]
   );
 
   const categoryLabel = useMemo(() => {
+    if (!form.productType) return "Select product type to continue";
     if (!form.categoryId) return "Choose a category";
     const path: string[] = [];
     let cur = allCategories.find((c) => c.ID === form.categoryId);
@@ -251,12 +365,13 @@ export default function ProductForm() {
 
   const validate = (): string | null => {
     if (!form.name.trim()) return "Please enter product name.";
+    if (!form.productType) return "Please choose whether your product is physical or digital.";
     if (!form.categoryId) return "Please choose a category.";
     if (form.price === "" || isNaN(Number(form.price))) return "Please enter a valid price.";
     if (Number(form.price) < 0) return "Price cannot be negative.";
     if (form.quantity === "" || isNaN(Number(form.quantity))) return "Please enter a valid quantity.";
     if (Number(form.quantity) <= 0) return "Quantity must be greater than zero.";
-    if (form.photos.length === 0) return "Please add at least one image.";
+    if (form.photos.length === 0) return "Please add at least one file.";
     for (const id of requiredAttrIds) {
       const val = form.attributes[id];
       if (val === undefined || val === null) return "Please fill all required attributes.";
@@ -289,18 +404,28 @@ export default function ProductForm() {
           return String(value).trim() !== "";
         });
 
+      const uploadedPhotos = await ensurePhotosUploaded();
+      const missingUploads = uploadedPhotos.filter((photo) => !photo.remoteUrl);
+      if (missingUploads.length) {
+        throw new Error("Failed to upload one or more files. Please try again.");
+      }
+      setForm((prev) => ({ ...prev, photos: uploadedPhotos }));
+
       const res = await fetch("/api/products/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: form.name.trim(),
           categoryId: Number(form.categoryId),
+          productType: form.productType,
           description: form.description || "",
           price: Number(form.price),
           currency: form.currency,
           quantity: Number(form.quantity),
           attributeValues,
-          mediaFiles: form.photos.map((url) => ({ url })),
+          mediaFiles: uploadedPhotos.map((photo) => ({
+            url: photo.remoteUrl ?? "",
+          })),
         }),
       });
       if (!res.ok) {
@@ -350,7 +475,7 @@ export default function ProductForm() {
         <section className="grid grid-cols-12 gap-x-12 gap-y-8 w-full">
           <div className="col-span-12 md:col-span-7">
             <ImageUploader
-              photos={form.photos}
+              files={form.photos}
               onAdd={onAddPhotos}
               onRemove={onRemovePhoto}
             />
@@ -369,6 +494,10 @@ export default function ProductForm() {
 
             <div className="mb-4 w-full">
               <label className="block mb-2">Category</label>
+              <div className="text-sm text-[var(--fg-muted)] mb-2">
+                Product type:{" "}
+                <span className="text-white">{productTypeLabel(form.productType)}</span>
+              </div>
               <button
                 type="button"
                 className="w-full bg-[var(--bg-input)] rounded-[15px] px-4 py-2 text-left text-[20px]"
@@ -478,18 +607,20 @@ export default function ProductForm() {
             <Button
               type="button"
               className="max-w-[160px] bg-[var(--bg-elev-2)] hover:bg-[var(--bg-elev-3)]"
-              onClick={() =>
+              onClick={() => {
+                form.photos.forEach((photo) => revokePhotoPreview(photo));
                 setForm({
                   name: "",
                   categoryId: null,
+                  productType: null,
                   attributes: {},
                   description: "",
                   price: "",
                   currency: "USD",
                   quantity: "",
                   photos: [],
-                })
-              }
+                });
+              }}
             >
               Delete
             </Button>
@@ -501,6 +632,8 @@ export default function ProductForm() {
         open={catOpen}
         categories={allCategories}
         selectedId={form.categoryId}
+        productType={form.productType}
+        onSelectType={handleSelectProductType}
         onClose={() => setCatOpen(false)}
         onSelect={onSelectCategory}
       />

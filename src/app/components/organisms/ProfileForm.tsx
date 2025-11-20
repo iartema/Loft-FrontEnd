@@ -3,8 +3,48 @@ import React, { useEffect, useRef, useState } from "react";
 import Title from "../atoms/Title";
 import InputField from "../molecules/InputField";
 import ProfileHeader from "../molecules/ProfileHeader";
-import { getMyProfile, updateMyProfile, uploadAvatar } from "../lib/api";
+import { updateMyProfile, uploadAvatar } from "../lib/api";
 import { getCurrentUserCached, setCurrentUserCached } from "../lib/userCache";
+import { resolveMediaUrl } from "../../lib/media";
+
+const pickMediaPath = (payload: any): string | null => {
+  if (!payload) return null;
+  if (typeof payload === "string") return payload;
+  if (typeof payload !== "object") return null;
+  const candidate =
+    (typeof payload.avatarUrl === "string" && payload.avatarUrl) ||
+    (typeof payload.AvatarUrl === "string" && payload.AvatarUrl) ||
+    (typeof payload.url === "string" && payload.url) ||
+    (typeof payload.Url === "string" && payload.Url) ||
+    (typeof payload.path === "string" && payload.path) ||
+    (typeof payload.Path === "string" && payload.Path) ||
+    (typeof payload.fileUrl === "string" && payload.fileUrl) ||
+    (typeof payload.FileUrl === "string" && payload.FileUrl) ||
+    null;
+  return candidate ?? null;
+};
+
+const extractAvatarSources = (payload: any): { raw: string | null; resolved: string } => {
+  const sources = [payload, payload?.raw];
+  for (const source of sources) {
+    const rawCandidate = pickMediaPath(source);
+    if (rawCandidate && typeof rawCandidate === "string") {
+      const resolvedCandidate = resolveMediaUrl(rawCandidate);
+      return {
+        raw: rawCandidate,
+        resolved: resolvedCandidate || rawCandidate,
+      };
+    }
+    if (typeof source === "string" && source.trim().length > 0) {
+      const resolvedCandidate = resolveMediaUrl(source);
+      return {
+        raw: source,
+        resolved: resolvedCandidate || source,
+      };
+    }
+  }
+  return { raw: null, resolved: "" };
+};
 
 export default function ProfileForm() {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -19,6 +59,9 @@ export default function ProfileForm() {
     address: "",
     avatar: "/default-avatar.jpg",
   });
+  const [avatarValue, setAvatarValue] = useState<string | null>(null);
+  const [avatarRemoteUrl, setAvatarRemoteUrl] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,19 +75,17 @@ export default function ProfileForm() {
         const me = await getCurrentUserCached();
         // me is expected to have firstName, lastName, email, phone, avatarUrl
         if (mounted) {
-          const normalizeAvatar = (u?: string) => {
-            if (!u) return undefined;
-            if (u.startsWith('http://') || u.startsWith('https://')) return u;
-            const withSlash = u.startsWith('/') ? u : `/${u}`;
-            return `https://www.loft-shop.pp.ua${withSlash}`;
-          };
+          const rawAvatar = typeof me.avatarUrl === "string" ? me.avatarUrl : null;
+          const resolvedAvatar = resolveMediaUrl(rawAvatar ?? "");
+          setAvatarValue(rawAvatar ?? resolvedAvatar ?? null);
+          setAvatarRemoteUrl(resolvedAvatar || null);
           setFormData((prev) => ({
             ...prev,
             name: (me.firstName as string) || "",
             surname: (me.lastName as string) || "",
             email: (me.email as string) || "",
             phone: (me.phone as string) || "",
-            avatar: normalizeAvatar(me.avatarUrl as string) || prev.avatar,
+            avatar: resolvedAvatar || prev.avatar,
           }));
         }
       } catch (e: any) {
@@ -69,52 +110,45 @@ export default function ProfileForm() {
     if (file) {
       const previewUrl = URL.createObjectURL(file);
       setFormData({ ...formData, avatar: previewUrl });
-      // Upload immediately
-      (async () => {
+      setAvatarUploading(true);
+      setError(null);
+      const previousRemote = avatarRemoteUrl || (avatarValue ? resolveMediaUrl(avatarValue) : null);
+      const fallbackAvatar = previousRemote || formData.avatar;
+      const uploadTask = async () => {
         try {
           const res = await uploadAvatar(file);
-          const normalizeAvatar = (u?: string) => {
-            if (!u) return undefined;
-            if (u.startsWith('http://') || u.startsWith('https://')) return u;
-            const withSlash = u.startsWith('/') ? u : `/${u}`;
-            return `https://www.loft-shop.pp.ua${withSlash}`;
-          };
-          const remoteUrl = normalizeAvatar(res?.avatarUrl as string);
-
-          if (!remoteUrl) return; // keep preview
-
-          // Preload remote image; retry a few times in case file not yet served
-          const tryLoad = (url: string, attempts = 4): Promise<boolean> =>
-            new Promise((resolve) => {
-              const img = new Image();
-              img.onload = () => resolve(true);
-              img.onerror = () => resolve(false);
-              // cache-bust per attempt
-              img.src = url + (url.includes("?") ? "&" : "?") + "ts=" + Date.now();
-            }).then((ok) => {
-              if (ok) return true;
-              if (attempts <= 1) return false;
-              return new Promise<boolean>((r) => setTimeout(async () => r(await tryLoad(url, attempts - 1)), 400));
-            });
-
-          const ok = await tryLoad(remoteUrl);
-          if (ok) {
-            setFormData((prev) => ({ ...prev, avatar: remoteUrl }));
-            setCurrentUserCached((prev: any) => ({ ...(prev || {}), avatarUrl: remoteUrl }));
-          } else {
-            // keep preview; backend will serve soon or on next visit
-            // optionally, surface a soft message
-            // setError((e) => e || "Avatar will appear shortly");
+          const { raw, resolved } = extractAvatarSources(res);
+          if (!raw && !resolved) return;
+          const remote = resolved || (raw ? resolveMediaUrl(raw) : null);
+          if (remote) {
+            setFormData((prev) => ({ ...prev, avatar: remote }));
           }
+          setAvatarValue(raw ?? resolved ?? null);
+          setAvatarRemoteUrl(remote || null);
+          setCurrentUserCached((prev: any) => ({
+            ...(prev || {}),
+            avatarUrl: remote || null,
+          }));
         } catch (err: any) {
+          console.error("avatar upload failed", err);
           setError(err?.message || "Failed to upload avatar");
+          setFormData((prev) => ({ ...prev, avatar: fallbackAvatar }));
+          setAvatarRemoteUrl(previousRemote || null);
+        } finally {
+          setAvatarUploading(false);
         }
-      })();
+      };
+
+      void uploadTask();
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (avatarUploading) {
+      setError("Please wait until the avatar upload finishes.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -122,12 +156,14 @@ export default function ProfileForm() {
         firstName: formData.name || null,
         lastName: formData.surname || null,
         phone: formData.phone || null,
+        avatarUrl: avatarRemoteUrl || null,
       });
       setCurrentUserCached((prev: any) => ({
         ...(prev || {}),
         firstName: formData.name || null,
         lastName: formData.surname || null,
         phone: formData.phone || null,
+        avatarUrl: avatarRemoteUrl || null,
       }));
     } catch (e: any) {
       setError(e?.message || "Failed to update profile");
@@ -144,6 +180,10 @@ export default function ProfileForm() {
         email={formData.email}
         avatar={formData.avatar}
         onAvatarClick={handleAvatarClick}
+        saveDisabled={saving || avatarUploading}
+        saveLabel={
+          avatarUploading ? "Uploading avatar..." : saving ? "Saving..." : undefined
+        }
       />
 
       <input

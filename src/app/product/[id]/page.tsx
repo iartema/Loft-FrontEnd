@@ -10,6 +10,7 @@ import ProductComments from "../../components/organisms/ProductComments";
 import Divider from "../../components/atoms/Divider";
 import { useParams } from "next/navigation";
 import { saveRecentProduct } from "../../components/lib/recentlyViewed";
+import { getFirstPublicImageUrl, getPublicImageUrls } from "../../lib/media";
 
 const almarai = Almarai({
   subsets: ["latin"],
@@ -31,7 +32,7 @@ export default function ProductViewPage() {
           name: p.name,
           price: p.price,
           currency: p.currency,
-          image: p.mediaFiles?.[0]?.url ?? null,
+          image: getFirstPublicImageUrl(p.mediaFiles) || null,
         });
         // fetch attribute metadata for names
         try {
@@ -69,7 +70,7 @@ export default function ProductViewPage() {
         {/* top grid */}
         <section className="grid grid-cols-12 gap-8">
           <div className="col-span-12 md:col-span-7">
-            <ProductGallery images={(data.mediaFiles ?? []).map(m => m.url)} />
+            <ProductGallery images={getPublicImageUrls(data.mediaFiles)} />
           </div>
           <div className="col-span-12 md:col-span-5">
             <ProductCard

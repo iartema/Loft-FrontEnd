@@ -21,6 +21,9 @@ interface ProductCardProps {
   buttonLabel?: string;
   className?: string;
   productId?: number;
+  isFavorite?: boolean;
+  onToggleFavorite?: (productId: number) => void;
+  favoriteBusy?: boolean;
 }
 
 export default function ViewProductCardSearch({
@@ -32,6 +35,9 @@ export default function ViewProductCardSearch({
   buttonLabel = "View",
   className = "",
   productId,
+  isFavorite = false,
+  onToggleFavorite,
+  favoriteBusy = false,
 }: ProductCardProps) {
   const router = useRouter();
   const normalizeImageSrc = (src?: string) => {
@@ -57,6 +63,10 @@ export default function ViewProductCardSearch({
 
   const handleAddToCart = async () => {
     if (adding) return;
+    console.log("productId:", productId);
+    console.log("imgSrc:", imgSrc);
+    console.log("adding:", adding);
+
     if (!productId) {
       onClick?.();
       return;
@@ -81,7 +91,7 @@ export default function ViewProductCardSearch({
   return (
     <div
       className={`${almarai.className} bg-[var(--bg-input)] rounded-[10px] overflow-hidden shadow-md hover:shadow-lg transition-all flex flex-col ${className} mb-3`}
-      style={{ height: "330px", width: "245px" }}
+      style={{ height: "330px", width: "240px" }}
     >
       <div className="relative w-full h-[200px] flex-shrink-0 cursor-pointer" onClick={onClick}>
         <Image
@@ -107,17 +117,35 @@ export default function ViewProductCardSearch({
         )}
       </div>
 
-      <div className="p-2 flex flex-col justify-between flex-1 mt-1">
+      <div className="p-2 flex flex-col justify-between flex-1">
         <div className="space-y-1">
-          <p className="text-sm text-white line-clamp-1">{name}</p>
+          <p className="text-sm text-white line-clamp-1 mt-1 ml-[2px] mr-[2px]">{name}</p>
         </div>
         <p className="text-xs text-gray-200 line-clamp-2 mt-5 opacity-[50%]">{description}</p>
         <div className="flex items-center justify-between relative mb-3">
-          <span className="text-white font-semibold">{price}</span>
+          <span className="text-white text-lg">{price}</span>
           <div className="flex items-center gap-2 text-white/90">
-            <button aria-label="favorite" className="p-1 hover:text-white" title="Favorite">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" strokeWidth="2" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 21s-6.716-4.405-9.09-7.09A5.727 5.727 0 0 1 12 5a5.727 5.727 0 0 1 9.09 8.91C18.716 16.595 12 21 12 21Z" stroke="currentColor" fill="none"/>
+            <button
+              aria-label="favorite"
+              className={`p-1 rounded-full transition ${
+                isFavorite ? "text-[var(--success)]" : "text-white/70 hover:text-white"
+              } ${favoriteBusy ? "opacity-60 pointer-events-none" : ""}`}
+              title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+              onClick={() => productId && onToggleFavorite?.(productId)}
+              disabled={favoriteBusy}
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill={isFavorite ? "currentColor" : "none"}
+                strokeWidth="2"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M12 21s-6.716-4.405-9.09-7.09A5.727 5.727 0 0 1 12 5a5.727 5.727 0 0 1 9.09 8.91C18.716 16.595 12 21 12 21Z"
+                  stroke="currentColor"
+                />
               </svg>
             </button>
             <button

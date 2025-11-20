@@ -1,28 +1,57 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  PRODUCT_TYPE_OPTIONS,
+  type ProductTypeKind,
+  productTypeLabel,
+} from "../../lib/productTypes";
 
 export interface Category {
   ID: number;
   Name: string;
   ParentCategoryId: number | null;
   Status?: string;
+  Type?: ProductTypeKind;
 }
 
 interface Props {
   open: boolean;
   categories: Category[];
   selectedId: number | null;
+  productType: ProductTypeKind | null;
+  onSelectType: (type: ProductTypeKind) => void;
   onClose: () => void;
   onSelect: (id: number) => void;
 }
 
-export default function CategoryModal({ open, categories, selectedId, onClose, onSelect }: Props) {
+export default function CategoryModal({
+  open,
+  categories,
+  selectedId,
+  productType,
+  onSelectType,
+  onClose,
+  onSelect,
+}: Props) {
   // path holds the clicked chain: [level1Id, level2Id, ...]
   const [path, setPath] = useState<number[]>([]);
 
-  const roots = useMemo(() => categories.filter((c) => c.ParentCategoryId === null), [categories]);
-  const childrenOf = (id: number | null) => categories.filter((c) => c.ParentCategoryId === id);
+  useEffect(() => {
+    setPath([]);
+  }, [open, productType]);
+
+  const filtered = useMemo(() => {
+    if (!productType) return categories;
+    return categories.filter((c) => c.Type === productType);
+  }, [categories, productType]);
+
+  const roots = useMemo(
+    () => filtered.filter((c) => c.ParentCategoryId === null),
+    [filtered]
+  );
+  const childrenOf = (id: number | null) =>
+    filtered.filter((c) => c.ParentCategoryId === id);
 
   const level1 = roots;
   const level2 = path[0] ? childrenOf(path[0]) : [];
@@ -45,6 +74,36 @@ export default function CategoryModal({ open, categories, selectedId, onClose, o
 
   if (!open) return null;
 
+  const renderTypeSelector = () => (
+    <div className="mb-6">
+      <p className="text-sm text-[var(--fg-muted)] mb-3">
+        Select product type to filter categories
+      </p>
+      <div className="flex gap-4">
+        {PRODUCT_TYPE_OPTIONS.map((option) => {
+          const active = productType === option.value;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              className={`flex-1 rounded-2xl border px-4 py-3 text-left transition ${
+                active
+                  ? "border-[var(--brand,#9ef1c7)] bg-[var(--bg-hover)]"
+                  : "border-[var(--border)] hover:border-[var(--fg-muted)]"
+              }`}
+              onClick={() => onSelectType(option.value)}
+            >
+              <div className="text-sm uppercase tracking-wide opacity-70">
+                {option.value}
+              </div>
+              <div className="text-lg font-semibold">{option.label}</div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
   return (
     <div className="fixed inset-0 z-50">
       <div
@@ -57,7 +116,12 @@ export default function CategoryModal({ open, categories, selectedId, onClose, o
 
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--bg-elev-1)] border border-[var(--border)] rounded-2xl p-6 w-[900px] max-w-[95vw]">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-xl font-bold">Choose category</h3>
+          <div>
+            <h3 className="text-xl font-bold">Choose category</h3>
+            <p className="text-sm text-[var(--fg-muted)]">
+              {productTypeLabel(productType)}
+            </p>
+          </div>
           <button
             className="opacity-70 hover:opacity-100"
             onClick={() => {
@@ -69,7 +133,9 @@ export default function CategoryModal({ open, categories, selectedId, onClose, o
           </button>
         </div>
 
-        <div className="grid grid-cols-3 gap-6">
+        {renderTypeSelector()}
+
+        <div className="relative grid grid-cols-3 gap-6">
           {/* level 1 */}
           <Column
             items={level1}
@@ -93,6 +159,14 @@ export default function CategoryModal({ open, categories, selectedId, onClose, o
             onClick={(id) => handleClick(2, id)}
             hidden={!path[1]}
           />
+
+          {!productType && (
+            <div className="absolute inset-0 rounded-2xl bg-[var(--bg-elev-1)]/90 backdrop-blur-[2px] flex items-center justify-center text-center px-8">
+              <div className="text-base text-[var(--fg-muted)]">
+                Choose a product type above to browse matching categories.
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

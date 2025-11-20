@@ -41,8 +41,9 @@ export async function POST(req: Request) {
     }
 
     if (!res.ok) {
+      console.error("[users/me/avatar] upstream error", res.status, data);
       return NextResponse.json(
-        { message: "Backend returned error", data },
+        { message: "Backend returned error", data, status: res.status },
         { status: res.status }
       );
     }

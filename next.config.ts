@@ -11,16 +11,21 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'www.loft-shop.pp.ua',
-        pathname: '/avatars/**',
+        pathname: '/**',
       },
       {
         protocol: 'https',
         hostname: 'loft-shop.pp.ua',
-        pathname: '/avatars/**',
+        pathname: '/**',
       },
       {
         protocol: 'https',
         hostname: 'images.unsplash.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
         pathname: '/**',
       },
     ],

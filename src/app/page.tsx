@@ -1,15 +1,21 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   fetchCategories,
   searchProductsExternal,
+  fetchFavoriteItems,
+  addFavoriteProduct,
+  removeFavoriteProduct,
+  ApiError,
   type CategoryDto,
   type ProductDto,
 } from "./components/lib/api";
 import { loadRecentProducts, type RecentProduct } from "./components/lib/recentlyViewed";
 import ViewProductCardSearch from "./components/molecules/ViewProductCardSearch";
+import { getFirstPublicImageUrl, resolveMediaUrl } from "./lib/media";
+import { useRouter } from "next/navigation";
 
 const CATEGORY_ICONS = [
   { src: "/categories/solar_confetti-bold.svg", label: "Events" },
@@ -42,9 +48,12 @@ type ProductCardItem = {
 };
 
 export default function HomePage() {
+  const router = useRouter();
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [products, setProducts] = useState<ProductDto[]>([]);
   const [recent, setRecent] = useState<RecentProduct[]>([]);
+  const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
+  const [favoriteBusyIds, setFavoriteBusyIds] = useState<Set<number>>(new Set());
   const [categoryHighlights, setCategoryHighlights] = useState<
     { category: CategoryDto; products: ProductDto[] }[]
   >([]);
@@ -72,6 +81,18 @@ export default function HomePage() {
       }
     })();
     setRecent(loadRecentProducts());
+    (async () => {
+      try {
+        const list = await fetchFavoriteItems();
+        const next = new Set<number>();
+        for (const id of list) {
+          if (Number.isFinite(id)) next.add(Number(id));
+        }
+        setFavoriteIds(next);
+      } catch {
+        setFavoriteIds(new Set());
+      }
+    })();
     return () => {
       cancelled = true;
     };
@@ -123,11 +144,25 @@ export default function HomePage() {
     };
   }, [categories, products]);
 
-  const formatPrice = (value?: number | null, currency?: string | null) => {
+  const formatPrice = (value?: number | null, currency?: string | number | null) => {
     if (value == null) return "";
-    const symbols: Record<string, string> = { USD: "$", EUR: "€", GBP: "£", UAH: "₴" };
-    const symbol = currency ? symbols[String(currency).toUpperCase()] ?? currency : "";
-    return `${symbol}${value}`;
+    const symbolMap: Record<string, string> = {
+      USD: "$",
+      UAH: "₴",
+      0: "₴",
+      1: "$",
+    };
+    const codeMap: Record<string, string> = {
+      0: "UAH",
+      1: "USD",
+    };
+    const key =
+      currency == null ? "" : typeof currency === "number" ? String(currency) : currency.toString().toUpperCase();
+    const symbol = key ? symbolMap[key] : "";
+    const code = key ? codeMap[key] ?? key : "";
+    if (symbol) return `${symbol} ${value}`;
+    if (code) return `${value} ${code}`;
+    return `${value}`;
   };
 
   const kvProduct = (p: ProductDto): ProductCardItem => ({
@@ -136,7 +171,7 @@ export default function HomePage() {
     name: p.name,
     description: p.description ?? "",
     price: formatPrice(p.price, p.currency),
-    image: p.mediaFiles?.[0]?.url,
+    image: getFirstPublicImageUrl(p.mediaFiles) || "/default-product.jpg",
   });
 
   const recentItems: ProductCardItem[] = recent.length
@@ -146,7 +181,7 @@ export default function HomePage() {
         name: item.name,
         description: "",
         price: formatPrice(item.price, item.currency),
-        image: item.image ?? undefined,
+        image: resolveMediaUrl(item.image ?? undefined) || "/default-product.jpg",
       }))
     : products.slice(0, 6).map(kvProduct);
 
@@ -177,6 +212,44 @@ export default function HomePage() {
     return icons;
   }, [categories]);
 
+  const handleToggleFavorite = useCallback(
+    async (productId: number) => {
+      if (!productId) return;
+      setFavoriteBusyIds((prev) => {
+        const next = new Set(prev);
+        next.add(productId);
+        return next;
+      });
+      const currentlyFavorite = favoriteIds.has(productId);
+      try {
+        if (currentlyFavorite) {
+          await removeFavoriteProduct(productId);
+        } else {
+          await addFavoriteProduct(productId);
+        }
+        setFavoriteIds((prev) => {
+          const next = new Set(prev);
+          if (currentlyFavorite) next.delete(productId);
+          else next.add(productId);
+          return next;
+        });
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 401) {
+          router.push("/login");
+        } else {
+          console.error("Failed to toggle favorite", err);
+        }
+      } finally {
+        setFavoriteBusyIds((prev) => {
+          const next = new Set(prev);
+          next.delete(productId);
+          return next;
+        });
+      }
+    },
+    [favoriteIds, router]
+  );
+
   return (
     <main className="bg-[var(--bg-body)] text-white min-h-screen">
       <div className="max-w-[1400px] mx-auto px-8 py-10 space-y-10">
@@ -200,6 +273,9 @@ export default function HomePage() {
           products={recentItems}
           loading={loading && !recent.length}
           wrapLink
+          favoriteIds={favoriteIds}
+          favoriteBusyIds={favoriteBusyIds}
+          onToggleFavorite={handleToggleFavorite}
         />
 
         <ProductSection
@@ -208,6 +284,9 @@ export default function HomePage() {
           products={trendingItems}
           loading={loading}
           wrapLink
+          favoriteIds={favoriteIds}
+          favoriteBusyIds={favoriteBusyIds}
+          onToggleFavorite={handleToggleFavorite}
         />
 
         {categoryHighlights.map((highlight) => (
@@ -218,6 +297,9 @@ export default function HomePage() {
             products={highlight.products.map(kvProduct)}
             loading={false}
             wrapLink
+            favoriteIds={favoriteIds}
+            favoriteBusyIds={favoriteBusyIds}
+            onToggleFavorite={handleToggleFavorite}
           />
         ))}
       </div>
@@ -231,12 +313,18 @@ function ProductSection({
   products,
   loading,
   wrapLink,
+  favoriteIds,
+  favoriteBusyIds,
+  onToggleFavorite,
 }: {
   title: string;
   subtitle?: string;
   products: ProductCardItem[];
   loading: boolean;
   wrapLink?: boolean;
+  favoriteIds: Set<number>;
+  favoriteBusyIds: Set<number>;
+  onToggleFavorite: (productId: number) => void;
 }) {
   const rowRef = useRef<HTMLDivElement>(null);
 
@@ -297,18 +385,24 @@ useEffect(() => {
           ref={rowRef}
           className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory overscroll-x-contain"
         >
-          {products.map((product, idx) => (
-            <ViewProductCardSearch
-              key={`${product.id ?? idx}-${product.name}`}
-              productId={product.productId ?? product.id}
-              name={product.name}
-              description={product.description ?? " "}
-              price={product.price}
-              image={product.image}
-              onClick={() => product.id && (window.location.href = `/product/${product.id}`)}
-              className="min-w-[220px] w-[220px] snap-start"
-            />
-          ))}
+          {products.map((product, idx) => {
+            const pid = product.productId ?? product.id ?? 0;
+            return (
+              <ViewProductCardSearch
+                key={`${product.id ?? idx}-${product.name}`}
+                productId={pid}
+                name={product.name}
+                description={" "}
+                price={product.price}
+                image={product.image}
+                onClick={() => product.id && (window.location.href = `/product/${product.id}`)}
+                className="min-w-[220px] w-[220px] snap-start"
+                isFavorite={favoriteIds.has(pid)}
+                favoriteBusy={favoriteBusyIds.has(pid)}
+                onToggleFavorite={onToggleFavorite}
+              />
+            );
+          })}
         </div>
       )}
       {wrapLink && products.length >= 8 && (

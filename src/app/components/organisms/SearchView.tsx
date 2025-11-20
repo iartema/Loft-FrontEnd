@@ -15,10 +15,34 @@ import {
   type ProductDto,
   searchProductsExternal,
   type ProductAttributeFilterDto,
+  fetchFavoriteItems,
+  addFavoriteProduct,
+  removeFavoriteProduct,
+  ApiError,
 } from "../lib/api";
+import { getFirstPublicImageUrl } from "../../lib/media";
 // import { mockCategories, mockFetchAttributesByCategory } from "../lib/mockCatalog";
 
 const almarai = Almarai({ subsets: ["latin"], weight: ["400", "700"] });
+
+function resolveFavoriteProductId(entry: any): number | null {
+  if (entry === null || entry === undefined) return null;
+  if (typeof entry === "number" && Number.isFinite(entry)) return entry;
+
+  if (typeof entry === "string") {
+    const parsed = Number(entry);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  if (typeof entry === "object") {
+    if (typeof entry.productId === "number") return entry.productId;
+    if (typeof entry.ProductId === "number") return entry.ProductId;
+    if (entry.product && typeof entry.product.id === "number") return entry.product.id;
+    if (entry.Product && typeof entry.Product.Id === "number") return entry.Product.Id;
+    if (typeof entry.id === "number" && !("productId" in entry) && !("ProductId" in entry)) return entry.id;
+  }
+  return null;
+}
 
 export default function SearchView() {
   const params = useSearchParams();
@@ -32,13 +56,46 @@ export default function SearchView() {
   const [attrFilters, setAttrFilters] = useState<Record<number, string | number | boolean | string[] | null>>({});
   const [allCategories, setAllCategories] = useState<{ ID: number; Name: string; ParentCategoryId: number | null; Status?: string }[]>([]);
   const [categoryAttrs, setCategoryAttrs] = useState<{ ID: number; Name: string; Type: "text" | "number" | "select" | "multiselect" | "boolean" | "color"; Value?: string }[]>([]);
-  const [items, setItems] = useState<ProductDto[]>([]);
+  const [attributeSuggestions, setAttributeSuggestions] = useState<Record<number, string[]>>({});
+  type ProductWithFavorite = ProductDto & { isFavorite?: boolean };
+  const [items, setItems] = useState<ProductWithFavorite[]>([]);
   const [page, setPage] = useState(1);
   const pageSize = 20;
+  const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
+  const [favoriteBusyIds, setFavoriteBusyIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     setQuery(qParam);
   }, [qParam]);
+
+  useEffect(() => {
+    let active = true;
+    const loadFavorites = async () => {
+      try {
+        const list = await fetchFavoriteItems();
+        if (!active) return;
+        const next = new Set<number>();
+        for (const id of list) {
+          if (Number.isFinite(id)) next.add(Number(id));
+        }
+        setFavoriteIds(next);
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 401) {
+          if (active) setFavoriteIds(new Set());
+        } else {
+          console.error("Failed to load favorites", err);
+        }
+      }
+    };
+    loadFavorites();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    setItems((prev) => prev.map((item) => ({ ...item, isFavorite: favoriteIds.has(item.id) })));
+  }, [favoriteIds]);
 
   useEffect(() => {
     const flatten = (list: CategoryDto[], acc: { ID: number; Name: string; ParentCategoryId: number | null; Status?: string }[] = []) => {
@@ -52,24 +109,85 @@ export default function SearchView() {
   }, []);
 
   useEffect(() => {
-    if (!categoryId) { setCategoryAttrs([]); return; }
-    fetchCategoryAttributes(Number(categoryId))
-      .then((full: CategoryAttributeFullDto[]) => {
-        const mapped = full
-          .sort((a,b)=>a.orderIndex-b.orderIndex)
-          .map(a => {
-            const opts = a.optionsJson ? safeParseOptions(a.optionsJson) : [];
-            const lower = a.attributeName.toLowerCase();
-            let Type: "text"|"number"|"select"|"multiselect"|"boolean"|"color" = "text";
-            if (a.type.toLowerCase()==="number") Type = "number";
-            else if (a.type.toLowerCase()==="list") Type = "select";
-            else if (lower === "color" || lower === "colour") Type = "color";
-            return { ID: a.attributeId, Name: a.attributeName, Type, Value: opts.join("|") || undefined };
-          });
-        setCategoryAttrs(mapped);
-      })
-      .catch(()=> setCategoryAttrs([]));
-  }, [categoryId]);
+    if (!categoryId) {
+      setCategoryAttrs([]);
+      setAttributeSuggestions({});
+      return;
+    }
+    setAttributeSuggestions({});
+
+    const buildType = (attr: CategoryAttributeFullDto, opts: string[]) => {
+      const lowerName = attr.attributeName?.toLowerCase() ?? "";
+      const typeVal = String(attr.type ?? "").toLowerCase();
+      const display = String(attr.typeDisplayName ?? "").toLowerCase();
+      if (typeVal.includes("multi") || display.includes("multi")) return "multiselect";
+      if (typeVal.includes("bool") || display.includes("bool")) return "boolean";
+      if (typeVal.includes("number") || display.includes("number")) return "number";
+      if (opts.length) return "select";
+      return "text";
+    };
+
+    const convertAttribute = (attr: CategoryAttributeFullDto) => {
+      const opts = attr.optionsJson ? safeParseOptions(attr.optionsJson) : [];
+      return {
+        ID: attr.attributeId,
+        Name: attr.attributeName,
+        Type: buildType(attr, opts) as "text" | "number" | "select" | "multiselect" | "boolean",
+        Value: opts.join("|") || undefined,
+      };
+    };
+
+    const collectCategoryChain = (id: number): number[] => {
+      const chain: number[] = [];
+      let current = allCategories.find((c) => c.ID === id);
+      while (current) {
+        chain.push(current.ID);
+        current = current.ParentCategoryId
+          ? allCategories.find((c) => c.ID === current!.ParentCategoryId)
+          : undefined;
+      }
+      // ensure unique order (closest category first)
+      return Array.from(new Set(chain));
+    };
+
+    let cancelled = false;
+    const loadAttributes = async () => {
+      const chain = collectCategoryChain(categoryId);
+      if (!chain.length) {
+        setCategoryAttrs([]);
+        return;
+      }
+      try {
+        const batches = await Promise.all(
+          chain.map(async (id) => {
+            try {
+              return await fetchCategoryAttributes(id);
+            } catch {
+              return [];
+            }
+          })
+        );
+        if (cancelled) return;
+        const merged = new Map<number, { ID: number; Name: string; Type: "text" | "number" | "select" | "multiselect" | "boolean" | "color"; Value?: string }>();
+        for (const batch of batches) {
+          for (const attr of batch) {
+            if (!merged.has(attr.attributeId)) {
+              merged.set(attr.attributeId, convertAttribute(attr));
+            }
+          }
+        }
+        const result = Array.from(merged.values()).sort((a, b) => String(a.Name).localeCompare(String(b.Name)));
+        setCategoryAttrs(result);
+      } catch {
+        if (!cancelled) setCategoryAttrs([]);
+      }
+    };
+
+    loadAttributes();
+    return () => {
+      cancelled = true;
+    };
+  }, [categoryId, allCategories]);
 
   function safeParseOptions(json: string): string[] {
     try { const arr = JSON.parse(json); return Array.isArray(arr) ? arr.map(String) : []; } catch { return []; }
@@ -78,12 +196,16 @@ export default function SearchView() {
   useEffect(() => {
     const next: Record<number, string | number | boolean | string[] | null> = {};
     for (const a of categoryAttrs) {
-      if (a.Type === "multiselect" || a.Type === "color") next[a.ID] = [];
-      else if (a.Type === "boolean") next[a.ID] = null;
-      else next[a.ID] = "";
+      next[a.ID] = getInitialAttributeValue(a.Type);
     }
     setAttrFilters(next);
   }, [categoryAttrs]);
+
+  const getInitialAttributeValue = (type: "text" | "number" | "select" | "multiselect" | "boolean" | "color") => {
+    if (type === "multiselect" || type === "color") return [];
+    if (type === "boolean") return null;
+    return "";
+  };
 
   const doSearch = useCallback(async () => {
     const attrs: ProductAttributeFilterDto[] = Object.entries(attrFilters).flatMap(([id, value]) => {
@@ -104,9 +226,10 @@ export default function SearchView() {
       categoryId: categoryId ?? undefined,
       priceMin: priceMin ?? undefined,
       priceMax: priceMax ?? undefined,
-      attributes: attrs.length ? attrs : undefined,
+      attributeFilters: attrs.length ? attrs : undefined,
     });
     setItems(res || []);
+    collectAttributeSuggestions(res || []);
     setPage(1);
   }, [query, categoryId, priceMin, priceMax, attrFilters]);
 
@@ -121,6 +244,107 @@ export default function SearchView() {
     setAttrFilters({});
   };
 
+  const applySuggestionValue = useCallback(
+    (attr: { ID: number; Type: "text" | "number" | "select" | "multiselect" | "boolean" | "color" }, value: string) => {
+      const normalized = value.trim();
+      if (!normalized) return;
+      setAttrFilters((prev) => {
+        const next = { ...prev };
+        if (attr.Type === "multiselect" || attr.Type === "color") {
+          const current = Array.isArray(next[attr.ID]) ? [...(next[attr.ID] as string[])] : [];
+          if (!current.includes(normalized)) current.push(normalized);
+          next[attr.ID] = current;
+        } else if (attr.Type === "boolean") {
+          const boolVal = normalized.toLowerCase() === "true" || normalized === "1" || normalized.toLowerCase() === "yes";
+          next[attr.ID] = boolVal;
+        } else {
+          next[attr.ID] = normalized;
+        }
+        return next;
+      });
+    },
+    []
+  );
+
+  const collectAttributeSuggestions = (products: ProductDto[]) => {
+    if (!categoryId) return;
+    const map = new Map<number, Set<string>>();
+    for (const product of products) {
+      for (const attr of product.attributeValues ?? []) {
+        const id = attr.attributeId;
+        if (id == null) continue;
+        const parts = String(attr.value ?? "")
+          .split("|")
+          .map((part) => part.trim())
+          .filter(Boolean);
+        if (!parts.length) continue;
+        if (!map.has(id)) map.set(id, new Set());
+        const bucket = map.get(id)!;
+        parts.forEach((val) => bucket.add(val));
+      }
+    }
+    const suggestions: Record<number, string[]> = {};
+    map.forEach((set, id) => {
+      suggestions[id] = Array.from(set).slice(0, 8);
+    });
+    setAttributeSuggestions((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((key) => {
+        const id = Number(key);
+        if (!categoryAttrs.some((attr) => attr.ID === id)) {
+          delete next[id];
+        }
+      });
+      Object.entries(suggestions).forEach(([id, values]) => {
+        if (!next[Number(id)] || (next[Number(id)]?.length === 0 && values.length)) {
+          next[Number(id)] = values;
+        }
+      });
+      return next;
+    });
+  };
+
+  const handleToggleFavorite = useCallback(
+    async (productId: number) => {
+      if (!productId) return;
+      setFavoriteBusyIds((prev) => {
+        const next = new Set(prev);
+        next.add(productId);
+        return next;
+      });
+      const currentlyFavorite = favoriteIds.has(productId);
+      try {
+        if (currentlyFavorite) {
+          await removeFavoriteProduct(productId);
+        } else {
+          await addFavoriteProduct(productId);
+        }
+        setFavoriteIds((prev) => {
+          const next = new Set(prev);
+          if (currentlyFavorite) {
+            next.delete(productId);
+          } else {
+            next.add(productId);
+          }
+          return next;
+        });
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 401) {
+          router.push("/login");
+        } else {
+          console.error("Failed to toggle favorite", err);
+        }
+      } finally {
+        setFavoriteBusyIds((prev) => {
+          const next = new Set(prev);
+          next.delete(productId);
+          return next;
+        });
+      }
+    },
+    [favoriteIds, router]
+  );
+
   const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
   const paged = useMemo(() => {
     const start = (page - 1) * pageSize;
@@ -132,10 +356,39 @@ export default function SearchView() {
     [categoryId, allCategories]
   );
 
+  const attributeChips = useMemo(
+    () =>
+      categoryAttrs
+        .map((attr) => {
+          const val = attrFilters[attr.ID];
+          if (val == null) return null;
+          if (typeof val === "string" && val.trim() === "") return null;
+          if (Array.isArray(val) && val.length === 0) return null;
+          const display =
+            Array.isArray(val) ? val.join(", ") : typeof val === "boolean" ? (val ? "Yes" : "No") : String(val);
+          return {
+            label: `${attr.Name}: ${display}`,
+            onClear: () => setAttrFilters((prev) => ({ ...prev, [attr.ID]: getInitialAttributeValue(attr.Type) })),
+          };
+        })
+        .filter(Boolean) as { label: string; onClear: () => void }[],
+    [categoryAttrs, attrFilters]
+  );
+
   return (
-    <main className="min-h-screen w-full bg-[var(--bg-body)] text-white px-8 py-6">
+    <main className="min-h-screen w-full bg-[var(--bg-body)] text-white px-8 py-6 ml-5">
       {/* Active filters chips spanning full width, above sidebar/results */}
-      <ActiveFilterChips query={query} categoryName={categoryName} priceMin={priceMin} priceMax={priceMax} onClearQuery={() => setQuery("")} onClearCategory={() => setCategoryId(null)} onClearMin={() => setPriceMin(null)} onClearMax={() => setPriceMax(null)} />
+      <ActiveFilterChips
+        query={query}
+        categoryName={categoryName}
+        priceMin={priceMin}
+        priceMax={priceMax}
+        onClearQuery={() => setQuery("")}
+        onClearCategory={() => setCategoryId(null)}
+        onClearMin={() => setPriceMin(null)}
+        onClearMax={() => setPriceMax(null)}
+        attributes={attributeChips}
+      />
 
       <div className="grid grid-cols-[240px_1fr] gap-6">
         {/* Filters (no local search field here as per spec) */}
@@ -151,8 +404,12 @@ export default function SearchView() {
               className={`${almarai.className}`}
             />
           </FilterSection>
-          {categoryId && categoryAttrs.map((a) => (
-            <FilterSection key={a.ID} title={a.Name}>
+          {categoryId &&
+            categoryAttrs.length > 0 &&
+            categoryAttrs.map((a) => {
+              const suggestions = attributeSuggestions[a.ID] ?? [];
+              return (
+                <FilterSection key={a.ID} title={a.Name} defaultOpen>
               {a.Type === "text" && (
                 <input
                   type="text"
@@ -242,8 +499,28 @@ export default function SearchView() {
                   })}
                 </div>
               )}
+              {a.Type !== "boolean" && suggestions.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {suggestions.map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => applySuggestionValue(a, opt)}
+                      className="px-3 py-1 text-xs rounded-full bg-[var(--bg-filter-inner)] border border-[var(--divider)] hover:border-[var(--brand)]"
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              )}
+                </FilterSection>
+              );
+            })}
+          {categoryId && categoryAttrs.length === 0 && (
+            <FilterSection title="Attributes" defaultOpen>
+              <p className="text-xs opacity-70">This category has no filters.</p>
             </FilterSection>
-          ))}
+          )}
           {categoryId && ( <FilterSection title="Price">
             <div className="flex items-center gap-2">
               <input
@@ -279,7 +556,7 @@ export default function SearchView() {
 
 
           {/* 5 columns per row to match spec */}
-          <div className="grid grid-cols-5 gap-4">
+          <div className="grid grid-cols-5 gap-y-3 w-[98%]">
             {paged.length === 0 && (
               <div className="opacity-70 col-span-full">No products match your filters.</div>
             )}
@@ -287,11 +564,15 @@ export default function SearchView() {
               <ViewProductCardSearch
                 key={p.id}
                 name={p.name}
+                productId={p.id}
                 description={`${p.viewCount ?? 0} views`}
-                price={`${({ USD: "$", EUR: "€", UAH: "₴", GBP: "£" } as Record<string, string>)[p.currency] ?? ""}${p.price}`}
-                image={(p.mediaFiles && p.mediaFiles[0]?.url) || "/default-product.jpg"}
+                price={`${['₴', '$'][p.currency]} ${p.price}`}
+                image={getFirstPublicImageUrl(p.mediaFiles) || "/default-product.jpg"}
                 buttonLabel="View"
                 onClick={() => router.push(`/product/${p.id}`)}
+                isFavorite={Boolean(p.isFavorite)}
+                favoriteBusy={favoriteBusyIds.has(p.id)}
+                onToggleFavorite={handleToggleFavorite}
               />
             ))}
           </div>
@@ -335,20 +616,3 @@ export default function SearchView() {
     </main>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
