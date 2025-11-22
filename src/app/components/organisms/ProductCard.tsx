@@ -8,6 +8,12 @@ import {
   addCartItem,
   fetchPublicUserById,
   type PublicUserDto,
+  fetchFavoriteItems,
+  addFavoriteProduct,
+  removeFavoriteProduct,
+  ApiError,
+  sendChatMessage,
+  type CartItemMeta,
 } from "../lib/api";
 import { getCurrentUserCached } from "../lib/userCache";
 import { Almarai } from "next/font/google";
@@ -37,6 +43,9 @@ export default function ProductCard({
   const [seller, setSeller] = useState<PublicUserDto | null>(null);
   const [adding, setAdding] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favoriteBusy, setFavoriteBusy] = useState(false);
+  const [messaging, setMessaging] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -61,6 +70,23 @@ export default function ProductCard({
     };
   }, [sellerId]);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const ids = await fetchFavoriteItems();
+        if (!cancelled) setIsFavorite(ids.includes(productId));
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 401) {
+          if (!cancelled) setIsFavorite(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [productId]);
+
   const sellerName =
     [seller?.firstName, seller?.lastName].filter(Boolean).join(" ").trim() ||
     "Seller";
@@ -82,7 +108,11 @@ export default function ProductCard({
         return;
       }
 
-      await addCartItem(user.id, productId, 1);
+      const meta: CartItemMeta = {
+        productName: name,
+        price: parseFloat(price) || undefined,
+      };
+      await addCartItem(user.id, productId, 1, meta);
       setFeedback("Added to cart");
       setTimeout(() => setFeedback(null), 2500);
     } catch (err: any) {
@@ -92,10 +122,79 @@ export default function ProductCard({
     }
   };
 
+  const handleToggleFavorite = async () => {
+    if (!productId || favoriteBusy) return;
+    setFavoriteBusy(true);
+    try {
+      if (isFavorite) {
+        await removeFavoriteProduct(productId);
+        setIsFavorite(false);
+      } else {
+        await addFavoriteProduct(productId);
+        setIsFavorite(true);
+      }
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        router.push("/login");
+      } else {
+        console.error("Failed to toggle favorite", err);
+      }
+    } finally {
+      setFavoriteBusy(false);
+    }
+  };
+
+  const handleMessageSeller = async () => {
+    if (!sellerId || messaging) return;
+    setMessaging(true);
+    try {
+      const me = await getCurrentUserCached();
+      if (!me?.id) {
+        router.push("/login");
+        return;
+      }
+      const origin =
+        typeof window !== "undefined" && window.location?.origin
+          ? window.location.origin
+          : "https://loft-shop.pp.ua";
+      const link = `${origin}/product/${productId}`;
+      await sendChatMessage(sellerId, `Hello, I'm interested in this product. ${link}`);
+      router.push(`/chat/${sellerId}`);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        router.push("/login");
+      } else {
+        console.error("Failed to start chat", err);
+      }
+    } finally {
+      setMessaging(false);
+    }
+  };
+
   return (
     <div className={`${almarai.className} space-y-6`}>
       {/* PRODUCT CARD */}
-      <div className="bg-[var(--bg-frame)] rounded-xl border border-[var(--bg-frame)] p-6 space-y-4">
+      <div className="bg-[var(--bg-frame)] rounded-xl border border-[var(--bg-frame)] p-6 space-y-4 relative">
+        <button
+          type="button"
+          className={`absolute top-4 right-4 p-2 rounded-full transition ${
+            isFavorite ? "text-[var(--success)]" : "text-white/70 hover:text-white"
+          } ${favoriteBusy ? "opacity-60 pointer-events-none" : ""}`}
+          aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+          onClick={handleToggleFavorite}
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill={isFavorite ? "currentColor" : "none"}
+            stroke="currentColor"
+            strokeWidth="2"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path d="M12 21s-6.716-4.405-9.09-7.09A5.727 5.727 0 0 1 12 5a5.727 5.727 0 0 1 9.09 8.91C18.716 16.595 12 21 12 21Z" />
+          </svg>
+        </button>
         <h2 className="text-lg font-semibold">{name}</h2>
         <div className="text-xs opacity-70">Code: {sku}</div>
         <div className="text-xs">{views} views</div>
@@ -108,7 +207,7 @@ export default function ProductCard({
           {inStock ? "In stock" : "Out of stock"}
         </div>
 
-        <Divider text="" />
+        <Divider text="" className="[&>div]:bg-white" />
 
         <div className="flex items-center justify-between gap-3">
           <div className="text-2xl font-bold">{price}</div>
@@ -143,8 +242,12 @@ export default function ProductCard({
           </div>
         </div>
 
-        <Button className="max-w-[120px] !bg-[var(--bg-input)] !hover:bg-[var(--bg-input)]">
-          Message
+        <Button
+          className="max-w-[120px] !bg-[var(--bg-input)] !hover:bg-[var(--bg-input)]"
+          disabled={messaging}
+          onClick={handleMessageSeller}
+        >
+          {messaging ? "Opening..." : "Message"}
         </Button>
       </div>
     </div>

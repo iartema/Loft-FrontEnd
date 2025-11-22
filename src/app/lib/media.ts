@@ -34,7 +34,14 @@ export function isImageMediaType(value: unknown): boolean {
   return normalized.includes("image") || normalized.includes("photo");
 }
 
-type MediaEntry = { url?: string | null; Url?: string | null; mediaTyp?: unknown; MediaTyp?: unknown };
+type MediaEntry = {
+  url?: string | null;
+  Url?: string | null;
+  mediaId?: string | null;
+  MediaId?: string | null;
+  mediaTyp?: unknown;
+  MediaTyp?: unknown;
+};
 
 export function getFirstPublicImageUrl(mediaFiles?: MediaEntry[] | null): string {
   return getPublicImageUrls(mediaFiles)[0] ?? "";

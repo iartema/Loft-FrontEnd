@@ -99,6 +99,7 @@ export async function uploadAvatar(file: File) {
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "https://www.loft-shop.pp.ua/api";
 const USER_API_BASE = process.env.NEXT_PUBLIC_USER_API_BASE || "https://loft-shop.pp.ua/api";
 export const LOFT_PUBLIC_BASE = process.env.NEXT_PUBLIC_LOFT_PUBLIC_BASE || "https://www.loft-shop.pp.ua";
+import { getFirstPublicImageUrl, resolveMediaUrl } from "../../lib/media";
 
 export type CategoryDto = {
   id: number;
@@ -186,6 +187,14 @@ export type CartDto = {
   cartItems: CartItemDto[];
 };
 
+export type CartItemMeta = {
+  productName?: string | null;
+  price?: number | null;
+  imageUrl?: string | null;
+  categoryId?: number | null;
+  categoryName?: string | null;
+};
+
 export async function fetchCartByCustomer(customerId: number): Promise<CartDto | null> {
   const res = await fetch(`/api/cart/customer/${customerId}`, {
     cache: "no-store",
@@ -195,15 +204,69 @@ export async function fetchCartByCustomer(customerId: number): Promise<CartDto |
   return res.json();
 }
 
-export async function addCartItem(customerId: number, productId: number, quantity: number): Promise<CartDto> {
+export async function addCartItem(
+  customerId: number,
+  productId: number,
+  quantity: number,
+  meta?: CartItemMeta
+): Promise<CartDto> {
+  let payload: any = {
+    productId,
+    quantity,
+    productName: meta?.productName,
+    price: meta?.price,
+    imageUrl: meta?.imageUrl,
+    categoryId: meta?.categoryId,
+    categoryName: meta?.categoryName,
+  };
+
+  // If critical fields are missing, fetch product details to enrich
+  if (!payload.productName || payload.price === undefined || payload.imageUrl === undefined || payload.categoryId === undefined) {
+    try {
+      const product = await fetchProductById(productId);
+      payload = {
+        ...payload,
+        productName: payload.productName ?? product.name,
+        price: payload.price ?? product.price,
+        imageUrl: payload.imageUrl ?? resolveMediaUrl(getFirstPublicImageUrl(product.mediaFiles)),
+        categoryId: payload.categoryId ?? product.categoryId,
+      };
+    } catch {
+      // if fetch fails, proceed with what we have
+    }
+  }
+
+  try {
+    console.error("[lib/api addCartItem] request", {
+      customerId,
+      productId,
+      quantity,
+      meta,
+      payload,
+    });
+  } catch {
+    // ignore logging failures
+  }
+
   const res = await fetch(`/api/cart/${customerId}/items`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ productId, quantity }),
+    body: JSON.stringify(payload),
   });
+
+  try {
+    console.error("[lib/api addCartItem] response", {
+      status: res.status,
+      ok: res.ok,
+    });
+  } catch {
+    // ignore logging failures
+  }
+
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
+
 
 export async function updateCartItem(customerId: number, productId: number, quantity: number): Promise<CartItemDto> {
   const res = await fetch(`/api/cart/${customerId}/items`, {
@@ -267,9 +330,10 @@ export type ProductDto = {
 
 export type PublicUserDto = {
   id: number;
-  firstName: string;
-  lastName: string;
-  avatarUrl: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  avatarUrl?: string | null;
+  email?: string | null;
 };
 
 export async function fetchProductById(id: number): Promise<ProductDto> {
@@ -279,7 +343,13 @@ export async function fetchProductById(id: number): Promise<ProductDto> {
 }
 
 export async function fetchPublicUserById(id: number): Promise<PublicUserDto> {
-  const res = await fetch(`${USER_API_BASE}/users/${id}`, { cache: "no-store" });
+  const res = await fetch(`/api/users/${id}`, {
+    cache: "no-store",
+    credentials: "include",
+  });
+  if (res.status === 401) {
+    throw new ApiError("Unauthorized", 401);
+  }
   if (!res.ok) throw new Error(`Failed to fetch user ${id}`);
   return res.json();
 }
@@ -380,4 +450,81 @@ export async function addFavoriteProduct(productId: number) {
 
 export async function removeFavoriteProduct(productId: number) {
   return mutateFavorite(productId, "DELETE");
+}
+
+// --------- Chat ----------
+
+export type ChatMessageDto = {
+  id: number;
+  senderId: number;
+  recipientId: number;
+  messageText: string;
+  fileUrl?: string | null;
+  isRead: boolean;
+  sentAt: string;
+};
+
+export type ChatDto = {
+  chatId: number;
+  user1Id: number;
+  user2Id: number;
+  createdAt: string;
+  lastMessage?: ChatMessageDto | null;
+};
+
+export async function fetchMyChats(): Promise<ChatDto[]> {
+  const res = await fetch(`/api/chat/my-chats`, { cache: "no-store" });
+  if (res.status === 401) {
+    throw new ApiError("Unauthorized", 401);
+  }
+  if (!res.ok) {
+    throw new ApiError((await res.text()) || "Failed to load chats", res.status);
+  }
+  return res.json();
+}
+
+export async function fetchConversationWith(userId: number): Promise<ChatMessageDto[]> {
+  const res = await fetch(`/api/chat/conversation/${userId}`, { cache: "no-store" });
+  if (res.status === 401) {
+    throw new ApiError("Unauthorized", 401);
+  }
+  if (!res.ok) {
+    throw new ApiError((await res.text()) || "Failed to load conversation", res.status);
+  }
+  return res.json();
+}
+
+export async function sendChatMessage(recipientId: number, messageText: string, fileUrl?: string | null) {
+  const res = await fetch(`/api/chat/send`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ recipientId, messageText, fileUrl }),
+  });
+  if (res.status === 401) {
+    throw new ApiError("Unauthorized", 401);
+  }
+  if (!res.ok) {
+    throw new ApiError((await res.text()) || "Failed to send message", res.status);
+  }
+  return res.json() as Promise<ChatMessageDto>;
+}
+
+export async function markChatRead(otherUserId: number) {
+  const res = await fetch(`/api/chat/mark-read/${otherUserId}`, { method: "POST" });
+  if (res.status === 401) {
+    throw new ApiError("Unauthorized", 401);
+  }
+  if (!res.ok) {
+    throw new ApiError((await res.text()) || "Failed to mark read", res.status);
+  }
+}
+
+export async function deleteChat(chatId: number) {
+  const res = await fetch(`/api/chat/${chatId}`, { method: "DELETE" });
+  if (res.status === 401) {
+    throw new ApiError("Unauthorized", 401);
+  }
+  if (!res.ok && res.status !== 204) {
+    throw new ApiError((await res.text()) || "Failed to delete chat", res.status);
+  }
 }

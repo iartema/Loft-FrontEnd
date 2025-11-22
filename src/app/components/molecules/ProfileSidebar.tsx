@@ -40,8 +40,7 @@ export default function ProfileSidebar() {
     { label: "Order history", path: "/orderhistory" },
     { label: "My favorites", path: "/myfavorites" },
     { label: "My products", path: "/myproducts" },
-    { label: "Notifications", path: "/notifications" },
-    { label: "Ukrainian", path: null },
+    { label: "My chats", path: "/chat/all" },
   ];
 
   const accItems = [

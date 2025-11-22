@@ -44,6 +44,8 @@ function resolveFavoriteProductId(entry: any): number | null {
   return null;
 }
 
+type SortOption = "views" | "price_desc" | "price_asc";
+
 export default function SearchView() {
   const params = useSearchParams();
   const qParam = params.get("q") ?? "";
@@ -63,6 +65,7 @@ export default function SearchView() {
   const pageSize = 20;
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
   const [favoriteBusyIds, setFavoriteBusyIds] = useState<Set<number>>(new Set());
+  const [sortBy, setSortBy] = useState<SortOption>("views");
 
   useEffect(() => {
     setQuery(qParam);
@@ -228,10 +231,33 @@ export default function SearchView() {
       priceMax: priceMax ?? undefined,
       attributeFilters: attrs.length ? attrs : undefined,
     });
-    setItems(res || []);
-    collectAttributeSuggestions(res || []);
+    const trimmed = (query || "").trim().toLowerCase();
+    let filtered = trimmed
+      ? (res || []).filter((item) => item?.name?.toLowerCase().includes(trimmed))
+      : res || [];
+
+    filtered = [...filtered].sort((a, b) => {
+      if (sortBy === "views") {
+        return (b.viewCount ?? 0) - (a.viewCount ?? 0);
+      }
+      if (sortBy === "price_desc") {
+        return (b.price ?? 0) - (a.price ?? 0);
+      }
+      if (sortBy === "price_asc") {
+        return (a.price ?? 0) - (b.price ?? 0);
+      }
+      return 0;
+    });
+
+    setItems(
+      filtered.map((product) => ({
+        ...product,
+        isFavorite: favoriteIds.has(product.id),
+      }))
+    );
+    collectAttributeSuggestions(filtered);
     setPage(1);
-  }, [query, categoryId, priceMin, priceMax, attrFilters]);
+  }, [query, categoryId, priceMin, priceMax, attrFilters, sortBy, favoriteIds]);
 
   useEffect(() => {
     doSearch();
@@ -378,17 +404,32 @@ export default function SearchView() {
   return (
     <main className="min-h-screen w-full bg-[var(--bg-body)] text-white px-8 py-6 ml-5">
       {/* Active filters chips spanning full width, above sidebar/results */}
-      <ActiveFilterChips
-        query={query}
-        categoryName={categoryName}
-        priceMin={priceMin}
-        priceMax={priceMax}
-        onClearQuery={() => setQuery("")}
-        onClearCategory={() => setCategoryId(null)}
-        onClearMin={() => setPriceMin(null)}
-        onClearMax={() => setPriceMax(null)}
-        attributes={attributeChips}
-      />
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 flex-wrap">
+        <ActiveFilterChips
+          query={query}
+          categoryName={categoryName}
+          priceMin={priceMin}
+          priceMax={priceMax}
+          onClearQuery={() => setQuery("")}
+          onClearCategory={() => setCategoryId(null)}
+          onClearMin={() => setPriceMin(null)}
+          onClearMax={() => setPriceMax(null)}
+          attributes={attributeChips}
+          className={` ${almarai.className}`}
+        />
+        <div className={`${almarai.className} flex items-center gap-2 mr-12`}>
+          <span className="text-sm text-white/70">Sort by:</span>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortOption)}
+            className="bg-[var(--bg-filter-inner)] text-white px-3 py-2 rounded-[12px] border border-transparent focus:outline-none focus:border-[var(--divider)] text-md"
+          >
+            <option value="views">Views</option>
+            <option value="price_desc">Price (highest)</option>
+            <option value="price_asc">Price (lowest)</option>
+          </select>
+        </div>
+      </div>
 
       <div className="grid grid-cols-[240px_1fr] gap-6">
         {/* Filters (no local search field here as per spec) */}
@@ -522,7 +563,7 @@ export default function SearchView() {
             </FilterSection>
           )}
           {categoryId && ( <FilterSection title="Price">
-            <div className="flex items-center gap-2">
+        <div className={`flex items-center gap-2 ${almarai.className}`}>
               <input
                 type="number"
                 placeholder="Min"

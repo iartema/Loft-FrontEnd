@@ -10,6 +10,7 @@ import ProgressBar from "../molecules/ProgressBar";
 import CategoryModal from "../molecules/CategoryModal";
 import AttributeFields from "../molecules/AttributeFields";
 import ImageUploader, { type UploadPreview } from "../molecules/ImageUploader";
+import DigitalFileUploader from "../molecules/DigitalFileUploader";
 import { fetchCategories, fetchCategoryAttributes, fetchAttributeDetail } from "../lib/api";
 import type { CategoryDto, CategoryAttributeFullDto } from "../lib/api";
 import type { AttributeDef } from "../molecules/AttributeFields";
@@ -20,7 +21,7 @@ import {
 } from "../../lib/productTypes";
 import { extractMediaUrl } from "../../lib/media";
 
-type Currency = "USD" | "EUR" | "GBP";
+type Currency = "0" | "1"; // 0 -> UAH, 1 -> USD
 type AttributeValue = string | number | boolean | string[];
 
 type FlatCategory = {
@@ -34,6 +35,15 @@ type ProductPhoto = UploadPreview & {
   file?: File;
 };
 
+type DigitalAttachment = {
+  id: string;
+  name: string;
+  size?: number;
+  type?: string;
+  file?: File;
+  mediaId?: string;
+};
+
 interface ProductFormState {
   name: string;
   categoryId: number | null;
@@ -44,6 +54,7 @@ interface ProductFormState {
   currency: Currency;
   quantity: string;
   photos: ProductPhoto[];
+  digitalFiles: DigitalAttachment[];
 }
 
 export default function ProductForm() {
@@ -55,9 +66,10 @@ export default function ProductForm() {
     attributes: {},
     description: "",
     price: "",
-    currency: "USD",
+    currency: "0",
     quantity: "",
     photos: [],
+    digitalFiles: [],
   });
 
   const [attributeDefs, setAttributeDefs] = useState<AttributeDef[]>([]);
@@ -268,6 +280,7 @@ export default function ProductForm() {
         productType: type,
         categoryId: null,
         attributes: {},
+        digitalFiles: type === "digital" ? prev.digitalFiles : [],
       };
     });
     setAttributeDefs([]);
@@ -305,6 +318,31 @@ export default function ProductForm() {
     });
   };
 
+  const onAddDigitalFiles = (files: File[]) => {
+    if (!files.length) return;
+    const mapped: DigitalAttachment[] = files.map((file) => ({
+      id:
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      file,
+    }));
+    setForm((f) => ({
+      ...f,
+      digitalFiles: [...f.digitalFiles, ...mapped],
+    }));
+  };
+
+  const onRemoveDigitalFile = (id: string) => {
+    setForm((f) => ({
+      ...f,
+      digitalFiles: f.digitalFiles.filter((file) => file.id !== id),
+    }));
+  };
+
   const uploadMediaFile = async (file: File) => {
     const payload = new FormData();
     payload.append("file", file, file.name || "upload");
@@ -326,12 +364,45 @@ export default function ProductForm() {
     return url;
   };
 
+  const uploadPrivateFile = async (file: File) => {
+    const payload = new FormData();
+    payload.append("file", file, file.name || "upload");
+    payload.append("category", "digital");
+    payload.append("isPrivate", "true");
+    const res = await fetch("/api/media/upload", {
+      method: "POST",
+      body: payload,
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || "Failed to upload secure file.");
+    }
+    const data = await res.json();
+    const mediaId = data?.mediaId || data?.id || data?.Id;
+    if (!mediaId) {
+      throw new Error("Upload succeeded but no media id returned.");
+    }
+    return String(mediaId);
+  };
+
   const ensurePhotosUploaded = async (): Promise<ProductPhoto[]> => {
     const uploaded = await Promise.all(
       form.photos.map(async (photo) => {
         if (photo.remoteUrl || !photo.file) return photo;
         const url = await uploadMediaFile(photo.file);
         return { ...photo, remoteUrl: url, file: undefined };
+      })
+    );
+    return uploaded;
+  };
+
+  const ensureDigitalFilesUploaded = async (): Promise<DigitalAttachment[]> => {
+    if (!form.digitalFiles.length) return [];
+    const uploaded = await Promise.all(
+      form.digitalFiles.map(async (item) => {
+        if (item.mediaId || !item.file) return item;
+        const mediaId = await uploadPrivateFile(item.file);
+        return { ...item, mediaId, file: undefined };
       })
     );
     return uploaded;
@@ -372,6 +443,9 @@ export default function ProductForm() {
     if (form.quantity === "" || isNaN(Number(form.quantity))) return "Please enter a valid quantity.";
     if (Number(form.quantity) <= 0) return "Quantity must be greater than zero.";
     if (form.photos.length === 0) return "Please add at least one file.";
+    if (form.productType === "digital" && form.digitalFiles.length === 0) {
+      return "Please attach at least one secure file for digital products.";
+    }
     for (const id of requiredAttrIds) {
       const val = form.attributes[id];
       if (val === undefined || val === null) return "Please fill all required attributes.";
@@ -404,12 +478,21 @@ export default function ProductForm() {
           return String(value).trim() !== "";
         });
 
-      const uploadedPhotos = await ensurePhotosUploaded();
+      const [uploadedPhotos, uploadedDigital] = await Promise.all([
+        ensurePhotosUploaded(),
+        ensureDigitalFilesUploaded(),
+      ]);
       const missingUploads = uploadedPhotos.filter((photo) => !photo.remoteUrl);
       if (missingUploads.length) {
         throw new Error("Failed to upload one or more files. Please try again.");
       }
-      setForm((prev) => ({ ...prev, photos: uploadedPhotos }));
+      const missingProtected = uploadedDigital.filter((file) => !file.mediaId);
+      if (missingProtected.length) {
+        throw new Error("Failed to upload one or more secure files. Please try again.");
+      }
+      setForm((prev) => ({ ...prev, photos: uploadedPhotos, digitalFiles: uploadedDigital }));
+
+      const resolvedCurrency = form.currency === "1" ? "USD" : "UAH";
 
       const res = await fetch("/api/products/create", {
         method: "POST",
@@ -420,12 +503,19 @@ export default function ProductForm() {
           productType: form.productType,
           description: form.description || "",
           price: Number(form.price),
-          currency: form.currency,
+          currency: resolvedCurrency,
           quantity: Number(form.quantity),
           attributeValues,
-          mediaFiles: uploadedPhotos.map((photo) => ({
-            url: photo.remoteUrl ?? "",
-          })),
+          mediaFiles: [
+            ...uploadedPhotos.map((photo) => ({
+              url: photo.remoteUrl ?? "",
+              mediaTyp: "image",
+            })),
+            ...uploadedDigital.map((file) => ({
+              url: file.mediaId ?? "",
+              mediaTyp: "digital",
+            })),
+          ],
         }),
       });
       if (!res.ok) {
@@ -450,6 +540,10 @@ export default function ProductForm() {
       { filled: Boolean(form.description.trim()) },
     ];
 
+    if (form.productType === "digital") {
+      sections.push({ filled: form.digitalFiles.length > 0 });
+    }
+
     const attributeFilled = attributeDefs.filter((a) => {
       const val = form.attributes[a.ID];
       if (a.Type === "boolean") return val === true || val === false;
@@ -458,7 +552,7 @@ export default function ProductForm() {
     }).length;
 
     const attrTotal = attributeDefs.length;
-    const attrPercent = attrTotal ? attributeFilled / attrTotal : 0;
+    const attrPercent = attrTotal ? attributeFilled / attrTotal : 1;
 
     const corePercent = sections.reduce((acc, section) => acc + (section.filled ? 1 : 0), 0) / sections.length;
 
@@ -479,6 +573,19 @@ export default function ProductForm() {
               onAdd={onAddPhotos}
               onRemove={onRemovePhoto}
             />
+            {form.productType === "digital" && (
+              <div className="mt-8">
+                <label className="block mb-2 text-white text-lg">Digital files</label>
+                <p className="text-sm text-white/60 mb-3">
+                  Upload the files buyers will receive after purchase. They remain private.
+                </p>
+                <DigitalFileUploader
+                  files={form.digitalFiles}
+                  onAdd={onAddDigitalFiles}
+                  onRemove={onRemoveDigitalFile}
+                />
+              </div>
+            )}
           </div>
 
           <div className="col-span-12 md:col-span-5 flex flex-col w-[100%]">
@@ -558,14 +665,13 @@ export default function ProductForm() {
                     onChange={(e) =>
                       setForm((f) => ({
                         ...f,
-                        currency: e.target.value as Currency,
+                        currency: (e.target.value as Currency) || "0",
                       }))
                     }
                     className="appearance-none w-full bg-[var(--bg-input)] rounded-[15px] px-4 pr-12 py-2 text-[20px] text-white outline-none"
                   >
-                    <option value="USD">USD $</option>
-                    <option value="EUR">EUR €</option>
-                    <option value="GBP">GBP £</option>
+                    <option value="0">UAH ₴</option>
+                    <option value="1">USD $</option>
                   </select>
                   <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-white opacity-70">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -616,9 +722,10 @@ export default function ProductForm() {
                   attributes: {},
                   description: "",
                   price: "",
-                  currency: "USD",
+                  currency: "0",
                   quantity: "",
                   photos: [],
+                  digitalFiles: [],
                 });
               }}
             >

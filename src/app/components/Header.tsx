@@ -5,10 +5,13 @@ import Input from "./atoms/Input";
 import { usePathname, useRouter } from "next/navigation";
 import React from "react";
 import Link from "next/link";
+import { fetchMyChats, ApiError } from "./lib/api";
+import { getCurrentUserCached } from "./lib/userCache";
 
 export default function Header() {
   const pathname = usePathname();
   const router = useRouter();
+  const [hasUnread, setHasUnread] = React.useState(false);
   // theme: default dark; when toggled, set data-theme="light" on <html>
   React.useEffect(() => {
     try {
@@ -31,15 +34,43 @@ export default function Header() {
       }
     } catch {}
   }, []);
-  const isLogoOnly = pathname?.startsWith("/register") || pathname?.startsWith("/login");
+  const isLogoOnly =
+    pathname?.startsWith("/register") ||
+    pathname?.startsWith("/login") ||
+    pathname?.startsWith("/moderation/login");
   const isProfileArea = [
     "/profile",
     "/myproducts",
     "/myfavorites",
     "/orderhistory",
     "/mycart",
+    "/chat"
   ].some((p) => pathname?.startsWith(p));
   const iconClass = "header-icon h-5 w-5 object-contain";
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const me = await getCurrentUserCached();
+        const chats = await fetchMyChats();
+        const unread = chats.some(
+          (c) => c.lastMessage && c.lastMessage.recipientId === me?.id && !c.lastMessage.isRead
+        );
+        if (!cancelled) setHasUnread(unread);
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 401) {
+          if (!cancelled) setHasUnread(false);
+        }
+      }
+    };
+    load();
+    const interval = setInterval(load, 15000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
 
   if (isLogoOnly) {
     return (
@@ -87,9 +118,23 @@ export default function Header() {
           <button title="Favorites" onClick={() => router.push("/myfavorites")} className="cursor-pointer">
             <Image src="/icon-park-solid_like.svg" alt="Favorites" width={20} height={20}  className={iconClass} />
           </button>
-          {/* notifications -> /orderhistory (placeholder) */}
-          <button title="Notifications" onClick={() => router.push("/orderhistory")} className="relative cursor-pointer">
-            <Image src="/Group.svg" alt="Notifications" width={20} height={20}  className={iconClass} />
+          {/* notifications -> chat/all */}
+          <button
+            title="Messages"
+            onClick={() => router.push("/chat/all")}
+            className="relative cursor-pointer"
+          >
+            <Image
+              src="/Group.svg"
+              alt="Messages"
+              width={15}
+              height={15}
+              className={`${iconClass} w-3 h-3`} // shrinks it
+            />
+
+            {hasUnread && (
+              <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500" />
+            )}
           </button>
           {/* cart -> /mycart */}
           <button title="Cart" onClick={() => router.push("/mycart")} className="cursor-pointer">

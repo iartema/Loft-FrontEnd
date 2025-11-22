@@ -3,19 +3,20 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import InputField from "../../components/molecules/InputField";
-import Button from "../../components/atoms/Button";
+import ButtonAuth from "../../components/atoms/ButtonAuth";
+import OverlayPortal from "../../components/OverlayPortal";
 
 export default function ModerationLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError(null);
+    setError("");
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
@@ -40,40 +41,48 @@ export default function ModerationLoginPage() {
   };
 
   return (
-    <div className="min-h-[calc(100dvh-80px)] flex items-center justify-center bg-[var(--bg-body)] text-white px-4">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-md bg-[var(--bg-elev-1)] rounded-3xl border border-[var(--border)] p-8 space-y-6"
-      >
-        <h1 className="text-3xl font-semibold text-center">Moderation Login</h1>
-        <InputField
-          label="Email"
-          type="email"
-          placeholder="moderator@example.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          shape="office"
-        />
-        <InputField
-          label="Password"
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          shape="office"
-        />
-        {error && <p className="text-red-400 text-sm">{error}</p>}
-        <Button
-          type="submit"
-          variant="submit"
-          disabled={loading}
-          className="w-full"
-        >
-          {loading ? "Signing in..." : "Sign in"}
-        </Button>
-      </form>
-    </div>
+    <main className="relative flex min-h-screen bg-[var(--bg-body)] text-white overflow-hidden">
+      <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+      <OverlayPortal>
+        <div className="pointer-events-none fixed inset-0 z-50 flex justify-end items-start select-none">
+          <img
+            src="/gradient.svg"
+            alt="Decorative art"
+            className="relative right-[-5%] top-[0%] w-[60%] max-w-none"
+          />
+        </div>
+      </OverlayPortal>
+
+      <section className="flex flex-col justify-start px-12 w-full md:w-1/2 mt-35 z-10">
+        <div className="max-w-md ml-0 md:ml-12 w-full">
+          <h2 className="text-5xl mb-8 text-center font-semibold">Let&apos;s work, buddy!</h2>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <InputField
+              label="Enter your email"
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            <InputField
+              label="Enter your password"
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            {error && <p className="text-red-500 text-sm">{error}</p>}
+            <ButtonAuth
+              type="submit"
+              label={loading ? "Logging in..." : "Login"}
+              disabled={loading}
+            />
+          </form>
+        </div>
+      </section>
+    </main>
   );
 }

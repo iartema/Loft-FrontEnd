@@ -16,7 +16,7 @@ type Incoming = {
   currency: string; // USD/EUR/UAH/GBP
   quantity?: number;
   attributeValues?: { attributeId: number; value: string | number | boolean | string[] | null }[];
-  mediaFiles?: { url: string; mediaTyp?: string }[];
+  mediaFiles?: { url?: string; mediaTyp?: string }[];
 };
 
 export async function POST(req: NextRequest) {
@@ -60,10 +60,18 @@ export async function POST(req: NextRequest) {
     }
 
     if (Array.isArray(body.mediaFiles) && body.mediaFiles.length) {
-      dto.MediaFiles = body.mediaFiles.map((m) => ({
-        Url: m.url,
-        MediaTyp: 0, // 0 = Image
-      }));
+      const mapMediaType = (value?: string) => {
+        if (!value) return 0;
+        const normalized = String(value).toLowerCase();
+        if (normalized.includes("digital")) return 1;
+        return 0;
+      };
+      dto.MediaFiles = body.mediaFiles
+        .filter((m) => typeof m.url === "string" && m.url.trim().length > 0)
+        .map((m) => ({
+          Url: String(m.url),
+          MediaTyp: mapMediaType(m.mediaTyp),
+        }));
     }
 
     // ✅ FIXED: send dto directly, not wrapped in { productDto: dto }
