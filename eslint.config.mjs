@@ -21,6 +21,7 @@ const eslintConfig = [
     ],
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
+      "@next/next/no-async-client-component": "off"
     },
   },
 ];
