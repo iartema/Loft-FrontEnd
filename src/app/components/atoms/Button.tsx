@@ -12,8 +12,8 @@ const ysabeau_office = Ysabeau_Office({
   weight: ["700", "800"],
 });
 
-// Added "primary"
-type ButtonVariant = "default" | "submit" | "card" | "primary";
+// Added google + primary
+type ButtonVariant = "default" | "submit" | "card" | "primary" | "google";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   label?: string;
@@ -38,6 +38,8 @@ export default function Button({
       ? `${almarai.className} bg-white text-black rounded-[25px] hover:bg-gray-300 text-base font-semibold py-2`
       : variant === "primary"
       ? `${almarai.className} font-extrabold bg-[var(--brand)] hover:bg-[#ffde7a] text-black px-5 py-3`
+      : variant === "google"
+      ? `${almarai.className} bg-white border border-gray-300 text-black font-semibold px-5 py-3 hover:bg-gray-200`
       : `${almarai.className} font-semibold bg-[var(--bg-elev-3)] hover:bg-[var(--bg-hover)] text-white px-5 py-3`;
 
   return (
