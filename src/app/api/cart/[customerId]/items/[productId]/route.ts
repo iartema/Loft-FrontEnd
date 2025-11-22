@@ -9,6 +9,7 @@ export async function DELETE(
   context: { params: Promise<{ customerId: string; productId: string }> }
 ) {
   try {
+    // Must await params in Next.js 15
     const { customerId, productId } = await context.params;
 
     const jar = await cookies();
@@ -17,12 +18,15 @@ export async function DELETE(
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const res = await fetch(`${API_BASE}/carts/${customerId}/items/${productId}`, {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const res = await fetch(
+      `${API_BASE}/carts/${customerId}/items/${productId}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
 
     if (!res.ok && res.status !== 404) {
       const text = await res.text();
