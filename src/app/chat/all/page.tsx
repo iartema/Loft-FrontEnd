@@ -22,7 +22,7 @@ type EnrichedChat = ChatDto & {
   unread: boolean;
 };
 
-const FILTERS = [];
+const FILTERS: string[] = [];
 
 export default function ChatAllPage() {
   const router = useRouter();
