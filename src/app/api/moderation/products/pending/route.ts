@@ -6,9 +6,11 @@ const MOD_API_BASE =
   "https://www.loft-shop.pp.ua/api/moderation";
 
 export async function GET() {
-  const jar = cookies();
+  const jar = await cookies();   // MUST await once
+
   const token = jar.get("auth_token")?.value;
   const userRaw = jar.get("auth_user")?.value;
+
   if (!token || !userRaw) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
@@ -37,8 +39,10 @@ export async function GET() {
       },
       cache: "no-store",
     });
+
     const raw = await res.text();
-    let data: any = null;
+    let data: any;
+
     try {
       data = raw ? JSON.parse(raw) : [];
     } catch {
@@ -47,12 +51,14 @@ export async function GET() {
         { status: 502 }
       );
     }
+
     if (!res.ok) {
       return NextResponse.json(
         { message: "Backend returned error", data },
         { status: res.status }
       );
     }
+
     return NextResponse.json(data, { status: 200 });
   } catch (err: any) {
     return NextResponse.json(
