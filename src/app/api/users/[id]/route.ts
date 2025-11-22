@@ -5,9 +5,9 @@ const BASE = "https://www.loft-shop.pp.ua";
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: Promise<{ id?: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
+  const { id } = await context.params;
   if (!id) {
     return NextResponse.json({ message: "User id is required" }, { status: 400 });
   }

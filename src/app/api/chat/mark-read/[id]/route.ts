@@ -5,11 +5,15 @@ const BASE = "https://www.loft-shop.pp.ua";
 
 export async function POST(
   _req: NextRequest,
-  { params }: { params: Promise<{ id?: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
+  const { id } = await context.params;
+
   if (!id) {
-    return NextResponse.json({ message: "Conversation id is required" }, { status: 400 });
+    return NextResponse.json(
+      { message: "Conversation id is required" },
+      { status: 400 }
+    );
   }
 
   const jar = await cookies();
@@ -18,12 +22,15 @@ export async function POST(
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  const res = await fetch(`${BASE}/api/chat/mark-read/${encodeURIComponent(id)}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const res = await fetch(
+    `${BASE}/api/chat/mark-read/${encodeURIComponent(id)}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
 
   if (!res.ok) {
     const text = await res.text();

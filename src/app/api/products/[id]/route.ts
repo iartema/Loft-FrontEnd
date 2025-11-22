@@ -5,9 +5,9 @@ const BASE = "https://www.loft-shop.pp.ua";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ id?: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
+  const { id } = await context.params;
   if (!id) {
     return NextResponse.json({ message: "Product id is required" }, { status: 400 });
   }

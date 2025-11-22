@@ -166,36 +166,22 @@ async function forward(
             ...normalizedItem,
             productName:
               hint?.ProductName ??
-              hint?.productName ??
-              hint?.Name ??
-              hint?.name ??
               normalizedItem.productName ??
               null,
             price:
               hint?.Price ??
-              hint?.price ??
-              hint?.Cost ??
-              hint?.cost ??
               normalizedItem.price ??
               null,
             imageUrl:
               hint?.ImageUrl ??
-              hint?.imageUrl ??
-              hint?.ImageURL ??
-              hint?.imageURL ??
               normalizedItem.imageUrl ??
               null,
             categoryId:
               hint?.CategoryId ??
-              hint?.categoryId ??
-              hint?.CategoryID ??
               normalizedItem.categoryId ??
               null,
             categoryName:
               hint?.CategoryName ??
-              hint?.categoryName ??
-              hint?.Name ??
-              hint?.name ??
               normalizedItem.categoryName ??
               null,
           };

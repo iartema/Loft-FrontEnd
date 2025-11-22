@@ -7,9 +7,11 @@ const MOD_API_BASE =
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const jar = cookies();
+  const { id } = await context.params;
+
+  const jar = await cookies();
   const token = jar.get("auth_token")?.value;
   const userRaw = jar.get("auth_user")?.value;
   if (!token || !userRaw) {
@@ -40,8 +42,8 @@ export async function PUT(
     );
   }
 
-  const id = Number(params.id);
-  if (!id) {
+  const numericId = Number(id);
+  if (!numericId) {
     return NextResponse.json(
       { message: "Invalid product id" },
       { status: 400 }
@@ -50,7 +52,7 @@ export async function PUT(
 
   try {
     const res = await fetch(
-      `${MOD_API_BASE}/products/${id}/status?status=${encodeURIComponent(
+      `${MOD_API_BASE}/products/${numericId}/status?status=${encodeURIComponent(
         statusParam
       )}`,
       {

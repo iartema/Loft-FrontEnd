@@ -3,14 +3,19 @@ import { cookies } from "next/headers";
 
 const BASE = "https://www.loft-shop.pp.ua";
 
-export async function DELETE(_req: NextRequest, context: { params?: { chatId?: string } }) {
-  const chatId = context.params?.chatId;
+export async function DELETE(
+  _req: NextRequest,
+  context: { params: Promise<{ chatId: string }> }
+) {
+  const { chatId } = await context.params;
+
   if (!chatId) {
     return NextResponse.json({ message: "Chat id is required" }, { status: 400 });
   }
 
   const jar = await cookies();
   const token = jar.get("auth_token")?.value;
+
   if (!token) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }

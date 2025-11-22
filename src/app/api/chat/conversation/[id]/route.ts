@@ -5,11 +5,15 @@ const BASE = "https://www.loft-shop.pp.ua";
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: Promise<{ id?: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
+  const { id } = await context.params;
+
   if (!id) {
-    return NextResponse.json({ message: "Conversation id is required" }, { status: 400 });
+    return NextResponse.json(
+      { message: "Conversation id is required" },
+      { status: 400 }
+    );
   }
 
   const jar = await cookies();
@@ -18,16 +22,20 @@ export async function GET(
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  const res = await fetch(`${BASE}/api/chat/conversation/${encodeURIComponent(id)}`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-    cache: "no-store",
-  });
+  const res = await fetch(
+    `${BASE}/api/chat/conversation/${encodeURIComponent(id)}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    }
+  );
 
   const text = await res.text();
   let data: unknown;
+
   try {
     data = text ? JSON.parse(text) : {};
   } catch {

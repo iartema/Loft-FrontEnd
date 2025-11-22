@@ -46,14 +46,16 @@ async function forwardFavorite(productId: string, method: "POST" | "DELETE") {
 
 export async function POST(
   _req: NextRequest,
-  { params }: { params: { productId: string } }
+  context: { params: Promise<{ productId: string }> }
 ) {
-  return forwardFavorite(params.productId, "POST");
+  const { productId } = await context.params;
+  return forwardFavorite(productId, "POST");
 }
 
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: { productId: string } }
+  context: { params: Promise<{ productId: string }> }
 ) {
-  return forwardFavorite(params.productId, "DELETE");
+  const { productId } = await context.params;
+  return forwardFavorite(productId, "DELETE");
 }
