@@ -215,8 +215,9 @@ export default function SearchView() {
       if (value == null) return [];
       if (typeof value === "string" && value.trim() === "") return [];
       if (Array.isArray(value)) {
-        if (value.length === 0) return [];
-        return [{ attributeId: Number(id), values: value.map(String) }];
+        const values = value.map(String).filter(Boolean);
+        if (values.length === 0) return [];
+        return [{ attributeId: Number(id), value: values.join("|") }];
       }
       if (typeof value === "boolean") {
         return [{ attributeId: Number(id), value: String(value) }];
@@ -227,8 +228,8 @@ export default function SearchView() {
     const res = await searchProductsExternal({
       search: query || undefined,
       categoryId: categoryId ?? undefined,
-      priceMin: priceMin ?? undefined,
-      priceMax: priceMax ?? undefined,
+      minPrice: priceMin ?? undefined,
+      maxPrice: priceMax ?? undefined,
       attributeFilters: attrs.length ? attrs : undefined,
     });
     const trimmed = (query || "").trim().toLowerCase();
@@ -607,7 +608,7 @@ export default function SearchView() {
                 name={p.name}
                 productId={p.id}
                 description={`${p.viewCount ?? 0} views`}
-                price={`${['₴', '$'][p.currency]} ${p.price}`}
+                price={`${['₴', '$'][Number(p.currency)]} ${p.price}`}
                 image={getFirstPublicImageUrl(p.mediaFiles) || "/default-product.jpg"}
                 buttonLabel="View"
                 onClick={() => router.push(`/product/${p.id}`)}

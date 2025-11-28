@@ -97,7 +97,6 @@ export async function uploadAvatar(file: File) {
 // --------- External Product API ---------
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "https://www.loft-shop.pp.ua/api";
-const USER_API_BASE = process.env.NEXT_PUBLIC_USER_API_BASE || "https://loft-shop.pp.ua/api";
 export const LOFT_PUBLIC_BASE = process.env.NEXT_PUBLIC_LOFT_PUBLIC_BASE || "https://www.loft-shop.pp.ua";
 import { getFirstPublicImageUrl, resolveMediaUrl } from "../../lib/media";
 
@@ -370,6 +369,7 @@ export type ProductAttributeFilterDto = {
 
 export type ProductFilterDto = {
   categoryId?: number;
+  search?: string;
   sellerId?: number;
   minPrice?: number;
   maxPrice?: number;
@@ -382,6 +382,7 @@ export async function searchProductsExternal(filter: ProductFilterDto): Promise<
   // Backend expects PascalCase keys matching ProductFilterDto
   const payload: any = {
     CategoryId: filter.categoryId ?? undefined,
+    Search: filter.search ?? undefined,
     SellerId: filter.sellerId ?? undefined,
     MinPrice: filter.minPrice ?? undefined,
     MaxPrice: filter.maxPrice ?? undefined,

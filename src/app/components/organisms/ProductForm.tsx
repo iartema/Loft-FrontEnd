@@ -213,12 +213,10 @@ export default function ProductForm() {
               ...enriched,
               attributeId:
                 pickField<number>(raw, "attributeId", "AttributeId", "id", "Id") ??
-                fallback?.id ??
-                fallback?.attributeId,
+                fallback?.id,
               attributeName:
                 pickField<string>(raw, "attributeName", "AttributeName", "name", "Name") ??
-                fallback?.name ??
-                fallback?.attributeName,
+                fallback?.name,
               type: enriched.type ?? fallback?.type ?? "",
               typeDisplayName: enriched.typeDisplayName ?? fallback?.typeDisplayName ?? "",
               optionsJson: enriched.optionsJson ?? fallback?.optionsJson ?? null,

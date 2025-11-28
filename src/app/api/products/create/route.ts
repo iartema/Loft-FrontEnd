@@ -1,22 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import {
-  normalizeProductType,
-  productTypeToEnumValue,
-} from "../../../lib/productTypes";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "https://www.loft-shop.pp.ua/api";
 
 type Incoming = {
   name: string;
   categoryId: number;
-  productType?: unknown;
   description?: string;
   price: number;
   currency: string; // USD/EUR/UAH/GBP
   quantity?: number;
   attributeValues?: { attributeId: number; value: string | number | boolean | string[] | null }[];
-  mediaFiles?: { url?: string; mediaTyp?: string }[];
+  mediaFiles?: { url: string; mediaTyp?: string }[];
 };
 
 export async function POST(req: NextRequest) {
@@ -28,7 +23,6 @@ export async function POST(req: NextRequest) {
     }
 
     const body = (await req.json()) as Incoming;
-    const normalizedType = normalizeProductType(body.productType);
     if (!body || !body.name || !body.categoryId || body.price == null) {
       return NextResponse.json({ message: "Missing required fields" }, { status: 400 });
     }
@@ -41,7 +35,7 @@ export async function POST(req: NextRequest) {
       CategoryId: Number(body.categoryId),
       Name: String(body.name),
       Description: body.description ?? "",
-      Type: productTypeToEnumValue(normalizedType),
+      Type: 0, // Physical
       Price: Number(body.price),
       Currency: currencyMap[(body.currency || "USD").toUpperCase()] ?? 0,
       Quantity: Number(body.quantity ?? 1),
@@ -60,18 +54,10 @@ export async function POST(req: NextRequest) {
     }
 
     if (Array.isArray(body.mediaFiles) && body.mediaFiles.length) {
-      const mapMediaType = (value?: string) => {
-        if (!value) return 0;
-        const normalized = String(value).toLowerCase();
-        if (normalized.includes("digital")) return 1;
-        return 0;
-      };
-      dto.MediaFiles = body.mediaFiles
-        .filter((m) => typeof m.url === "string" && m.url.trim().length > 0)
-        .map((m) => ({
-          Url: String(m.url),
-          MediaTyp: mapMediaType(m.mediaTyp),
-        }));
+      dto.MediaFiles = body.mediaFiles.map((m) => ({
+        Url: m.url,
+        MediaTyp: 0, // 0 = Image
+      }));
     }
 
     // ✅ FIXED: send dto directly, not wrapped in { productDto: dto }

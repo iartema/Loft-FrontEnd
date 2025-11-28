@@ -15,7 +15,7 @@ const STATUS_FILTERS: StatusFilter[] = ["All", "Active", "Rejected", "Under revi
 
 const statusMatchesFilter = (status: string | null | undefined, filter: StatusFilter) => {
   if (filter === "All") return true;
-  const normalized = ["rejected", "active", "pending"][status];
+  const normalized = status;
   if (!normalized) return false;
   if (filter === "Active") {
     return normalized === "active";
@@ -30,12 +30,12 @@ const statusMatchesFilter = (status: string | null | undefined, filter: StatusFi
 };
 
 const formatPrice = (price?: number | null, currency?: string | null) => {
-  if (price === null || price === undefined) return "—";
-  const curr = ['₴', '$'][currency];
+  if (price === null || price === undefined) return "-";
+  const curr = currency ?? "";
   return `${price.toLocaleString(undefined, {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
-  })} ${curr}`;
+  })} ${curr}`.trim();
 };
 
 export default function MyProducts() {
