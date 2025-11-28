@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -430,7 +429,7 @@ export default function ProductForm() {
         : undefined;
     }
     return path.join(" › ");
-  }, [form.categoryId, allCategories]);
+  }, [form.productType, form.categoryId, allCategories]);
 
   const validate = (): string | null => {
     if (!form.name.trim()) return "Please enter product name.";

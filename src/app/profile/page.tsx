@@ -6,6 +6,7 @@ import ProfileSidebar from "../components/molecules/ProfileSidebar";
 import ProfileForm from "../components/organisms/ProfileForm";
 import { getCurrentUserCached } from "../components/lib/userCache";
 
+// this is profile page uh yeah commit please commit it
 export default function ProfilePage() {
   const router = useRouter();
   const [authorized, setAuthorized] = useState<boolean | null>(null);
