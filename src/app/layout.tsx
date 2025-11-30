@@ -7,8 +7,8 @@ import Footer from "./components/Footer";
 const ysabeau = Ysabeau_Infant({ subsets: ["latin"], weight: ["400", "600"] });
 
 export const metadata = {
-  title: "Loft | Register",
-  description: "Create your account on Loft",
+  title: "Loft",
+  description: "Sell and buy easily and safely!",
 };
 
 export default function RootLayout({

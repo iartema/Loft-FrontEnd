@@ -11,6 +11,7 @@ import {
   updateCartItem,
   removeCartItem,
 } from "../lib/api";
+import { MEDIA_PUBLIC_BASE } from "../../lib/media";
 import { getCurrentUserCached } from "../lib/userCache";
 
 export default function CartView() {
@@ -228,7 +229,10 @@ function CartRow({
   onRemove: () => void;
   disabled: boolean;
 }) {
-  const imgSrc = item.imageUrl ? `/api/proxy/image?url=${encodeURIComponent(item.imageUrl)}` : "/default-product.jpg";
+  const imgSrc =
+    item.imageUrl && (item.imageUrl.startsWith("/media") || item.imageUrl.startsWith("media/"))
+      ? `${MEDIA_PUBLIC_BASE}${item.imageUrl.startsWith("/") ? "" : "/"}${item.imageUrl}`
+      : item.imageUrl || "/default-product.jpg";
   const priceLabel = `${item.price?.toFixed(2) ?? "0.00"}$`;
   return (
     <div className="px-1 py-4 flex items-center gap-4">

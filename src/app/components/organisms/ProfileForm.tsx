@@ -3,7 +3,13 @@ import React, { useEffect, useRef, useState } from "react";
 import Title from "../atoms/Title";
 import InputField from "../molecules/InputField";
 import ProfileHeader from "../molecules/ProfileHeader";
-import { updateMyProfile, uploadAvatar } from "../lib/api";
+import {
+  updateMyProfile,
+  uploadAvatar,
+  fetchMyDefaultShippingAddress,
+  createShippingAddress,
+  updateShippingAddress,
+} from "../lib/api";
 import { getCurrentUserCached, setCurrentUserCached } from "../lib/userCache";
 import { resolveMediaUrl } from "../../lib/media";
 
@@ -62,6 +68,7 @@ export default function ProfileForm() {
   const [avatarValue, setAvatarValue] = useState<string | null>(null);
   const [avatarRemoteUrl, setAvatarRemoteUrl] = useState<string | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [shippingAddressId, setShippingAddressId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -87,6 +94,23 @@ export default function ProfileForm() {
             phone: (me.phone as string) || "",
             avatar: resolvedAvatar || prev.avatar,
           }));
+        }
+        try {
+          const address = await fetchMyDefaultShippingAddress();
+          if (address && mounted) {
+            setShippingAddressId(address.id);
+            setFormData((prev) => ({
+              ...prev,
+              postalcode: address.postalCode || "",
+              city: address.city || "",
+              country: address.country || "",
+              address: address.address || "",
+            }));
+          }
+        } catch (addrErr: any) {
+          if (mounted && addrErr?.status !== 401) {
+            setError(addrErr?.message || "Failed to load shipping address");
+          }
         }
       } catch (e: any) {
         if (mounted) setError(e?.message || "Failed to load profile");
@@ -165,6 +189,27 @@ export default function ProfileForm() {
         phone: formData.phone || null,
         avatarUrl: avatarRemoteUrl || null,
       }));
+      const trimmedAddress = {
+        address: (formData.address || "").trim(),
+        city: (formData.city || "").trim(),
+        postalCode: (formData.postalcode || "").trim(),
+        country: (formData.country || "").trim(),
+      };
+      const hasAddressInput = Object.values(trimmedAddress).some((val) => val.length > 0);
+      if (hasAddressInput) {
+        const payload = {
+          ...trimmedAddress,
+          recipientName: [formData.name, formData.surname].filter(Boolean).join(" ").trim() || null,
+          isDefault: true,
+        };
+        if (shippingAddressId) {
+          const updated = await updateShippingAddress(shippingAddressId, payload);
+          setShippingAddressId(updated.id);
+        } else {
+          const created = await createShippingAddress(payload);
+          setShippingAddressId(created.id);
+        }
+      }
     } catch (e: any) {
       setError(e?.message || "Failed to update profile");
     } finally {

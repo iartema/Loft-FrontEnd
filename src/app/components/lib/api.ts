@@ -94,6 +94,90 @@ export async function uploadAvatar(file: File) {
   return await res.json();
 }
 
+// --------- Shipping addresses ----------
+export type ShippingAddressDto = {
+  id: number;
+  customerId: number;
+  address: string;
+  city: string;
+  postalCode: string;
+  country: string;
+  recipientName?: string | null;
+  isDefault?: boolean;
+  createdAt?: string | null;
+};
+
+export type ShippingAddressCreatePayload = {
+  address: string;
+  city: string;
+  postalCode: string;
+  country: string;
+  recipientName?: string | null;
+  isDefault?: boolean;
+};
+
+export type ShippingAddressUpdatePayload = ShippingAddressCreatePayload & {
+  isDefault?: boolean | null;
+};
+
+const normalizeShippingAddress = (data: any): ShippingAddressDto => ({
+  id: Number(data?.id ?? data?.Id ?? 0),
+  customerId: Number(data?.customerId ?? data?.CustomerId ?? 0),
+  address: data?.address ?? data?.Address ?? "",
+  city: data?.city ?? data?.City ?? "",
+  postalCode: data?.postalCode ?? data?.PostalCode ?? "",
+  country: data?.country ?? data?.Country ?? "",
+  recipientName: data?.recipientName ?? data?.RecipientName ?? null,
+  isDefault: data?.isDefault ?? data?.IsDefault ?? false,
+  createdAt: data?.createdAt ?? data?.CreatedAt ?? null,
+});
+
+export async function fetchMyDefaultShippingAddress(): Promise<ShippingAddressDto | null> {
+  const res = await fetch(`/api/shipping-addresses/default`, { cache: "no-store" });
+  if (res.status === 404) return null;
+  if (res.status === 401) {
+    throw new ApiError("Unauthorized", 401);
+  }
+  if (!res.ok) {
+    throw new Error((await res.text()) || "Failed to load shipping address");
+  }
+  const data = await res.json();
+  return normalizeShippingAddress(data);
+}
+
+export async function createShippingAddress(payload: ShippingAddressCreatePayload): Promise<ShippingAddressDto> {
+  const res = await fetch(`/api/shipping-addresses`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (res.status === 401) {
+    throw new ApiError("Unauthorized", 401);
+  }
+  if (!res.ok) {
+    throw new Error((await res.text()) || "Failed to create shipping address");
+  }
+  return normalizeShippingAddress(await res.json());
+}
+
+export async function updateShippingAddress(
+  id: number,
+  payload: ShippingAddressUpdatePayload
+): Promise<ShippingAddressDto> {
+  const res = await fetch(`/api/shipping-addresses/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (res.status === 401) {
+    throw new ApiError("Unauthorized", 401);
+  }
+  if (!res.ok) {
+    throw new Error((await res.text()) || "Failed to update shipping address");
+  }
+  return normalizeShippingAddress(await res.json());
+}
+
 // --------- External Product API ---------
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "https://www.loft-shop.pp.ua/api";
@@ -335,9 +419,100 @@ export type PublicUserDto = {
   email?: string | null;
 };
 
+// --------- Orders & Payments ----------
+
+export type OrderStatus = "PENDING" | "PAID" | "SHIPPED" | "CANCELLED" | string;
+export type PaymentMethod = { value: number; name: string };
+export type OrderItemDto = {
+  id: number;
+  orderId: number;
+  productId: number;
+  quantity: number;
+  price: number;
+  productName?: string | null;
+  imageUrl?: string | null;
+};
+
+export type OrderDto = {
+  id: number;
+  customerId: number;
+  orderDate: string;
+  status: OrderStatus;
+  totalAmount: number;
+  updatedDate?: string | null;
+  customerName?: string | null;
+  customerEmail?: string | null;
+  shippingAddressId?: number | null;
+  shippingAddress?: string | null;
+  shippingCity?: string | null;
+  shippingPostalCode?: string | null;
+  shippingCountry?: string | null;
+  shippingRecipientName?: string | null;
+  orderItems?: OrderItemDto[] | null;
+};
+
+export async function fetchPaymentMethods(): Promise<PaymentMethod[]> {
+  const res = await fetch(`/api/payments/methods`, { cache: "no-store" });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function createOrderFromCart(customerId: number): Promise<{ order: OrderDto; paymentMethods: PaymentMethod[] }> {
+  const res = await fetch(`/api/orders/checkout/${customerId}`, { method: "POST" });
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : null;
+  if (!res.ok) throw new Error((data && data.message) || text || "Failed to create order");
+  const order = data?.Order ?? data?.order ?? data;
+  const methods = data?.PaymentMethods ?? data?.paymentMethods ?? [];
+  return { order, paymentMethods: methods };
+}
+
+export async function fetchOrdersByCustomer(customerId: number): Promise<OrderDto[]> {
+  const res = await fetch(`/api/orders/customer/${customerId}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function fetchOrderById(id: number): Promise<OrderDto> {
+  const res = await fetch(`/api/orders/${id}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export type CreatePaymentPayload = {
+  orderId: number;
+  amount: number;
+  method: number;
+};
+
+export async function createPayment(payload: CreatePaymentPayload) {
+  const res = await fetch(`/api/payments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function confirmPayment(paymentId: number) {
+  const res = await fetch(`/api/payments/${paymentId}/confirm`, { method: "POST" });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
 export async function fetchProductById(id: number): Promise<ProductDto> {
   const res = await fetch(`/api/products/${id}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`Failed to fetch product ${id}`);
+  return res.json();
+}
+
+export async function fetchMyProducts(): Promise<ProductDto[]> {
+  const res = await fetch(`/api/products/myproducts`, { cache: "no-store" });
+  if (res.status === 401) {
+    throw new ApiError("Unauthorized", 401);
+  }
+  if (!res.ok) throw new Error((await res.text()) || "Failed to load my products");
   return res.json();
 }
 
@@ -378,10 +553,19 @@ export type ProductFilterDto = {
   pageSize?: number;
 };
 
-export async function searchProductsExternal(filter: ProductFilterDto): Promise<ProductDto[]> {
+export type SearchProductsResponse = {
+  items: ProductDto[];
+  totalCount: number;
+  totalPages: number;
+  page: number;
+  pageSize: number;
+};
+
+export async function searchProductsExternal(filter: ProductFilterDto): Promise<SearchProductsResponse> {
   // Backend expects PascalCase keys matching ProductFilterDto
   const payload: any = {
     CategoryId: filter.categoryId ?? undefined,
+    // Search is kept for backward compatibility; ignored by newer backend if unsupported
     Search: filter.search ?? undefined,
     SellerId: filter.sellerId ?? undefined,
     MinPrice: filter.minPrice ?? undefined,
@@ -403,9 +587,31 @@ export async function searchProductsExternal(filter: ProductFilterDto): Promise<
   });
   if (!res.ok) throw new Error(await res.text());
   const data = await res.json();
-  if (Array.isArray(data)) return data as ProductDto[];
-  if (data && Array.isArray(data.items)) return data.items as ProductDto[];
-  return [];
+
+  // Normalize different backend shapes (array fallback vs paged result)
+  if (Array.isArray(data)) {
+    return {
+      items: data as ProductDto[],
+      totalCount: data.length,
+      totalPages: 1,
+      page: payload.Page || 1,
+      pageSize: payload.PageSize || 20,
+    };
+  }
+
+  const items = (data?.items ?? data?.Items ?? []) as ProductDto[];
+  const totalCount = Number(data?.totalCount ?? data?.TotalCount ?? items.length ?? 0);
+  const totalPages = Number(data?.totalPages ?? data?.TotalPages ?? 1);
+  const page = Number(data?.page ?? data?.Page ?? payload.Page ?? 1);
+  const pageSize = Number(data?.pageSize ?? data?.PageSize ?? payload.PageSize ?? 20);
+
+  return {
+    items,
+    totalCount,
+    totalPages: Math.max(1, totalPages || Math.ceil(totalCount / Math.max(1, pageSize))),
+    page,
+    pageSize,
+  };
 }
 
 // --------- Favorites ----------

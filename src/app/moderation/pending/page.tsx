@@ -19,12 +19,26 @@ type ModerationProduct = {
   mediaFiles?: { url?: string }[];
 };
 
+const REJECTION_REASONS = [
+  "Inappropriate content",
+  "Copyright concerns",
+  "Insufficient description",
+  "Misleading information",
+  "Pricing issue",
+  "Duplicate listing",
+  "Prohibited item",
+];
+
 export default function ModerationPendingPage() {
   const router = useRouter();
   const [items, setItems] = useState<ModerationProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [reasonModal, setReasonModal] = useState<{ product: ModerationProduct | null; reason: string }>({
+    product: null,
+    reason: REJECTION_REASONS[0],
+  });
 
   const loadPending = async () => {
     setLoading(true);
@@ -94,7 +108,21 @@ export default function ModerationPendingPage() {
     loadPending();
   }, []);
 
-  const updateStatus = async (id: number, status: "Approved" | "Rejected") => {
+  const notifySeller = async (userId: number | null | undefined, message: string) => {
+    if (!userId) return;
+    try {
+      await fetch("/api/moderation/notify-seller", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recipientId: userId, messageText: message }),
+      });
+    } catch {
+      // ignore notification errors
+    }
+  };
+
+  const updateStatus = async (item: ModerationProduct, status: "Approved" | "Rejected", reason?: string) => {
+    const { id } = item;
     setBusyId(id);
     setError(null);
 
@@ -107,6 +135,14 @@ export default function ModerationPendingPage() {
       if (!res.ok) {
         throw new Error((await res.text()) || "Failed to update status");
       }
+
+      const origin = typeof window !== "undefined" && window.location?.origin ? window.location.origin : "https://www.loft-shop.pp.ua";
+      const link = `${origin}/product/${id}`;
+      const baseMsg =
+        status === "Approved"
+          ? `Your product was approved.`
+          : `Your product was rejected${reason ? `: ${reason}` : ""}.`;
+      await notifySeller(item.idUser ?? null, `${baseMsg} ${link}`);
 
       setItems((prev) => prev.filter((item) => item.id !== id));
     } catch (err: any) {
@@ -206,7 +242,7 @@ export default function ModerationPendingPage() {
                   <div className="w-[15%] flex flex-col items-end gap-2">
                     <button
                       className="rounded-full px-4 py-1 text-sm font-bold bg-red-400 text-black hover:opacity-90 disabled:opacity-50 w-full"
-                      onClick={() => updateStatus(item.id, "Rejected")}
+                      onClick={() => setReasonModal({ product: item, reason: REJECTION_REASONS[0] })}
                       disabled={busyId === item.id}
                     >
                       Reject
@@ -214,7 +250,7 @@ export default function ModerationPendingPage() {
 
                     <button
                       className="rounded-full px-4 py-1 text-sm font-bold bg-green-400 text-black hover:opacity-90 disabled:opacity-50 w-full"
-                      onClick={() => updateStatus(item.id, "Approved")}
+                      onClick={() => updateStatus(item, "Approved")}
                       disabled={busyId === item.id}
                     >
                       Approve
@@ -234,6 +270,47 @@ export default function ModerationPendingPage() {
           </div>
         )}
       </div>
+
+      {reasonModal.product && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
+          <div className="bg-[var(--bg-body)] rounded-2xl p-6 max-w-md w-full border border-[var(--border)] space-y-4">
+            <h3 className="text-lg font-semibold">Select rejection reason</h3>
+            <div className="space-y-2">
+              {REJECTION_REASONS.map((r) => (
+                <label key={r} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="reject-reason"
+                    value={r}
+                    checked={reasonModal.reason === r}
+                    onChange={() => setReasonModal((prev) => ({ ...prev, reason: r }))}
+                  />
+                  <span>{r}</span>
+                </label>
+              ))}
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                className="px-4 py-2 rounded-lg border border-[var(--border)] hover:bg-[var(--bg-elev-2)]"
+                onClick={() => setReasonModal({ product: null, reason: REJECTION_REASONS[0] })}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 rounded-lg bg-red-400 text-black font-semibold hover:opacity-90 disabled:opacity-50"
+                disabled={busyId === reasonModal.product.id}
+                onClick={() => {
+                  const target = reasonModal.product;
+                  setReasonModal({ product: null, reason: REJECTION_REASONS[0] });
+                  if (target) updateStatus(target, "Rejected", reasonModal.reason);
+                }}
+              >
+                Reject
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

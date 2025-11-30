@@ -33,11 +33,11 @@ export default function Button({
 
   const variantStyles =
     variant === "submit"
-      ? `${almarai.className} font-extrabold bg-[var(--brand)] hover:bg-[#ffde7a] text-black text-lg px-5 py-3`
+      ? `${ysabeau_office.className} font-extrabold bg-[var(--brand)] hover:bg-[#ffde7a] text-black text-lg px-5 py-3`
       : variant === "card"
       ? `${almarai.className} bg-white text-black rounded-[25px] hover:bg-gray-300 text-base font-semibold py-2`
       : variant === "primary"
-      ? `${almarai.className} font-extrabold bg-[var(--brand)] hover:bg-[#ffde7a] text-black px-5 py-3`
+      ? `${almarai.className} font-semibold bg-[var(--brand)] hover:bg-[#ffde7a] text-black px-5 py-3`
       : variant === "google"
       ? `${almarai.className} bg-white border border-gray-300 text-black font-semibold px-5 py-3 hover:bg-gray-200`
       : `${almarai.className} font-semibold bg-[var(--bg-elev-3)] hover:bg-[var(--bg-hover)] text-white px-5 py-3`;

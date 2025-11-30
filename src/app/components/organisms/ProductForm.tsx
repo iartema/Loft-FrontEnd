@@ -10,18 +10,25 @@ import CategoryModal from "../molecules/CategoryModal";
 import AttributeFields from "../molecules/AttributeFields";
 import ImageUploader, { type UploadPreview } from "../molecules/ImageUploader";
 import DigitalFileUploader from "../molecules/DigitalFileUploader";
-import { fetchCategories, fetchCategoryAttributes, fetchAttributeDetail } from "../lib/api";
-import type { CategoryDto, CategoryAttributeFullDto } from "../lib/api";
+import {
+  fetchCategories,
+  fetchCategoryAttributes,
+  fetchAttributeDetail,
+  type CategoryDto,
+  type CategoryAttributeFullDto,
+  type ProductDto,
+} from "../lib/api";
 import type { AttributeDef } from "../molecules/AttributeFields";
 import {
   normalizeProductType,
   productTypeLabel,
   type ProductTypeKind,
+  productTypeToEnumValue,
 } from "../../lib/productTypes";
-import { extractMediaUrl } from "../../lib/media";
+import { extractMediaUrl, isImageMediaType, resolveMediaUrl } from "../../lib/media";
 
 type Currency = "0" | "1"; // 0 -> UAH, 1 -> USD
-type AttributeValue = string | number | boolean | string[];
+type AttributeValue = string | number | boolean | string[] | null;
 
 type FlatCategory = {
   ID: number;
@@ -56,7 +63,23 @@ interface ProductFormState {
   digitalFiles: DigitalAttachment[];
 }
 
-export default function ProductForm() {
+type ProductFormMode = "create" | "edit";
+
+type ProductFormProps = {
+  mode?: ProductFormMode;
+  initialProduct?: ProductDto | null;
+  lockCategory?: boolean;
+  productId?: number;
+  onSaved?: (productId: number) => void;
+};
+
+export default function ProductForm({
+  mode = "create",
+  initialProduct = null,
+  lockCategory = false,
+  productId,
+  onSaved,
+}: ProductFormProps = {}) {
   const router = useRouter();
   const [form, setForm] = useState<ProductFormState>({
     name: "",
@@ -77,6 +100,95 @@ export default function ProductForm() {
   const [requiredAttrIds, setRequiredAttrIds] = useState<number[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [prefilledProductId, setPrefilledProductId] = useState<number | null>(null);
+
+  const isEdit = mode === "edit";
+  const effectiveProductId = productId ?? initialProduct?.id ?? null;
+  const categoryLocked = lockCategory || isEdit;
+
+  const normalizeCurrencyInput = (value: unknown): Currency => {
+    if (value === null || value === undefined) return "0";
+    if (typeof value === "number") {
+      return value === 1 ? "1" : "0";
+    }
+    const normalized = String(value).toUpperCase();
+    if (normalized === "USD" || normalized === "1") return "1";
+    return "0";
+  };
+
+  const coerceAttributeValue = (def: AttributeDef, raw: AttributeValue | undefined): AttributeValue => {
+    if (raw === undefined || raw === null) {
+      if (def.Type === "multiselect") return [];
+      if (def.Type === "boolean") return null;
+      return "";
+    }
+    if (def.Type === "multiselect") {
+      if (Array.isArray(raw)) return raw.map((v) => String(v));
+      if (typeof raw === "string") {
+        return raw
+          .split("|")
+          .map((part) => part.trim())
+          .filter(Boolean);
+      }
+      return [];
+    }
+    if (def.Type === "boolean") {
+      if (typeof raw === "boolean") return raw;
+      if (typeof raw === "string") {
+        const lowered = raw.toLowerCase();
+        if (lowered === "true") return true;
+        if (lowered === "false") return false;
+      }
+      return null;
+    }
+    if (def.Type === "number") {
+      const num = Number(raw);
+      return Number.isFinite(num) ? num : "";
+    }
+    return typeof raw === "string" ? raw : String(raw);
+  };
+
+  const mapExistingMedia = (mediaFiles?: ProductDto["mediaFiles"]) => {
+    const photos: ProductPhoto[] = [];
+    const digitalFiles: DigitalAttachment[] = [];
+    if (!mediaFiles) return { photos, digitalFiles };
+
+    mediaFiles.forEach((entry, idx) => {
+      const mediaTyp = (entry as any)?.mediaTyp ?? (entry as any)?.MediaTyp;
+      const rawUrl = (entry as any)?.url ?? (entry as any)?.Url ?? "";
+      const looksLikeGuid =
+        typeof rawUrl === "string" &&
+        /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+          rawUrl.trim()
+        );
+      const safeName =
+        (typeof rawUrl === "string" && rawUrl.split("/").pop()) || `File ${idx + 1}`;
+      const resolved =
+        resolveMediaUrl(rawUrl) ||
+        extractMediaUrl(entry) ||
+        (typeof rawUrl === "string" ? rawUrl : undefined);
+
+      const treatAsImage = !looksLikeGuid && isImageMediaType(mediaTyp);
+      if (treatAsImage) {
+        photos.push({
+          id: `existing-${idx}`,
+          name: safeName,
+          remoteUrl: resolved || undefined,
+        });
+      } else {
+        digitalFiles.push({
+          id: `existing-digital-${idx}`,
+          name: safeName,
+          mediaId:
+            (entry as any)?.mediaId ??
+            (entry as any)?.MediaId ??
+            (typeof rawUrl === "string" ? rawUrl : undefined),
+        });
+      }
+    });
+
+    return { photos, digitalFiles };
+  };
 
   const photosRef = useRef<ProductPhoto[]>([]);
   useEffect(() => {
@@ -185,7 +297,7 @@ export default function ProductForm() {
     return Type;
   };
 
-  const onSelectCategory = async (id: number) => {
+  const onSelectCategory = async (id: number, prefillValues?: Record<number, AttributeValue>) => {
     try {
       const full: CategoryAttributeFullDto[] = await fetchCategoryAttributes(id);
 
@@ -258,9 +370,8 @@ export default function ProductForm() {
         categoryId: id,
         attributes: Object.fromEntries(
           mapped.map((a) => {
-            if (a.Type === "multiselect") return [a.ID, []];
-            if (a.Type === "boolean") return [a.ID, null];
-            return [a.ID, ""];
+            const pref = prefillValues ? prefillValues[a.ID] : undefined;
+            return [a.ID, coerceAttributeValue(a, pref)];
           })
         ),
       }));
@@ -270,6 +381,7 @@ export default function ProductForm() {
   };
 
   const handleSelectProductType = (type: ProductTypeKind) => {
+    if (categoryLocked) return;
     setForm((prev) => {
       if (prev.productType === type) return prev;
       return {
@@ -283,6 +395,50 @@ export default function ProductForm() {
     setAttributeDefs([]);
     setRequiredAttrIds([]);
   };
+
+  useEffect(() => {
+    if (!initialProduct || prefilledProductId === initialProduct.id) return;
+
+    const normalizedType =
+      normalizeProductType(
+        (initialProduct as any).type ??
+          (initialProduct as any).Type ??
+          (initialProduct as any).productType ??
+          (initialProduct as any).ProductType
+      ) ?? null;
+
+    const attrPrefill: Record<number, AttributeValue> = Object.fromEntries(
+      (initialProduct.attributeValues ?? []).map((a) => [a.attributeId, a.value as AttributeValue])
+    );
+    const { photos, digitalFiles } = mapExistingMedia(initialProduct.mediaFiles);
+
+    setForm((prev) => ({
+      ...prev,
+      name: initialProduct.name ?? prev.name,
+      categoryId: initialProduct.categoryId ?? prev.categoryId,
+      productType: normalizedType ?? prev.productType,
+      attributes: attrPrefill,
+      description: initialProduct.description ?? prev.description,
+      price:
+        initialProduct.price === 0 || initialProduct.price
+          ? String(initialProduct.price)
+          : prev.price,
+      currency: normalizeCurrencyInput((initialProduct as any).currency ?? (initialProduct as any).Currency),
+      quantity:
+        initialProduct.quantity === 0 || initialProduct.quantity
+          ? String(initialProduct.quantity)
+          : prev.quantity,
+      photos,
+      digitalFiles,
+    }));
+
+    if (initialProduct.categoryId) {
+      void onSelectCategory(initialProduct.categoryId, attrPrefill);
+    }
+    setPrefilledProductId(initialProduct.id ?? prefilledProductId);
+    // We intentionally skip onSelectCategory from deps to avoid ref churn from async inline function.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialProduct, prefilledProductId]);
 
   const onAttrChange = (attrId: number, value: AttributeValue) => {
     setForm((f) => ({ ...f, attributes: { ...f.attributes, [attrId]: value } }));
@@ -428,7 +584,8 @@ export default function ProductForm() {
         ? allCategories.find((c) => c.ID === cur!.ParentCategoryId)
         : undefined;
     }
-    return path.join(" › ");
+    const label = path.join(" > ");
+    return label || `Category ${form.categoryId}`;
   }, [form.productType, form.categoryId, allCategories]);
 
   const validate = (): string | null => {
@@ -455,7 +612,7 @@ export default function ProductForm() {
     return null;
   };
 
-  const handleCreateSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     const err = validate();
@@ -490,36 +647,58 @@ export default function ProductForm() {
       setForm((prev) => ({ ...prev, photos: uploadedPhotos, digitalFiles: uploadedDigital }));
 
       const resolvedCurrency = form.currency === "1" ? "USD" : "UAH";
+      const mediaFilesPayload = [
+        ...uploadedPhotos.map((photo) => ({
+          url: photo.remoteUrl ?? "",
+          mediaTyp: "image",
+        })),
+        ...uploadedDigital
+          .filter((file) => file.mediaId)
+          .map((file) => ({
+            url: file.mediaId ?? "",
+            mediaTyp: "digital",
+          })),
+      ];
 
-      const res = await fetch("/api/products/create", {
-        method: "POST",
+      const body = {
+        id: effectiveProductId ?? undefined,
+        name: form.name.trim(),
+        categoryId: Number(form.categoryId),
+        productType: form.productType,
+        description: form.description || "",
+        price: Number(form.price),
+        currency: resolvedCurrency,
+        quantity: Number(form.quantity),
+        attributeValues,
+        mediaFiles: mediaFilesPayload,
+        type: productTypeToEnumValue(form.productType),
+      };
+
+      const endpoint =
+        isEdit && effectiveProductId
+          ? `/api/products/${effectiveProductId}`
+          : "/api/products/create";
+      const res = await fetch(endpoint, {
+        method: isEdit ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: form.name.trim(),
-          categoryId: Number(form.categoryId),
-          productType: form.productType,
-          description: form.description || "",
-          price: Number(form.price),
-          currency: resolvedCurrency,
-          quantity: Number(form.quantity),
-          attributeValues,
-          mediaFiles: [
-            ...uploadedPhotos.map((photo) => ({
-              url: photo.remoteUrl ?? "",
-              mediaTyp: "image",
-            })),
-            ...uploadedDigital.map((file) => ({
-              url: file.mediaId ?? "",
-              mediaTyp: "digital",
-            })),
-          ],
-        }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(text || "Failed to create product");
+        throw new Error(text || (isEdit ? "Failed to update product" : "Failed to create product"));
       }
-      router.push("/myproducts");
+      const data = await res.json().catch(() => null);
+      const nextId =
+        effectiveProductId ??
+        (data && (Number((data as any).id ?? (data as any).Id) || null)) ||
+        null;
+      if (isEdit && (nextId ?? effectiveProductId)) {
+        const targetId = nextId ?? effectiveProductId!;
+        if (onSaved) onSaved(targetId);
+        else router.push(`/product/${targetId}`);
+      } else {
+        router.push("/myproducts");
+      }
     } catch (e) {
       const anyErr: any = e;
       setError(anyErr?.message || "Unexpected error");
@@ -549,17 +728,22 @@ export default function ProductForm() {
     }).length;
 
     const attrTotal = attributeDefs.length;
-    const attrPercent = attrTotal ? attributeFilled / attrTotal : 1;
+    const attrPercent = attrTotal ? attributeFilled / attrTotal : null;
 
     const corePercent = sections.reduce((acc, section) => acc + (section.filled ? 1 : 0), 0) / sections.length;
 
-    const overall = (attrPercent + corePercent) / 2;
+    const buckets = [corePercent];
+    if (attrPercent !== null) buckets.push(attrPercent);
+
+    const overall = buckets.reduce((acc, val) => acc + val, 0) / buckets.length;
     return Math.round(overall * 100);
   };
 
+  const submitLabel = isEdit ? (submitting ? "Saving..." : "Save changes") : (submitting ? "Publishing..." : "Publish");
+
   return (
     <>
-      <form onSubmit={handleCreateSubmit} className="flex flex-col gap-8">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-8">
         <div className="sticky top-4 md:top-6 lg:top-10 z-30">
           <ProgressBar value={calculateProgress()} />
         </div>
@@ -601,11 +785,17 @@ export default function ProductForm() {
               <div className="text-sm text-[var(--fg-muted)] mb-2">
                 Product type:{" "}
                 <span className="text-white">{productTypeLabel(form.productType)}</span>
+                {categoryLocked && (
+                  <span className="ml-2 text-xs text-white/60">(Category cannot be changed for existing listings)</span>
+                )}
               </div>
               <button
                 type="button"
-                className="w-full bg-[var(--bg-input)] rounded-[15px] px-4 py-2 text-left text-[20px]"
-                onClick={() => setCatOpen(true)}
+                className={`w-full bg-[var(--bg-input)] rounded-[15px] px-4 py-2 text-left text-[20px] ${
+                  categoryLocked ? "opacity-70 cursor-not-allowed" : ""
+                }`}
+                onClick={() => !categoryLocked && setCatOpen(true)}
+                disabled={categoryLocked}
               >
                 {categoryLabel}
               </button>
@@ -703,7 +893,7 @@ export default function ProductForm() {
               disabled={!canPublish || submitting}
               className="max-w-[240px]"
             >
-              {submitting ? "Publishing..." : "Publish"}
+              {submitLabel}
             </Button>
           </div>
           <div className="flex-1 flex justify-end">
@@ -733,7 +923,7 @@ export default function ProductForm() {
       </form>
 
       <CategoryModal
-        open={catOpen}
+        open={catOpen && !categoryLocked}
         categories={allCategories}
         selectedId={form.categoryId}
         productType={form.productType}

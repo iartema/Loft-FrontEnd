@@ -7,6 +7,7 @@ import SimpleSelect from "../molecules/SimpleSelect";
 import FilterSection from "../molecules/FilterSection";
 import ActiveFilterChips from "../molecules/ActiveFilterChips";
 import ViewProductCardSearch from "../molecules/ViewProductCardSearch";
+import CategoryModal from "../molecules/CategoryModal";
 import {
   fetchCategories,
   fetchCategoryAttributes,
@@ -19,8 +20,15 @@ import {
   addFavoriteProduct,
   removeFavoriteProduct,
   ApiError,
+  fetchPublicUserById,
+  type PublicUserDto,
 } from "../lib/api";
 import { getFirstPublicImageUrl } from "../../lib/media";
+import {
+  normalizeProductType,
+  type ProductTypeKind,
+  productTypeLabel,
+} from "../../lib/productTypes";
 // import { mockCategories, mockFetchAttributesByCategory } from "../lib/mockCatalog";
 
 const almarai = Almarai({ subsets: ["latin"], weight: ["400", "700"] });
@@ -49,6 +57,8 @@ type SortOption = "views" | "price_desc" | "price_asc";
 export default function SearchView() {
   const params = useSearchParams();
   const qParam = params.get("q") ?? "";
+  const categoryParam = params.get("categoryId") ?? params.get("category");
+  const sellerParam = params.get("sellerId") ?? params.get("seller");
   const router = useRouter();
 
   const [query, setQuery] = useState(qParam);
@@ -56,20 +66,46 @@ export default function SearchView() {
   const [priceMin, setPriceMin] = useState<number | null>(null);
   const [priceMax, setPriceMax] = useState<number | null>(null);
   const [attrFilters, setAttrFilters] = useState<Record<number, string | number | boolean | string[] | null>>({});
-  const [allCategories, setAllCategories] = useState<{ ID: number; Name: string; ParentCategoryId: number | null; Status?: string }[]>([]);
+  const [allCategories, setAllCategories] = useState<{ ID: number; Name: string; ParentCategoryId: number | null; Status?: string; Type?: ProductTypeKind | null }[]>([]);
   const [categoryAttrs, setCategoryAttrs] = useState<{ ID: number; Name: string; Type: "text" | "number" | "select" | "multiselect" | "boolean" | "color"; Value?: string }[]>([]);
   const [attributeSuggestions, setAttributeSuggestions] = useState<Record<number, string[]>>({});
   type ProductWithFavorite = ProductDto & { isFavorite?: boolean };
   const [items, setItems] = useState<ProductWithFavorite[]>([]);
   const [page, setPage] = useState(1);
   const pageSize = 20;
+  const [totalPages, setTotalPages] = useState(1);
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
   const [favoriteBusyIds, setFavoriteBusyIds] = useState<Set<number>>(new Set());
   const [sortBy, setSortBy] = useState<SortOption>("views");
+  const [sellerId, setSellerId] = useState<number | null>(null);
+  const [sellerInfo, setSellerInfo] = useState<PublicUserDto | null>(null);
+  const [sellerLoading, setSellerLoading] = useState(false);
+  const [productType, setProductType] = useState<ProductTypeKind | null>("physical");
+  const [catModalOpen, setCatModalOpen] = useState(false);
 
   useEffect(() => {
     setQuery(qParam);
   }, [qParam]);
+
+  useEffect(() => {
+    const parsed = categoryParam ? Number(categoryParam) : null;
+    setCategoryId(Number.isFinite(parsed) ? parsed : null);
+  }, [categoryParam]);
+
+  useEffect(() => {
+    if (!categoryId || !allCategories.length) return;
+    const found = allCategories.find((c) => c.ID === categoryId);
+    if (found?.Type) setProductType(found.Type);
+  }, [categoryId, allCategories]);
+
+  useEffect(() => {
+    const parsed = sellerParam ? Number(sellerParam) : null;
+    setSellerId(Number.isFinite(parsed) ? parsed : null);
+  }, [sellerParam]);
+
+  useEffect(() => {
+    setPage((p) => Math.min(p, Math.max(1, totalPages)));
+  }, [totalPages]);
 
   useEffect(() => {
     let active = true;
@@ -101,9 +137,20 @@ export default function SearchView() {
   }, [favoriteIds]);
 
   useEffect(() => {
-    const flatten = (list: CategoryDto[], acc: { ID: number; Name: string; ParentCategoryId: number | null; Status?: string }[] = []) => {
+    const flatten = (list: CategoryDto[], acc: { ID: number; Name: string; ParentCategoryId: number | null; Status?: string; Type?: ProductTypeKind | null }[] = []) => {
       for (const c of list) {
-        acc.push({ ID: c.id, Name: c.name, ParentCategoryId: c.parentCategoryId ?? null, Status: c.status ?? undefined });
+        acc.push({
+          ID: c.id,
+          Name: c.name,
+          ParentCategoryId: c.parentCategoryId ?? null,
+          Status: c.status ?? undefined,
+          Type: normalizeProductType(
+            (c as any).type ??
+            (c as any).Type ??
+            (c as any).productType ??
+            (c as any).ProductType
+          ),
+        });
         if (c.subCategories && c.subCategories.length) flatten(c.subCategories, acc);
       }
       return acc;
@@ -210,65 +257,78 @@ export default function SearchView() {
     return "";
   };
 
-  const doSearch = useCallback(async () => {
-    const attrs: ProductAttributeFilterDto[] = Object.entries(attrFilters).flatMap(([id, value]) => {
-      if (value == null) return [];
-      if (typeof value === "string" && value.trim() === "") return [];
-      if (Array.isArray(value)) {
-        const values = value.map(String).filter(Boolean);
-        if (values.length === 0) return [];
-        return [{ attributeId: Number(id), value: values.join("|") }];
-      }
-      if (typeof value === "boolean") {
+  useEffect(() => {
+    let cancelled = false;
+    const runSearch = async () => {
+      const attrs: ProductAttributeFilterDto[] = Object.entries(attrFilters).flatMap(([id, value]) => {
+        if (value == null) return [];
+        if (typeof value === "string" && value.trim() === "") return [];
+        if (Array.isArray(value)) {
+          const values = value.map(String).filter(Boolean);
+          if (values.length === 0) return [];
+          return [{ attributeId: Number(id), value: values.join("|") }];
+        }
+        if (typeof value === "boolean") {
+          return [{ attributeId: Number(id), value: String(value) }];
+        }
         return [{ attributeId: Number(id), value: String(value) }];
-      }
-      return [{ attributeId: Number(id), value: String(value) }];
-    });
+      });
 
-    const res = await searchProductsExternal({
-      search: query || undefined,
-      categoryId: categoryId ?? undefined,
-      minPrice: priceMin ?? undefined,
-      maxPrice: priceMax ?? undefined,
-      attributeFilters: attrs.length ? attrs : undefined,
-    });
-    const trimmed = (query || "").trim().toLowerCase();
-    let filtered = trimmed
-      ? (res || []).filter((item) => item?.name?.toLowerCase().includes(trimmed))
-      : res || [];
+      const res = await searchProductsExternal({
+        search: query || undefined,
+        categoryId: categoryId ?? undefined,
+        sellerId: sellerId ?? undefined,
+        minPrice: priceMin ?? undefined,
+        maxPrice: priceMax ?? undefined,
+        attributeFilters: attrs.length ? attrs : undefined,
+        page,
+        pageSize,
+      });
+      if (cancelled) return;
+      const trimmed = (query || "").trim().toLowerCase();
+      let filtered = trimmed
+        ? (res.items || []).filter((item) => item?.name?.toLowerCase().includes(trimmed))
+        : res.items || [];
 
-    filtered = [...filtered].sort((a, b) => {
-      if (sortBy === "views") {
-        return (b.viewCount ?? 0) - (a.viewCount ?? 0);
-      }
-      if (sortBy === "price_desc") {
-        return (b.price ?? 0) - (a.price ?? 0);
-      }
-      if (sortBy === "price_asc") {
-        return (a.price ?? 0) - (b.price ?? 0);
-      }
-      return 0;
-    });
+      filtered = [...filtered].sort((a, b) => {
+        if (sortBy === "views") {
+          return (b.viewCount ?? 0) - (a.viewCount ?? 0);
+        }
+        if (sortBy === "price_desc") {
+          return (b.price ?? 0) - (a.price ?? 0);
+        }
+        if (sortBy === "price_asc") {
+          return (a.price ?? 0) - (b.price ?? 0);
+        }
+        return 0;
+      });
 
-    setItems(
-      filtered.map((product) => ({
-        ...product,
-        isFavorite: favoriteIds.has(product.id),
-      }))
-    );
-    collectAttributeSuggestions(filtered);
-    setPage(1);
-  }, [query, categoryId, priceMin, priceMax, attrFilters, sortBy, favoriteIds]);
+      setItems(
+        filtered.map((product) => ({
+          ...product,
+          isFavorite: favoriteIds.has(product.id),
+        }))
+      );
+      collectAttributeSuggestions(filtered);
+      setTotalPages(Math.max(1, res.totalPages || 1));
+    };
+    runSearch();
+    return () => {
+      cancelled = true;
+    };
+  }, [query, categoryId, priceMin, priceMax, attrFilters, sortBy, page, sellerId]);
 
   useEffect(() => {
-    doSearch();
-  }, [doSearch]);
+    setPage(1);
+  }, [query, categoryId, priceMin, priceMax, attrFilters, sellerId]);
 
   const clearFilters = () => {
     setCategoryId(null);
     setPriceMin(null);
     setPriceMax(null);
     setAttrFilters({});
+    setSellerId(null);
+    setProductType("physical");
   };
 
   const applySuggestionValue = useCallback(
@@ -372,16 +432,20 @@ export default function SearchView() {
     [favoriteIds, router]
   );
 
-  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
-  const paged = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return items.slice(start, start + pageSize);
-  }, [items, page]);
+  const paged = items;
 
-  const categoryName = useMemo(
-    () => allCategories.find((c) => c.ID === (categoryId ?? -1))?.Name,
-    [categoryId, allCategories]
-  );
+  const categoryName = useMemo(() => {
+    if (!categoryId) return undefined;
+    const path: string[] = [];
+    let current = allCategories.find((c) => c.ID === categoryId);
+    while (current) {
+      path.unshift(current.Name);
+      current = current.ParentCategoryId
+        ? allCategories.find((c) => c.ID === current!.ParentCategoryId)
+        : undefined;
+    }
+    return path.join(" > ") || allCategories.find((c) => c.ID === categoryId)?.Name;
+  }, [categoryId, allCategories]);
 
   const attributeChips = useMemo(
     () =>
@@ -402,33 +466,102 @@ export default function SearchView() {
     [categoryAttrs, attrFilters]
   );
 
+  useEffect(() => {
+    if (!sellerId) {
+      setSellerInfo(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        setSellerLoading(true);
+        const user = await fetchPublicUserById(sellerId);
+        if (!cancelled) setSellerInfo(user);
+      } catch {
+        if (!cancelled) setSellerInfo(null);
+      } finally {
+        if (!cancelled) setSellerLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [sellerId]);
+
+  const sellerCard = sellerId ? (
+    <div className={`${almarai.className} flex items-center gap-3 px-6 py-3 rounded-2xl pt-4 pb-4 justify-center shadow-md min-w-[280px]`}>
+      {sellerLoading ? (
+        <span className="text-white/70 text-sm">Loading seller…</span>
+      ) : sellerInfo ? (
+        <>
+          <div className="w-10 h-10 rounded-full overflow-hidden bg-[var(--bg-elev-3)] flex-shrink-0">
+            <img
+              src={sellerInfo.avatarUrl && sellerInfo.avatarUrl.trim().length ? sellerInfo.avatarUrl : "/default-avatar.jpg"}
+              alt={`${sellerInfo.firstName ?? ""} ${sellerInfo.lastName ?? ""}`.trim() || "Seller"}
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div className="text-sm">
+            <div className="text-white font-semibold">
+              {[sellerInfo.firstName, sellerInfo.lastName].filter(Boolean).join(" ").trim() || "Seller"}
+            </div>
+            <span className="text-white/60 text-sm">Seller</span>
+          </div>
+        </>
+      ) : (
+        <span className="text-white/60 text-sm">Seller filter active</span>
+      )}
+    </div>
+  ) : null;
+
+  const availableCategories = useMemo(
+    () => allCategories.filter((c) => (c.Status ?? "approved") !== "rejected"),
+    [allCategories]
+  );
+
+  const handleSelectCategory = useCallback(
+    (id: number) => {
+      setCategoryId(id);
+      const found = allCategories.find((c) => c.ID === id);
+      if (found?.Type) setProductType(found.Type);
+      setCatModalOpen(false);
+    },
+    [allCategories]
+  );
+
   return (
     <main className="min-h-screen w-full bg-[var(--bg-body)] text-white px-8 py-6 ml-5">
       {/* Active filters chips spanning full width, above sidebar/results */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 flex-wrap">
+      <div className="flex flex-col gap-4 mb-6 items-stretch">
         <ActiveFilterChips
           query={query}
           categoryName={categoryName}
           priceMin={priceMin}
           priceMax={priceMax}
           onClearQuery={() => setQuery("")}
-          onClearCategory={() => setCategoryId(null)}
+          onClearCategory={() => {
+            setCategoryId(null);
+            setProductType("physical");
+          }}
           onClearMin={() => setPriceMin(null)}
           onClearMax={() => setPriceMax(null)}
           attributes={attributeChips}
-          className={` ${almarai.className}`}
+          className={`w-full ${almarai.className}`}
         />
-        <div className={`${almarai.className} flex items-center gap-2 mr-12`}>
-          <span className="text-sm text-white/70">Sort by:</span>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as SortOption)}
-            className="bg-[var(--bg-filter-inner)] text-white px-3 py-2 rounded-[12px] border border-transparent focus:outline-none focus:border-[var(--divider)] text-md"
-          >
-            <option value="views">Views</option>
-            <option value="price_desc">Price (highest)</option>
-            <option value="price_asc">Price (lowest)</option>
-          </select>
+        <div className="relative w-full flex items-center justify-center min-h-[56px]">
+          {sellerCard}
+          <div className={`${almarai.className} flex items-center gap-2 absolute right-0 mr-12`}>
+            <span className="text-sm text-white/70">Sort by:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortOption)}
+              className="bg-[var(--bg-filter-inner)] text-white px-3 py-2 rounded-[12px] border border-transparent focus:outline-none focus:border-[var(--divider)] text-md"
+            >
+              <option value="views">Views</option>
+              <option value="price_desc">Price (highest)</option>
+              <option value="price_asc">Price (lowest)</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -436,15 +569,18 @@ export default function SearchView() {
         {/* Filters (no local search field here as per spec) */}
         <aside className={`rounded-2xl p-0 space-y-0 h-fit sticky top-4 ${almarai.className}` }>
           <FilterSection title="Category">
-            <SimpleSelect
-              value={categoryId != null ? String(categoryId) : ""}
-              onChange={(val) => setCategoryId(val ? Number(val) : null)}
-              options={allCategories
-                .filter((c) => (c.Status ?? "approved") !== "rejected")
-                .map((c) => ({ value: String(c.ID), label: c.Name }))}
-              placeholder="All"
-              className={`${almarai.className}`}
-            />
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setCatModalOpen(true)}
+                className="w-full bg-[var(--bg-filter-inner)] text-white px-3 py-2 text-sm rounded-[12px] border border-[var(--divider)] hover:border-[var(--brand)] text-left"
+              >
+                {categoryName || "All"}
+              </button>
+              {productType && (
+                <div className="text-xs text-white/60">Type: {productTypeLabel(productType)}</div>
+              )}
+            </div>
           </FilterSection>
           {categoryId &&
             categoryAttrs.length > 0 &&
@@ -655,6 +791,15 @@ export default function SearchView() {
           </div>
         </section>
       </div>
+      <CategoryModal
+        open={catModalOpen}
+        categories={availableCategories}
+        selectedId={categoryId}
+        productType={productType}
+        onSelectType={(type) => setProductType(type)}
+        onClose={() => setCatModalOpen(false)}
+        onSelect={handleSelectCategory}
+      />
     </main>
   );
 }

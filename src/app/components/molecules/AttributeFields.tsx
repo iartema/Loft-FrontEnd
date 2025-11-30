@@ -16,7 +16,7 @@ const akatab = Akatab({
   weight: ["400", "500"],
 });
 
-type AttributeValue = string | number | boolean | string[];
+type AttributeValue = string | number | boolean | string[] | null;
 
 interface Props {
   attributes: AttributeDef[];

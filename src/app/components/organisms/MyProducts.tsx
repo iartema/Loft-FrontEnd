@@ -7,15 +7,29 @@ import Button from "../atoms/Button";
 import { useRouter } from "next/navigation";
 import { getCurrentUserCached } from "../lib/userCache";
 import { getFirstPublicImageUrl } from "../../lib/media";
-import { ApiError, searchProductsExternal, type ProductDto } from "../lib/api";
+import { ApiError, fetchMyProducts, type ProductDto } from "../lib/api";
 
 type StatusFilter = "All" | "Active" | "Rejected" | "Under review";
 
 const STATUS_FILTERS: StatusFilter[] = ["All", "Active", "Rejected", "Under review"];
 
-const statusMatchesFilter = (status: string | null | undefined, filter: StatusFilter) => {
+const normalizeStatus = (status: string | number | null | undefined) => {
+  if (status === null || status === undefined) return "";
+  if (typeof status === "number") {
+    if (status === 1) return "active";
+    if (status === 0) return "pending";
+    if (status === 2) return "rejected";
+  }
+  const normalized = String(status).toLowerCase();
+  if (normalized === "approved" || normalized === "active") return "active";
+  if (normalized === "pending") return "pending";
+  if (normalized === "rejected") return "rejected";
+  return normalized;
+};
+
+const statusMatchesFilter = (status: string | number | null | undefined, filter: StatusFilter) => {
   if (filter === "All") return true;
-  const normalized = status;
+  const normalized = normalizeStatus(status);
   if (!normalized) return false;
   if (filter === "Active") {
     return normalized === "active";
@@ -60,10 +74,7 @@ export default function MyProducts() {
           return;
         }
 
-        const products = await searchProductsExternal({
-          sellerId: me.id,
-          pageSize: 100,
-        });
+        const products = await fetchMyProducts();
         if (!cancelled) {
           setItems(products ?? []);
         }

@@ -69,7 +69,7 @@ export default function HomePage() {
         ]);
         if (!cancelled) {
           setCategories(cats);
-          setProducts(prods);
+          setProducts(prods.items ?? []);
         }
       } catch {
         if (!cancelled) {
@@ -125,7 +125,8 @@ export default function HomePage() {
           topIds.map(async (catId) => {
             const category = categoryById.get(catId);
             if (!category) return null;
-            let items = await searchProductsExternal({ categoryId: catId, page: 1, pageSize: 12 });
+            const resp = await searchProductsExternal({ categoryId: catId, page: 1, pageSize: 12 });
+            let items = resp.items ?? [];
             if (!items.length) {
               items = products.filter((p) => p.categoryId === catId).slice(0, 12);
             }
@@ -271,7 +272,7 @@ export default function HomePage() {
             </p>
             <button
               onClick={() => router.push("/product/new")}
-              className="px-8 py-2 rounded-full border border-yellow-400 text-white text-lg font-semibold hover:bg-yellow-400 hover:text-black transition"
+              className="px-16 py-4 rounded-full border-[2px] border-yellow-400 text-white text-2xl font-semibold hover:bg-yellow-400 hover:text-black transition"
             >
               Start
             </button>

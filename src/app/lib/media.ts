@@ -1,5 +1,5 @@
 const DEFAULT_MEDIA_BASE = "https://www.loft-shop.pp.ua/api/media";
-const DEFAULT_MEDIA_PUBLIC_BASE = "https://loft-shop.pp.ua";
+const DEFAULT_MEDIA_PUBLIC_BASE = "https://www.loft-shop.pp.ua";
 
 export const MEDIA_API_BASE =
   process.env.NEXT_PUBLIC_MEDIA_API_BASE ||
@@ -11,6 +11,7 @@ export const MEDIA_PUBLIC_BASE =
   DEFAULT_MEDIA_PUBLIC_BASE;
 
 const stripLeadingSlashes = (value: string) => value.replace(/^\/+/, "");
+const MEDIA_ROOT = MEDIA_API_BASE.replace(/\/api\/media$/, "");
 
 const extractFileName = (value: string) => {
   const clean = stripLeadingSlashes(value);
@@ -51,8 +52,10 @@ export function getPublicImageUrls(mediaFiles?: MediaEntry[] | null): string[] {
   if (!mediaFiles) return [];
   const urls: string[] = [];
   for (const entry of mediaFiles) {
+    const raw = entry?.url ?? entry?.Url;
+    if (typeof raw === "string" && isGuid(raw)) continue;
     if (!isImageMediaType(entry?.mediaTyp ?? entry?.MediaTyp)) continue;
-    const url = resolveMediaUrl(entry?.url ?? entry?.Url);
+    const url = resolveMediaUrl(raw);
     if (url) urls.push(url);
   }
   return urls;
@@ -97,8 +100,11 @@ export function resolveMediaUrl(url?: string | null): string {
           if (parsed.hostname.endsWith("loft-shop.pp.ua")) {
             const normalizedPath = parsed.pathname || "";
             const strippedPath = stripLeadingSlashes(normalizedPath);
-            if (strippedPath.startsWith("api/media/view/") || strippedPath.startsWith("media/")) {
+            // If the upstream already points into /api/media/*, keep it as-is
+            if (strippedPath.startsWith("api/media/")) {
               resolved = trimmed;
+            } else if (strippedPath.startsWith("media/")) {
+              resolved = `${parsed.origin}/${strippedPath}`;
             } else {
               const fileName = extractFileName(strippedPath);
               resolved = `${parsed.origin}/api/media/view/${fileName}`;
@@ -113,13 +119,11 @@ export function resolveMediaUrl(url?: string | null): string {
         resolved = trimmed;
       }
     } else if (trimmed.startsWith("/media") || trimmed.startsWith("media/")) {
-      const path = trimmed.startsWith("/")
-        ? trimmed
-        : `/${trimmed}`;
-      resolved = `${MEDIA_PUBLIC_BASE}${path}`;
+      const path = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+      resolved = `${MEDIA_PUBLIC_BASE || MEDIA_ROOT}${path}`;
     } else if (trimmed.startsWith("/")) {
       const withoutSlash = stripLeadingSlashes(trimmed);
-      resolved = `${MEDIA_API_BASE}/${withoutSlash}`;
+      resolved = `${MEDIA_ROOT}/${withoutSlash}`;
     } else {
       resolved = buildMediaViewUrl(trimmed);
     }
@@ -134,7 +138,8 @@ export function resolveMediaUrl(url?: string | null): string {
 export function extractMediaUrl(payload: any): string | undefined {
   if (!payload) return undefined;
   if (typeof payload === "string") {
-    return resolveMediaUrl(payload);
+    const resolved = resolveMediaUrl(payload);
+    return resolved || payload;
   }
   if (typeof payload !== "object") return undefined;
   const candidates = [

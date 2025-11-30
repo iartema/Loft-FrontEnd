@@ -27,7 +27,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "Missing required fields" }, { status: 400 });
     }
 
-    const currencyMap: Record<string, number> = { USD: 0, EUR: 1, UAH: 2, GBP: 3 };
+    // Backend only supports 0 (UAH) and 1 (USD); clamp anything else to UAH
+    const currencyMap: Record<string, number> = { UAH: 0, USD: 1 };
 
     // Build DTO in the format the backend expects
     const dto: any = {
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
       Description: body.description ?? "",
       Type: 0, // Physical
       Price: Number(body.price),
-      Currency: currencyMap[(body.currency || "USD").toUpperCase()] ?? 0,
+      Currency: currencyMap[(body.currency || "UAH").toUpperCase()] ?? 0,
       Quantity: Number(body.quantity ?? 1),
     };
 

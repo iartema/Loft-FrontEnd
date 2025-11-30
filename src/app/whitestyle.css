@@ -32,7 +32,7 @@
 
   /* Accents and state colors */
   --brand: #ffc107;
-  --success: #78FF7E;       /* canonical success/green */
+  --success: #000000;       /* canonical success/green */
   --link: #596bc2;          /* slightly darker blue on light */
   --link-alt: #6695ff;
   --danger: #eb4335;

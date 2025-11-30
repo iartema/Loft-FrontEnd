@@ -32,6 +32,7 @@ export default function ProductCard({
   price,
   productId,
   sellerId,
+  stockQuantity,
 }: {
   name: string;
   sku: string;
@@ -40,6 +41,7 @@ export default function ProductCard({
   price: string;
   productId: number;
   sellerId: number;
+  stockQuantity?: number | null;
 }) {
   const [seller, setSeller] = useState<PublicUserDto | null>(null);
   const [adding, setAdding] = useState(false);
@@ -47,6 +49,7 @@ export default function ProductCard({
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
   const [messaging, setMessaging] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -88,6 +91,22 @@ export default function ProductCard({
     };
   }, [productId]);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const me = await getCurrentUserCached();
+        if (!cancelled) setCurrentUserId(me?.id ?? null);
+      } catch {
+        if (!cancelled) setCurrentUserId(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const isOwner = currentUserId != null && sellerId === currentUserId;
   const sellerName =
     [seller?.firstName, seller?.lastName].filter(Boolean).join(" ").trim() ||
     "Seller";
@@ -200,26 +219,32 @@ export default function ProductCard({
         <div className="text-xs opacity-70">Code: {sku}</div>
         <div className="text-xs">{views} views</div>
 
-        <div
-          className={`text-lg ${
-            inStock ? "text-[var(--success)]" : "text-red-400"
-          }`}
-        >
-          {inStock ? "In stock" : "Out of stock"}
+        <div className={`text-lg ${inStock ? "text-[var(--success)]" : "text-red-400"}`}>
+          {inStock ? `In stock${stockQuantity != null ? ` (${stockQuantity})` : ""}` : "Out of stock"}
         </div>
 
         <Divider text="" className="[&>div]:bg-white" />
 
         <div className="flex items-center justify-between gap-3">
           <div className="text-2xl font-bold">{price}</div>
-          <Button
-            variant="submit"
-            className="ml-55 w-[50px]"
-            disabled={!inStock || adding}
-            onClick={handleAddToCart}
-          >
-            {adding ? "Adding..." : "Add to Cart"}
-          </Button>
+          {isOwner ? (
+            <Button
+              variant="submit"
+              className="ml-55 w-[120px]"
+              onClick={() => router.push(`/product/${productId}/edit`)}
+            >
+              Edit product
+            </Button>
+          ) : (
+            <Button
+              variant="submit"
+              className="ml-55 w-[50px]"
+              disabled={!inStock || adding}
+              onClick={handleAddToCart}
+            >
+              {adding ? "Adding..." : "Add to Cart"}
+            </Button>
+          )}
         </div>
 
         {feedback && (
@@ -243,13 +268,15 @@ export default function ProductCard({
           </div>
         </div>
 
-        <Button
-          className="max-w-[120px] !bg-[var(--bg-input)] !hover:bg-[var(--bg-input)]"
-          disabled={messaging}
-          onClick={handleMessageSeller}
-        >
-          {messaging ? "Opening..." : "Message"}
-        </Button>
+        {!(currentUserId && sellerId === currentUserId) && (
+          <Button
+            className="max-w-[120px] !bg-[var(--bg-input)] !hover:bg-[var(--bg-input)]"
+            disabled={messaging}
+            onClick={handleMessageSeller}
+          >
+            {messaging ? "Opening..." : "Message"}
+          </Button>
+        )}
       </div>
     </div>
   );
