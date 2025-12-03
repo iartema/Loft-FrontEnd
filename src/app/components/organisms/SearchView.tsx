@@ -52,13 +52,14 @@ function resolveFavoriteProductId(entry: any): number | null {
   return null;
 }
 
-type SortOption = "views" | "price_desc" | "price_asc";
+type SortOption = "views" | "price_desc" | "price_asc" | "season";
 
 export default function SearchView() {
   const params = useSearchParams();
   const qParam = params.get("q") ?? "";
   const categoryParam = params.get("categoryId") ?? params.get("category");
   const sellerParam = params.get("sellerId") ?? params.get("seller");
+  const sortParam = params.get("sort");
   const router = useRouter();
 
   const [query, setQuery] = useState(qParam);
@@ -88,6 +89,13 @@ export default function SearchView() {
   }, [qParam]);
 
   useEffect(() => {
+    const normalized = (sortParam || "").toLowerCase();
+    if (normalized === "price_desc" || normalized === "price_asc" || normalized === "views" || normalized === "season") {
+      setSortBy(normalized as SortOption);
+    }
+  }, [sortParam]);
+
+  useEffect(() => {
     const parsed = categoryParam ? Number(categoryParam) : null;
     setCategoryId(Number.isFinite(parsed) ? parsed : null);
   }, [categoryParam]);
@@ -106,6 +114,10 @@ export default function SearchView() {
   useEffect(() => {
     setPage((p) => Math.min(p, Math.max(1, totalPages)));
   }, [totalPages]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [sortBy]);
 
   useEffect(() => {
     let active = true;
@@ -290,18 +302,29 @@ export default function SearchView() {
         ? (res.items || []).filter((item) => item?.name?.toLowerCase().includes(trimmed))
         : res.items || [];
 
-      filtered = [...filtered].sort((a, b) => {
-        if (sortBy === "views") {
-          return (b.viewCount ?? 0) - (a.viewCount ?? 0);
-        }
-        if (sortBy === "price_desc") {
-          return (b.price ?? 0) - (a.price ?? 0);
-        }
-        if (sortBy === "price_asc") {
-          return (a.price ?? 0) - (b.price ?? 0);
-        }
-        return 0;
-      });
+      const cutoff = Date.now() - 1000 * 60 * 60 * 24 * 30;
+      const toDate = (value: any): number | null => {
+        if (!value) return null;
+        const d = new Date(value);
+        return Number.isNaN(d.getTime()) ? null : d.getTime();
+      };
+
+      const sortViews = (list: ProductDto[]) =>
+        [...list].sort((a, b) => (b.viewCount ?? 0) - (a.viewCount ?? 0));
+
+      if (sortBy === "price_desc") {
+        filtered = [...filtered].sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
+      } else if (sortBy === "price_asc") {
+        filtered = [...filtered].sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
+      } else if (sortBy === "season") {
+        const seasonal = filtered.filter((item) => {
+          const created = toDate((item as any).createdAt ?? (item as any).CreatedAt);
+          return created !== null && created >= cutoff;
+        });
+        filtered = seasonal.length ? sortViews(seasonal) : sortViews(filtered);
+      } else {
+        filtered = sortViews(filtered);
+      }
 
       setItems(
         filtered.map((product) => ({
@@ -548,19 +571,25 @@ export default function SearchView() {
           attributes={attributeChips}
           className={`w-full ${almarai.className}`}
         />
-        <div className="relative w-full flex items-center justify-center min-h-[56px]">
-          {sellerCard}
+        <div className="relative w-full flex items-center min-h-[56px] pr-[280px]">
+          <div className="flex-1 flex justify-center">{sellerCard}</div>
           <div className={`${almarai.className} flex items-center gap-2 absolute right-0 mr-12`}>
             <span className="text-sm text-white/70">Sort by:</span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortOption)}
-              className="bg-[var(--bg-filter-inner)] text-white px-3 py-2 rounded-[12px] border border-transparent focus:outline-none focus:border-[var(--divider)] text-md"
-            >
-              <option value="views">Views</option>
-              <option value="price_desc">Price (highest)</option>
-              <option value="price_asc">Price (lowest)</option>
-            </select>
+            <div className="relative">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as SortOption)}
+                className="appearance-none bg-[var(--bg-filter-inner)] text-white px-3 pr-14 py-2 rounded-[12px] border border-transparent focus:outline-none focus:border-[var(--divider)] text-md"
+              >
+                <option value="views">Views</option>
+                <option value="season">Season (popular & recent)</option>
+                <option value="price_desc">Price (highest)</option>
+                <option value="price_asc">Price (lowest)</option>
+              </select>
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/80 text-xs">
+                ▼
+              </span>
+            </div>
           </div>
         </div>
       </div>

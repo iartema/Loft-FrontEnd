@@ -58,9 +58,9 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [userId, setUserId] = useState<number | null>(null);
-  const [stripeOpen, setStripeOpen] = useState(false);
-  const [stripeError, setStripeError] = useState<string | null>(null);
-  const [stripeForm, setStripeForm] = useState({ number: "", exp: "", cvc: "", zip: "" });
+  const [cardOpen, setCardOpen] = useState(false);
+  const [cardError, setCardError] = useState<string | null>(null);
+  const [cardForm, setCardForm] = useState({ number: "", exp: "", cvc: "", zip: "" });
 
   useEffect(() => {
     let cancelled = false;
@@ -147,6 +147,8 @@ export default function CheckoutPage() {
     [paymentMethod, paymentMethods]
   );
   const isStripeSelected = selectedPaymentName?.toUpperCase() === "STRIPE";
+  const isCardSelected =
+    !isStripeSelected && (selectedPaymentName?.toUpperCase().includes("CARD") ?? false);
 
   const handleChange = (field: keyof OrderFormState) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
@@ -207,22 +209,78 @@ export default function CheckoutPage() {
       return;
     }
     if (isStripeSelected) {
-      setStripeError(null);
-      setStripeOpen(true);
+      startStripeCheckout();
+      return;
+    }
+    if (isCardSelected) {
+      setCardError(null);
+      setCardOpen(true);
       return;
     }
     completeCheckout();
   };
 
-  const handleStripePay = () => {
-    const digits = stripeForm.number.replace(/\D/g, "");
-    if (digits.length < 12 || !stripeForm.exp || stripeForm.cvc.trim().length < 3) {
-      setStripeError("Enter a valid card number, expiry, and CVC.");
+  const handleCardPay = () => {
+    const digits = cardForm.number.replace(/\D/g, "");
+    if (digits.length < 12 || !cardForm.exp || cardForm.cvc.trim().length < 3) {
+      setCardError("Enter a valid card number, expiry, and CVC.");
       return;
     }
-    setStripeError(null);
-    setStripeOpen(false);
+    setCardError(null);
+    setCardOpen(false);
     completeCheckout();
+  };
+
+  const startStripeCheckout = async () => {
+    if (!userId) {
+      router.push("/login");
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      const { order } = await createOrderFromCart(userId);
+      const origin =
+        typeof window !== "undefined" && window.location?.origin
+          ? window.location.origin
+          : "https://www.loft-shop.pp.ua";
+
+      const payload = {
+        orderId: order.id,
+        amount: total,
+        successUrl: `${origin}/orders/${order.id}?payment=stripe-success`,
+        cancelUrl: `${origin}/checkout?payment=stripe-cancel`,
+      };
+
+      const res = await fetch("/api/stripe/create-checkout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error("[checkout] stripe create session failed", {
+          status: res.status,
+          data,
+        });
+        throw new Error(
+          (data && (data.message || data.error)) || "Failed to start Stripe checkout"
+        );
+      }
+
+      const url = data.url || data.sessionUrl;
+      if (!url) {
+        throw new Error("Stripe checkout URL was not returned from the server.");
+      }
+
+      window.location.href = url;
+    } catch (err: any) {
+      console.error("[checkout] stripe redirect error", err);
+      setError(err?.message || "Stripe checkout failed");
+      setSubmitting(false);
+    }
   };
 
   const resolveImage = (url?: string | null, mediaFiles?: any) => {
@@ -381,7 +439,7 @@ export default function CheckoutPage() {
                 )}
                 {isStripeSelected && (
                   <div className="text-xs text-[var(--success)] mt-1">
-                    Stripe will open a mock card form before placing the order.
+                    You&apos;ll be redirected to Stripe Checkout to complete payment.
                   </div>
                 )}
               </div>
@@ -398,15 +456,15 @@ export default function CheckoutPage() {
           </aside>
         </form>
 
-        {stripeOpen && (
+        {cardOpen && (
           <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center px-4">
             <div className="w-full max-w-lg bg-[var(--bg-elev-2)] text-white border border-[var(--border)] rounded-2xl p-6 space-y-4 shadow-2xl">
               <div className="flex items-center justify-between">
-                <h3 className="text-xl font-semibold">Pay with Stripe (mock)</h3>
+                <h3 className="text-xl font-semibold">Pay with card</h3>
                 <button
                   type="button"
                   className="text-sm opacity-70 hover:opacity-100"
-                  onClick={() => setStripeOpen(false)}
+                  onClick={() => setCardOpen(false)}
                   disabled={submitting}
                 >
                   Close
@@ -416,34 +474,34 @@ export default function CheckoutPage() {
                 <input
                   className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 outline-none"
                   placeholder="Card number"
-                  value={stripeForm.number}
-                  onChange={(e) => setStripeForm((prev) => ({ ...prev, number: e.target.value }))}
+                  value={cardForm.number}
+                  onChange={(e) => setCardForm((prev) => ({ ...prev, number: e.target.value }))}
                   inputMode="numeric"
                 />
                 <div className="grid grid-cols-2 gap-3">
                   <input
                     className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 outline-none"
                     placeholder="MM/YY"
-                    value={stripeForm.exp}
-                    onChange={(e) => setStripeForm((prev) => ({ ...prev, exp: e.target.value }))}
+                    value={cardForm.exp}
+                    onChange={(e) => setCardForm((prev) => ({ ...prev, exp: e.target.value }))}
                   />
                   <input
                     className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 outline-none"
                     placeholder="CVC"
-                    value={stripeForm.cvc}
-                    onChange={(e) => setStripeForm((prev) => ({ ...prev, cvc: e.target.value }))}
+                    value={cardForm.cvc}
+                    onChange={(e) => setCardForm((prev) => ({ ...prev, cvc: e.target.value }))}
                     inputMode="numeric"
                   />
                 </div>
                 <input
                   className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 outline-none"
                   placeholder="ZIP / Postal code"
-                  value={stripeForm.zip}
-                  onChange={(e) => setStripeForm((prev) => ({ ...prev, zip: e.target.value }))}
+                  value={cardForm.zip}
+                  onChange={(e) => setCardForm((prev) => ({ ...prev, zip: e.target.value }))}
                 />
               </div>
-              {stripeError && <div className="text-sm text-red-400 bg-red-400/10 px-3 py-2 rounded-xl">{stripeError}</div>}
-              <Button type="button" className="w-full" variant="submit" onClick={handleStripePay} disabled={submitting}>
+              {cardError && <div className="text-sm text-red-400 bg-red-400/10 px-3 py-2 rounded-xl">{cardError}</div>}
+              <Button type="button" className="w-full" variant="submit" onClick={handleCardPay} disabled={submitting}>
                 {submitting ? "Processing..." : "Pay and Place Order"}
               </Button>
             </div>

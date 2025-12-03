@@ -5,13 +5,57 @@ import Input from "./atoms/Input";
 import { usePathname, useRouter } from "next/navigation";
 import React from "react";
 import Link from "next/link";
-import { fetchMyChats, ApiError } from "./lib/api";
-import { getCurrentUserCached } from "./lib/userCache";
+import {
+  fetchMyChats,
+  ApiError,
+  fetchCategories,
+  type CategoryDto,
+} from "./lib/api";
+import { normalizeProductType, type ProductTypeKind } from "../lib/productTypes";
+import CategoryModal, { type Category } from "./molecules/CategoryModal";
 
 export default function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const [hasUnread, setHasUnread] = React.useState(false);
+  const [catModalOpen, setCatModalOpen] = React.useState(false);
+  const [allCategories, setAllCategories] = React.useState<Category[]>([]);
+  const [productType, setProductType] = React.useState<ProductTypeKind | null>("physical");
+  const [selectedCategory, setSelectedCategory] = React.useState<number | null>(null);
+
+  const flattenCategories = React.useCallback((list: CategoryDto[], acc: Category[] = []) => {
+    for (const c of list) {
+      acc.push({
+        ID: c.id,
+        Name: c.name,
+        ParentCategoryId: c.parentCategoryId ?? null,
+        Status: c.status ?? undefined,
+        Type: normalizeProductType(
+          (c as any).type ??
+            (c as any).Type ??
+            (c as any).productType ??
+            (c as any).ProductType ??
+            null
+        ),
+      });
+      if (c.subCategories && c.subCategories.length) flattenCategories(c.subCategories, acc);
+    }
+    return acc;
+  }, []);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    fetchCategories()
+      .then((cats) => {
+        if (!cancelled) setAllCategories(flattenCategories(cats));
+      })
+      .catch(() => {
+        if (!cancelled) setAllCategories([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [flattenCategories]);
   // theme: default dark; when toggled, set data-theme="light" on <html>
   React.useEffect(() => {
     try {
@@ -72,6 +116,28 @@ export default function Header() {
       clearInterval(interval);
     };
   }, []);
+
+  const openCategories = () => {
+    setCatModalOpen(true);
+  };
+
+  const handleSelectCategory = (id: number) => {
+    setSelectedCategory(id);
+    const match = allCategories.find((c) => c.ID === id);
+    if (match?.Type) setProductType(match.Type);
+    setCatModalOpen(false);
+    const params = new URLSearchParams();
+    params.set("categoryId", String(id));
+    router.push(`/search?${params.toString()}`);
+  };
+
+  const handlePopular = () => {
+    router.push("/search?sort=views");
+  };
+
+  const handleSeason = () => {
+    router.push("/search?sort=season");
+  };
 
   if (isLogoOnly) {
     return (
@@ -151,15 +217,40 @@ export default function Header() {
       {/* Bottom row: categories / quick links (hidden for profile area) */}
       {!isProfileArea && (
         <div className="px-8 pb-2 ml-5 flex items-center gap-10 text-[var(--fg-primary)] ml-4">
-          <div className="flex items-center gap-2 cursor-pointer">
+          <button
+            type="button"
+            onClick={openCategories}
+            className="flex items-center gap-2 cursor-pointer"
+          >
             <span className="text-xl">≡</span>
             <span className="font-semibold text-xl">All categories</span>
-          </div>
-          <div className="opacity-80 cursor-pointer">Popular</div>
-          <div className="opacity-80 cursor-pointer">Season</div>
+          </button>
+          <button
+            type="button"
+            onClick={handlePopular}
+            className="opacity-80 cursor-pointer hover:opacity-100"
+          >
+            Popular
+          </button>
+          <button
+            type="button"
+            onClick={handleSeason}
+            className="opacity-80 cursor-pointer hover:opacity-100"
+          >
+            Season
+          </button>
         </div>
       )}
       <div className="w-full h-px bg-[var(--divider)]" />
+      <CategoryModal
+        open={catModalOpen}
+        categories={allCategories}
+        selectedId={selectedCategory}
+        productType={productType}
+        onSelectType={(type) => setProductType(type)}
+        onClose={() => setCatModalOpen(false)}
+        onSelect={handleSelectCategory}
+      />
     </header>
   );
 }
