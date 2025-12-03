@@ -238,7 +238,7 @@ export default function ProductCard({
           ) : (
             <Button
               variant="submit"
-              className="ml-55 w-[50px]"
+              className="max-w-[150px] min-w-[150px]"
               disabled={!inStock || adding}
               onClick={handleAddToCart}
             >

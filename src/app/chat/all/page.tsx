@@ -206,7 +206,7 @@ export default function ChatAllPage() {
 
   return (
     <main className="relative flex min-h-screen bg-[var(--bg-body)] text-white">
-      <section className="flex flex-col flex-1 px-16 py-10">
+      <section className="flex flex-col flex-1 px-4 md:px-8 lg:px-16 py-10">
         <header className="mb-6">
           <h1 className="text-4xl font-semibold">My chats</h1>
           <div className="flex items-center gap-4 mt-4 flex-wrap">
@@ -242,9 +242,9 @@ export default function ChatAllPage() {
       </section>
 
       {/* Sidebar on right */}
-            <aside className="w-[300px] px-4 py-10">
-              <div className="sticky top-10">
-                <div className="bg-[var(--bg-elev-1)] rounded-2xl p-6 w-[240px] shadow-lg">
+              <aside className="hidden lg:block w-[300px] px-4 py-10">
+                <div className="sticky top-10">
+                  <div className="bg-[var(--bg-elev-1)] rounded-2xl p-6 w-[240px] shadow-lg">
                   <ProfileSidebar />
                 </div>
               </div>

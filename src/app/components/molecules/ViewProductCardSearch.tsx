@@ -95,8 +95,9 @@ export default function ViewProductCardSearch({
 
   return (
     <div
-      className={`${almarai.className} bg-[var(--bg-input)] rounded-[10px] overflow-hidden shadow-md hover:shadow-lg transition-all flex flex-col ${className} mb-3`}
-      style={{ height: "330px", width: "240px" }}
+      className={`${almarai.className} bg-[var(--bg-input)] rounded-[10px] overflow-hidden 
+      shadow-md hover:shadow-lg transition-all flex flex-col ${className} mb-4 mr-5 max-w-60 min-w-50`}
+      style={{ }}
     >
       <div className="relative w-full h-[200px] flex-shrink-0 cursor-pointer" onClick={onClick}>
         <Image

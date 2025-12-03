@@ -36,6 +36,36 @@ export async function loginUser(email: string, password: string) {
   return await res.json();
 }
 
+export async function requestPasswordReset(email: string) {
+  const res = await fetch(`/api/users/request-password-reset`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Failed to request password reset");
+  }
+
+  return await res.json();
+}
+
+export async function confirmPasswordReset(email: string, code: string, newPassword: string) {
+  const res = await fetch(`/api/users/confirm-password-reset`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, code, newPassword }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Failed to reset password");
+  }
+
+  return await res.json();
+}
+
 export async function logout() {
   // Clear auth cookies via internal API and ignore response shape
   await fetch(`/api/auth/logout`, { method: "POST" });
@@ -320,13 +350,15 @@ export async function addCartItem(
   }
 
   try {
-    console.error("[lib/api addCartItem] request", {
-      customerId,
-      productId,
-      quantity,
-      meta,
-      payload,
-    });
+    if (process.env.NODE_ENV === "development") {
+      console.log("[lib/api addCartItem] request", {
+        customerId,
+        productId,
+        quantity,
+        meta,
+        payload,
+      });
+    }
   } catch {
     // ignore logging failures
   }
@@ -338,10 +370,12 @@ export async function addCartItem(
   });
 
   try {
-    console.error("[lib/api addCartItem] response", {
-      status: res.status,
-      ok: res.ok,
-    });
+    if (process.env.NODE_ENV === "development") {
+      console.log("[lib/api addCartItem] response", {
+        status: res.status,
+        ok: res.ok,
+      });
+    }
   } catch {
     // ignore logging failures
   }
@@ -451,6 +485,79 @@ export type OrderDto = {
   orderItems?: OrderItemDto[] | null;
 };
 
+const PAYMENT_STATUS_MAP: Record<number, string> = {
+  0: "PENDING",
+  1: "REQUIRES_CONFIRMATION",
+  2: "PROCESSING",
+  3: "COMPLETED",
+  4: "FAILED",
+  5: "REFUNDED",
+  6: "PARTIALLY_REFUNDED",
+};
+
+const normalizeOrderItem = (item: any): OrderItemDto => ({
+  id: Number(item?.id ?? item?.Id ?? 0),
+  orderId: Number(item?.orderId ?? item?.OrderId ?? item?.order?.id ?? 0),
+  productId: Number(item?.productId ?? item?.ProductId ?? 0),
+  quantity: Number(item?.quantity ?? item?.Quantity ?? 0),
+  price: Number(item?.price ?? item?.Price ?? 0),
+  productName: item?.productName ?? item?.ProductName ?? null,
+  imageUrl: item?.imageUrl ?? item?.ImageUrl ?? null,
+});
+
+const normalizePaymentStatus = (status: any): string | null => {
+  if (typeof status === "number" && status in PAYMENT_STATUS_MAP) return PAYMENT_STATUS_MAP[status];
+  if (typeof status === "string") {
+    const trimmed = status.trim();
+    const asNum = Number(trimmed);
+    if (!Number.isNaN(asNum) && asNum in PAYMENT_STATUS_MAP) {
+      return PAYMENT_STATUS_MAP[asNum];
+    }
+    return trimmed || null;
+  }
+  return null;
+};
+
+const normalizeOrder = (data: any): OrderDto => {
+  const rawShipping = data?.shippingAddress ?? data?.ShippingAddress ?? null;
+  const shippingAddress =
+    typeof rawShipping === "string"
+      ? rawShipping
+      : rawShipping?.address ?? rawShipping?.Address ?? null;
+  const shippingCity = data?.shippingCity ?? data?.ShippingCity ?? rawShipping?.city ?? rawShipping?.City ?? null;
+  const shippingPostalCode =
+    data?.shippingPostalCode ?? data?.ShippingPostalCode ?? rawShipping?.postalCode ?? rawShipping?.PostalCode ?? null;
+  const shippingCountry =
+    data?.shippingCountry ?? data?.ShippingCountry ?? rawShipping?.country ?? rawShipping?.Country ?? null;
+  const shippingRecipientName =
+    data?.shippingRecipientName ??
+    data?.ShippingRecipientName ??
+    rawShipping?.recipientName ??
+    rawShipping?.RecipientName ??
+    null;
+  const rawStatus = data?.status ?? data?.Status ?? data?.paymentStatus ?? data?.PaymentStatus ?? null;
+  const status = normalizePaymentStatus(rawStatus) ?? rawStatus ?? "PENDING";
+
+  return {
+    id: Number(data?.id ?? data?.Id ?? 0),
+    customerId: Number(data?.customerId ?? data?.CustomerId ?? 0),
+    orderDate: data?.orderDate ?? data?.OrderDate ?? new Date().toISOString(),
+    status,
+    totalAmount: Number(data?.totalAmount ?? data?.TotalAmount ?? 0),
+    updatedDate: data?.updatedDate ?? data?.UpdatedDate ?? null,
+    customerName: data?.customerName ?? data?.CustomerName ?? null,
+    customerEmail: data?.customerEmail ?? data?.CustomerEmail ?? null,
+    shippingAddress,
+    shippingCity,
+    shippingPostalCode,
+    shippingCountry,
+    shippingRecipientName,
+    orderItems: Array.isArray(data?.orderItems ?? data?.OrderItems)
+      ? (data?.orderItems ?? data?.OrderItems).map(normalizeOrderItem)
+      : null,
+  };
+};
+
 export async function fetchPaymentMethods(): Promise<PaymentMethod[]> {
   const res = await fetch(`/api/payments/methods`, { cache: "no-store" });
   if (!res.ok) throw new Error(await res.text());
@@ -462,7 +569,7 @@ export async function createOrderFromCart(customerId: number): Promise<{ order: 
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
   if (!res.ok) throw new Error((data && data.message) || text || "Failed to create order");
-  const order = data?.Order ?? data?.order ?? data;
+  const order = normalizeOrder(data?.Order ?? data?.order ?? data);
   const methods = data?.PaymentMethods ?? data?.paymentMethods ?? [];
   return { order, paymentMethods: methods };
 }
@@ -470,13 +577,14 @@ export async function createOrderFromCart(customerId: number): Promise<{ order: 
 export async function fetchOrdersByCustomer(customerId: number): Promise<OrderDto[]> {
   const res = await fetch(`/api/orders/customer/${customerId}`, { cache: "no-store" });
   if (!res.ok) throw new Error(await res.text());
-  return res.json();
+  const data = await res.json();
+  return Array.isArray(data) ? data.map(normalizeOrder) : [];
 }
 
 export async function fetchOrderById(id: number): Promise<OrderDto> {
   const res = await fetch(`/api/orders/${id}`, { cache: "no-store" });
   if (!res.ok) throw new Error(await res.text());
-  return res.json();
+  return normalizeOrder(await res.json());
 }
 
 export type CreatePaymentPayload = {

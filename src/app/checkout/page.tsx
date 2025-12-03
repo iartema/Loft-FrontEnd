@@ -58,6 +58,9 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [userId, setUserId] = useState<number | null>(null);
+  const [stripeOpen, setStripeOpen] = useState(false);
+  const [stripeError, setStripeError] = useState<string | null>(null);
+  const [stripeForm, setStripeForm] = useState({ number: "", exp: "", cvc: "", zip: "" });
 
   useEffect(() => {
     let cancelled = false;
@@ -139,8 +142,58 @@ export default function CheckoutPage() {
     return cartItems.reduce((sum, item) => sum + (Number(item.price ?? 0) * item.quantity), 0);
   }, [cartItems]);
 
+  const selectedPaymentName = useMemo(
+    () => paymentMethods.find((m) => m.value === paymentMethod)?.name ?? null,
+    [paymentMethod, paymentMethods]
+  );
+  const isStripeSelected = selectedPaymentName?.toUpperCase() === "STRIPE";
+
   const handleChange = (field: keyof OrderFormState) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
+  };
+
+  const completeCheckout = async () => {
+    if (!userId) {
+      router.push("/login");
+      return;
+    }
+    if (paymentMethod === null || paymentMethod === undefined) {
+      setError("Select a payment method.");
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      const { order } = await createOrderFromCart(userId);
+      const payment = await createPayment({
+        orderId: order.id,
+        amount: total,
+        method: paymentMethod,
+      });
+      await confirmPayment(payment.id ?? payment.Id ?? payment.paymentId ?? payment.PaymentId);
+      const origin =
+        typeof window !== "undefined" && window.location?.origin
+          ? window.location.origin
+          : "https://www.loft-shop.pp.ua";
+      const link = `${origin}/orders/${order.id}`;
+      try {
+        await fetch("/api/notify/user", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            recipientId: userId,
+            messageText: `Your order #${order.id} has been created and paid. ${link}`,
+          }),
+        });
+      } catch {
+        // ignore notification failures
+      }
+      router.push(`/orders/${order.id}`);
+    } catch (err: any) {
+      setError(err?.message || "Checkout failed");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -149,45 +202,27 @@ export default function CheckoutPage() {
       router.push("/login");
       return;
     }
-    if (!paymentMethod) {
+    if (paymentMethod === null || paymentMethod === undefined) {
       setError("Select a payment method.");
       return;
     }
-    (async () => {
-      setSubmitting(true);
-      setError(null);
-      try {
-        const { order } = await createOrderFromCart(userId);
-        const payment = await createPayment({
-          orderId: order.id,
-          amount: total,
-          method: paymentMethod,
-        });
-        await confirmPayment(payment.id ?? payment.Id ?? payment.paymentId ?? payment.PaymentId);
-        const origin =
-          typeof window !== "undefined" && window.location?.origin
-            ? window.location.origin
-            : "https://www.loft-shop.pp.ua";
-        const link = `${origin}/orders/${order.id}`;
-        try {
-          await fetch("/api/notify/user", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              recipientId: userId,
-              messageText: `Your order #${order.id} has been created and paid. ${link}`,
-            }),
-          });
-        } catch {
-          // ignore notification failures
-        }
-        router.push(`/orders/${order.id}`);
-      } catch (err: any) {
-        setError(err?.message || "Checkout failed");
-      } finally {
-        setSubmitting(false);
-      }
-    })();
+    if (isStripeSelected) {
+      setStripeError(null);
+      setStripeOpen(true);
+      return;
+    }
+    completeCheckout();
+  };
+
+  const handleStripePay = () => {
+    const digits = stripeForm.number.replace(/\D/g, "");
+    if (digits.length < 12 || !stripeForm.exp || stripeForm.cvc.trim().length < 3) {
+      setStripeError("Enter a valid card number, expiry, and CVC.");
+      return;
+    }
+    setStripeError(null);
+    setStripeOpen(false);
+    completeCheckout();
   };
 
   const resolveImage = (url?: string | null, mediaFiles?: any) => {
@@ -344,6 +379,11 @@ export default function CheckoutPage() {
                 ) : (
                   <div className="text-xs text-red-400">No payment methods available.</div>
                 )}
+                {isStripeSelected && (
+                  <div className="text-xs text-[var(--success)] mt-1">
+                    Stripe will open a mock card form before placing the order.
+                  </div>
+                )}
               </div>
               <Button
                 type="submit"
@@ -357,6 +397,58 @@ export default function CheckoutPage() {
             </div>
           </aside>
         </form>
+
+        {stripeOpen && (
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center px-4">
+            <div className="w-full max-w-lg bg-[var(--bg-elev-2)] text-white border border-[var(--border)] rounded-2xl p-6 space-y-4 shadow-2xl">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-semibold">Pay with Stripe (mock)</h3>
+                <button
+                  type="button"
+                  className="text-sm opacity-70 hover:opacity-100"
+                  onClick={() => setStripeOpen(false)}
+                  disabled={submitting}
+                >
+                  Close
+                </button>
+              </div>
+              <div className="grid grid-cols-1 gap-3">
+                <input
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 outline-none"
+                  placeholder="Card number"
+                  value={stripeForm.number}
+                  onChange={(e) => setStripeForm((prev) => ({ ...prev, number: e.target.value }))}
+                  inputMode="numeric"
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 outline-none"
+                    placeholder="MM/YY"
+                    value={stripeForm.exp}
+                    onChange={(e) => setStripeForm((prev) => ({ ...prev, exp: e.target.value }))}
+                  />
+                  <input
+                    className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 outline-none"
+                    placeholder="CVC"
+                    value={stripeForm.cvc}
+                    onChange={(e) => setStripeForm((prev) => ({ ...prev, cvc: e.target.value }))}
+                    inputMode="numeric"
+                  />
+                </div>
+                <input
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 outline-none"
+                  placeholder="ZIP / Postal code"
+                  value={stripeForm.zip}
+                  onChange={(e) => setStripeForm((prev) => ({ ...prev, zip: e.target.value }))}
+                />
+              </div>
+              {stripeError && <div className="text-sm text-red-400 bg-red-400/10 px-3 py-2 rounded-xl">{stripeError}</div>}
+              <Button type="button" className="w-full" variant="submit" onClick={handleStripePay} disabled={submitting}>
+                {submitting ? "Processing..." : "Pay and Place Order"}
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );

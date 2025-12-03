@@ -32,35 +32,35 @@ export default function ActiveFilterChips({
   className = "",
 }: Props) {
   return (
-    <div className={`flex flex-wrap items-center gap-4 border-b border-[var(--divider)] pb-2 mb-4 ${className}`}>
+    <div className={`flex flex-wrap items-end gap-x-8 pt-5 ${className}`}>
       {query && (
-        <button type="button" onClick={onClearQuery} className="flex items-center gap-2 text-sm opacity-90 hover:opacity-100">
+        <button type="button" onClick={onClearQuery} className="flex items-center gap-2 text-md opacity-90 hover:opacity-100">
           <Cross />
-          <span className="text-[var(--fg-muted)]">{query}</span>
+          <span className="opacity-[40%]">{query}</span>
         </button>
       )}
       {categoryName && (
-        <button type="button" onClick={onClearCategory} className="flex items-center gap-2 text-sm opacity-90 hover:opacity-100">
+        <button type="button" onClick={onClearCategory} className="flex items-center gap-2 text-md opacity-90 hover:opacity-100">
           <Cross />
-          <span className="text-[var(--fg-muted)]">{categoryName}</span>
+          <span className="opacity-[40%]">{categoryName}</span>
         </button>
       )}
       {priceMin != null && (
-        <button type="button" onClick={onClearMin} className="flex items-center gap-2 text-sm opacity-90 hover:opacity-100">
+        <button type="button" onClick={onClearMin} className="flex items-center gap-2 text-md opacity-90 hover:opacity-100">
           <Cross />
-          <span className="text-[var(--fg-muted)]">Min: {priceMin}</span>
+          <span className="opacity-[40%]">Min: {priceMin}</span>
         </button>
       )}
       {priceMax != null && (
-        <button type="button" onClick={onClearMax} className="flex items-center gap-2 text-sm opacity-90 hover:opacity-100">
+        <button type="button" onClick={onClearMax} className="flex items-center gap-2 text-md opacity-90 hover:opacity-100">
           <Cross />
-          <span className="text-[var(--fg-muted)]">Max: {priceMax}</span>
+          <span className="opacity-[40%]">Max: {priceMax}</span>
         </button>
       )}
       {attributes.map((c, i) => (
-        <button key={i} type="button" onClick={c.onClear} className="flex items-center gap-2 text-sm opacity-90 hover:opacity-100">
+        <button key={i} type="button" onClick={c.onClear} className="flex items-center gap-2 text-md opacity-90 hover:opacity-100">
           <Cross />
-          <span className="text-[var(--fg-muted)]">{c.label}</span>
+          <span className="opacity-[40%]">{c.label}</span>
         </button>
       ))}
     </div>

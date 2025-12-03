@@ -45,11 +45,11 @@ const statusMatchesFilter = (status: string | number | null | undefined, filter:
 
 const formatPrice = (price?: number | null, currency?: string | null) => {
   if (price === null || price === undefined) return "-";
-  const curr = currency ?? "";
-  return `${price.toLocaleString(undefined, {
+  const curr = ["₴", "$"][currency] ?? "";
+  return `${curr} ${price.toLocaleString(undefined, {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
-  })} ${curr}`.trim();
+  })}`.trim();
 };
 
 export default function MyProducts() {
@@ -104,7 +104,7 @@ export default function MyProducts() {
   }, [items, filter]);
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <Title className="font-semibold text-white" size="lg">
           My Products
@@ -142,7 +142,7 @@ export default function MyProducts() {
         <div className="text-sm text-gray-500">No products found for this filter.</div>
       )}
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 gap-6">
         {filtered.map((product) => (
           <ViewProductCardSearch
             key={product.id}

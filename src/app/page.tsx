@@ -409,7 +409,7 @@ useEffect(() => {
       ) : (
         <div
           ref={rowRef}
-          className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory overscroll-x-contain"
+          className="flex overflow-x-auto pb-2 snap-x snap-mandatory overscroll-x-contain"
         >
           {products.map((product, idx) => {
             const pid = product.productId ?? product.id ?? 0;

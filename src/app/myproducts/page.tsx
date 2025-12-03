@@ -12,7 +12,7 @@ export default function MyProductsPage() {
       </section>
 
       {/* Sidebar on right */}
-      <aside className="w-[300px] px-4 py-10">
+      <aside className="hidden lg:block w-[300px] px-4 py-10">
         <div className="sticky top-10">
           <div className="bg-[var(--bg-elev-1)] rounded-2xl p-6 w-[240px] shadow-lg">
             <ProfileSidebar />

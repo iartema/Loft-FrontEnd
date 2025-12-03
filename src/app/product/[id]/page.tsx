@@ -251,7 +251,7 @@ export default function ProductViewPage() {
           )}
         </div>
         <div className="overflow-x-auto">
-          <div className="flex gap-4 min-w-full pb-2">
+          <div className="flex min-w-full pb-2">
             {items.map((item) => (
               <ViewProductCardSearch
                 key={item.id}
@@ -261,7 +261,7 @@ export default function ProductViewPage() {
                 price={formatProductPrice(item)}
                 image={getFirstPublicImageUrl(item.mediaFiles) || "/default-product.jpg"}
                 onClick={() => router.push(`/product/${item.id}`)}
-                className="min-w-[240px]"
+                className="min-w-[220px]"
                 isFavorite={favoriteIds.has(item.id)}
                 favoriteBusy={favoriteBusyIds.has(item.id)}
                 onToggleFavorite={handleToggleFavorite}

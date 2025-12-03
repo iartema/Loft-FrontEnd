@@ -22,6 +22,7 @@ export default function Footer() {
     "/myfavorites",
     "/orderhistory",
     "/myproducts",
+    "/forgot-password"
   ];
   if (hideOn.some((p) => pathname?.startsWith(p))) return null;
 
@@ -40,9 +41,32 @@ export default function Footer() {
           </div>
 
           {/* Columns */}
-          <FooterColumn title="Information" />
-          <FooterColumn title="Partners" />
-          <FooterColumn title="Help" />
+          <FooterColumn
+            title="Information"
+            items={[
+              { label: "About us", href: "/about" },
+              { label: "Terms of use", href: "/terms" },
+              { label: "Cookie policy", href: "/cookies" },
+            ]}
+          />
+          <FooterColumn
+            title="Catalog"
+            items={[
+              { label: "Material goods", href: "/search?category=material" },
+              { label: "Digital products", href: "/search?category=digital" },
+              { label: "Popular categories", href: "/search" },
+              { label: "Latest listings", href: "/search" },
+            ]}
+          />
+          <FooterColumn
+            title="Help"
+            items={[
+              { label: "How to buy", href: "/help#how-to-buy" },
+              { label: "How to sell", href: "/help#how-to-sell" },
+              { label: "Buyer protection", href: "/help#buyer-protection" },
+              { label: "Safety rules", href: "/help#buyer-protection" },
+            ]}
+          />
 
           {/* Contact */}
           <div className="col-span-12 md:col-span-3 md:ml-auto">
@@ -89,14 +113,17 @@ export default function Footer() {
   );
 }
 
-function FooterColumn({ title }: { title: string }) {
-  const items = ["Lorem ipsum dolor", "Lorem ipsum dolor", "Lorem ipsum dolor", "Lorem ipsum dolor"];
+function FooterColumn({ title, items }: { title: string; items: { label: string; href: string }[] }) {
   return (
     <div className="col-span-12 md:col-span-2">
       <div className="text-lg font-semibold mb-4">{title}</div>
       <ul className="space-y-2 text-white/70">
-        {items.map((t, i) => (
-          <li key={i} className="text-sm">{t}</li>
+        {items.map((item, i) => (
+          <li key={i} className="text-sm">
+            <a href={item.href} className="hover:text-white">
+              {item.label}
+            </a>
+          </li>
         ))}
       </ul>
     </div>

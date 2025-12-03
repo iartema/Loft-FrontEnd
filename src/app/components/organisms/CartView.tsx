@@ -205,7 +205,10 @@ export default function CartView() {
       <div className="flex justify-center">
         <div className="bg-[var(--bg-elev-2)]/60 rounded-2xl px-6 py-3 flex items-center gap-6">
           <div className="text-xl font-semibold">{total.toFixed(2)}$</div>
-          <button className="px-6 py-2 rounded-[12px] bg-white/80 text-black font-semibold hover:bg-white">
+          <button
+            className="px-6 py-2 rounded-[12px] bg-white/80 text-black font-semibold hover:bg-white"
+            onClick={() => router.push("/checkout")}
+          >
             Checkout
           </button>
         </div>

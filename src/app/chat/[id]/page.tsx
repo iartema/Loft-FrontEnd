@@ -10,7 +10,9 @@ import {
   markChatRead,
   fetchPublicUserById,
   fetchProductById,
+  fetchOrderById,
   type ProductDto,
+  type OrderDto,
   type ChatMessageDto,
 } from "../../components/lib/api";
 import Divider from "../../components/atoms/Divider";
@@ -37,6 +39,7 @@ export default function ChatConversationPage() {
   const [otherUserAvatar, setOtherUserAvatar] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [productPreviews, setProductPreviews] = useState<Record<number, ProductDto>>({});
+  const [orderPreviews, setOrderPreviews] = useState<Record<number, OrderDto>>({});
   const messagesRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -166,6 +169,23 @@ export default function ChatConversationPage() {
     });
   }, [messages, productPreviews]);
 
+  useEffect(() => {
+    const ids = new Set<number>();
+    messages.forEach((m) => {
+      const id = extractOrderId(m.messageText);
+      if (id) ids.add(id);
+    });
+    const toLoad = Array.from(ids).filter((id) => !orderPreviews[id]);
+    toLoad.forEach(async (id) => {
+      try {
+        const order = await fetchOrderById(id);
+        setOrderPreviews((prev) => ({ ...prev, [id]: order }));
+      } catch {
+        // ignore failed order preview fetch
+      }
+    });
+  }, [messages, orderPreviews]);
+
   useLayoutEffect(() => {
     scrollMessagesToBottom();
   }, [messages.length, scrollMessagesToBottom]);
@@ -186,11 +206,23 @@ export default function ChatConversationPage() {
     return null;
   };
 
+  const extractOrderId = (text: string): number | null => {
+    if (!text) return null;
+    const match = text.match(/orders\/(\d+)/i);
+    if (match && match[1]) {
+      const id = Number(match[1]);
+      return Number.isFinite(id) ? id : null;
+    }
+    return null;
+  };
+
   const stripProductLink = (text: string): string => {
     if (!text) return "";
     return text
       .replace(/https?:\/\/\S*\/product\/\d+/gi, "")
       .replace(/\/product\/\d+/gi, "")
+      .replace(/https?:\/\/\S*\/orders\/\d+/gi, "")
+      .replace(/\/orders\/\d+/gi, "")
       .trim();
   };
 
@@ -248,9 +280,18 @@ export default function ChatConversationPage() {
     const productId = extractProductId(message.messageText);
     const product = productId ? productPreviews[productId] : undefined;
     const imageUrl = product ? getFirstPublicImageUrl(product.mediaFiles) : "";
+    const orderId = extractOrderId(message.messageText);
+    const order = orderId ? orderPreviews[orderId] : undefined;
     const messageTextWithoutLink = stripProductLink(message.messageText);
     const attachedUrl = resolveMediaUrl((message as any).fileUrl);
     const isImage = isLikelyImage(attachedUrl);
+    const orderPreviewImage = order?.orderItems?.[0]
+      ? resolveMediaUrl(
+          order.orderItems[0].imageUrl ||
+            getFirstPublicImageUrl((order.orderItems[0] as any)?.mediaFiles) ||
+            ""
+        )
+      : "";
 
     return (
       <div key={message.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
@@ -306,6 +347,34 @@ export default function ChatConversationPage() {
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
               <div className="absolute bottom-2 left-3 right-3 text-sm font-semibold">
                 {product.name}
+              </div>
+            </a>
+          )}
+          {order && (
+            <a
+              href={`/orders/${order.id}`}
+              className="block mb-3 overflow-hidden rounded-2xl relative group border border-[var(--bg-elev-1)]"
+            >
+              {orderPreviewImage ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={orderPreviewImage}
+                  alt={`Order ${order.id}`}
+                  className="w-full h-32 object-cover transition-transform duration-200 group-hover:scale-[1.02]"
+                  onLoad={scrollMessagesToBottom}
+                />
+              ) : (
+                <div className="w-full h-32 bg-black/30" />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+              <div className="absolute bottom-2 left-3 right-3 text-sm font-semibold space-y-1">
+                <div>Order #{order.id}</div>
+                <div className="text-xs opacity-80 flex items-center gap-2">
+                  <span>{order.status}</span>
+                  {order.orderItems?.[0]?.productName && (
+                    <span className="truncate">{order.orderItems[0].productName}</span>
+                  )}
+                </div>
               </div>
             </a>
           )}
@@ -425,7 +494,7 @@ export default function ChatConversationPage() {
       </section>
 
       {/* Sidebar on right */}
-            <aside className="w-[300px] px-4 py-10">
+            <aside className="hidden lg:block w-[300px] px-4 py-10">
               <div className="sticky top-10">
                 <div className="bg-[var(--bg-elev-1)] rounded-2xl p-6 w-[240px] shadow-lg">
                   <ProfileSidebar />

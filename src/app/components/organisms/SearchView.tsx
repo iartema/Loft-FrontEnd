@@ -530,9 +530,9 @@ export default function SearchView() {
   );
 
   return (
-    <main className="min-h-screen w-full bg-[var(--bg-body)] text-white px-8 py-6 ml-5">
+    <main className="min-h-screen w-[97.5%] bg-[var(--bg-body)] text-white ml-12">
       {/* Active filters chips spanning full width, above sidebar/results */}
-      <div className="flex flex-col gap-4 mb-6 items-stretch">
+      <div className="flex flex-row items-center justify-between gap-4 w-full border-b border-[var(--divider)]">
         <ActiveFilterChips
           query={query}
           categoryName={categoryName}
@@ -733,8 +733,8 @@ export default function SearchView() {
 
 
 
-          {/* 5 columns per row to match spec */}
-          <div className="grid grid-cols-5 gap-y-3 w-[98%]">
+          {/* Responsive product grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-y-3 w-[98%]">
             {paged.length === 0 && (
               <div className="opacity-70 col-span-full">No products match your filters.</div>
             )}

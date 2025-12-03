@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Almarai, Ysabeau_Office } from "next/font/google";
-import { fetchOrderById, type OrderDto } from "../../components/lib/api";
-import { resolveMediaUrl, getFirstPublicImageUrl } from "../../lib/media";
+import { fetchOrderById, fetchProductById, type OrderDto } from "../../components/lib/api";
+import { resolveMediaUrl, getFirstPublicImageUrl, MEDIA_API_BASE } from "../../lib/media";
+import { getCurrentUserCached } from "../../components/lib/userCache";
 
 const almarai = Almarai({ subsets: ["latin"], weight: ["400", "700"] });
 const ysabeau = Ysabeau_Office({ subsets: ["latin"], weight: ["600", "700"] });
@@ -15,6 +16,23 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<OrderDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [digitalMediaIds, setDigitalMediaIds] = useState<string[]>([]);
+  const [downloading, setDownloading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    getCurrentUserCached()
+      .then((user) => {
+        if (!cancelled) setCurrentUserId(user?.id ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setCurrentUserId(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -34,6 +52,42 @@ export default function OrderDetailPage() {
       cancelled = true;
     };
   }, [id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadDigital = async () => {
+      if (!order?.orderItems?.length) return;
+      const ids: string[] = [];
+      for (const item of order.orderItems) {
+        const productId = item.productId || item?.product?.id;
+        if (!productId) continue;
+        try {
+          const product = await fetchProductById(productId);
+          const privateIds =
+            product.mediaFiles
+              ?.map((m) => m.url)
+              .filter(
+                (url): url is string =>
+                  typeof url === "string" &&
+                  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+                    url.trim()
+                  )
+              ) || [];
+          ids.push(...privateIds);
+        } catch {
+          // ignore failed product fetches
+        }
+      }
+      if (!cancelled) {
+        const unique = Array.from(new Set(ids));
+        setDigitalMediaIds(unique);
+      }
+    };
+    loadDigital();
+    return () => {
+      cancelled = true;
+    };
+  }, [order]);
 
   const total = useMemo(() => {
     if (!order?.orderItems) return 0;
@@ -67,6 +121,45 @@ export default function OrderDetailPage() {
       </div>
     );
   }
+
+  const isBuyer = currentUserId !== null && order.customerId === currentUserId;
+
+  const handleDownloadAll = async () => {
+    if (!digitalMediaIds.length || !isBuyer) return;
+    setDownloading(true);
+    try {
+      const responses = await Promise.all(
+        digitalMediaIds.map(async (mediaId) => {
+          const res = await fetch(`/api/media/token/${mediaId}`, { method: "POST" });
+          if (!res.ok) {
+            throw new Error(await res.text());
+          }
+          const data = await res.json();
+          return data?.downloadUrl || data?.downloadURL || data?.url || null;
+        })
+      );
+
+      const root = MEDIA_API_BASE.replace(/\/api\/media$/, "");
+      responses
+        .filter((u): u is string => typeof u === "string" && !!u)
+        .forEach((url) => {
+          const href = url.startsWith("http")
+            ? url
+            : `${root}${url.startsWith("/") ? "" : "/"}${url}`;
+          const a = document.createElement("a");
+          a.href = href;
+          a.download = "";
+          a.target = "_blank";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        });
+    } catch (err) {
+      console.error("Failed to download files", err);
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <main className={`${almarai.className} bg-[var(--bg-body)] text-white min-h-screen px-6 py-10`}>
@@ -116,6 +209,19 @@ export default function OrderDetailPage() {
               <span>Total</span>
               <span>{total.toFixed(2)}$</span>
             </div>
+            {isBuyer && digitalMediaIds.length > 0 && (
+              <div className="pt-4 border-t border-[var(--border)] mt-2 space-y-2">
+                <div className="text-sm opacity-80">Digital items available</div>
+                <button
+                  type="button"
+                  onClick={handleDownloadAll}
+                  disabled={downloading}
+                  className="w-full rounded-lg px-4 py-2 bg-[var(--bg-input)] hover:border-[var(--success)] border border-[var(--border)] disabled:opacity-50 text-sm font-semibold"
+                >
+                  {downloading ? "Preparing…" : "Download all files"}
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

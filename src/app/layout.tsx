@@ -26,7 +26,7 @@ export default function RootLayout({
       </head>
       <body
         suppressHydrationWarning
-        className={`${ysabeau.className} bg-[var(--bg-body)] text-[var(--fg-primary)] overflow-x-hidden`}
+        className={`${ysabeau.className} bg-[var(--bg-body)] text-[var(--fg-primary)] overflow-x-hidden px-3 md:px-6 lg:px-13`}
       >
         <Header />
         {children}
