@@ -46,7 +46,7 @@ export default function ManagableProductCard({
       {/* Info */}
       <div className="p-2 flex flex-col justify-between flex-1">
         <div>
-          <p className="text-sm text-gray-300 line-clamp-2">{description}</p>
+          <p className="text-sm sort-label line-clamp-2">{description}</p>
           <p className="text-white">{price}</p>
         </div>
         <Button variant="card" label={buttonLabel} onClick={onClick} />

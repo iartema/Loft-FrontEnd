@@ -14,7 +14,7 @@ export default function AccountPrompt({
 }: AccountPromptProps) {
   return (
     <p
-      className={`${almarai.className} text-center mt-6 text-gray-300 text-sm`}
+      className={`${almarai.className} text-center mt-6 sort-label text-sm`}
     >
       {message}{" "}
       <a

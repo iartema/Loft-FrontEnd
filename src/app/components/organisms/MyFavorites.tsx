@@ -168,7 +168,7 @@ export default function MyFavorites() {
       <Title className="font-semibold text-white" size="lg">
         My favorites
       </Title>
-      <div className="border-t border-neutral-800" />
+      <div className="border-t border-[var(--divider)]" />
       {content}
     </div>
   );

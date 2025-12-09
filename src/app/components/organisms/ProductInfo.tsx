@@ -14,7 +14,8 @@ export default function ProductInfo({
   const [showAll, setShowAll] = useState(false);
 
   return (
-    <div className="bg-[var(--bg-frame)] rounded-2xl border border-[var(--bg-frame)] w-[70%] mx-auto">
+    <div className="bg-[var(--bg-frame)] rounded-2xl border border-[var(--bg-frame)] w-[70%] mx-auto border-[1px] border-[var(--divider)]"
+    style={{boxShadow: "0 3px 3px 0px rgba(0, 0, 0, 0.25)"}}>
       <div className="px-6 py-4 text-center font-semibold">Information</div>
 
       <div className="p-6 space-y-6">
@@ -43,7 +44,7 @@ export default function ProductInfo({
           <div className="mt-6 flex justify-center">
             <Button
               variant="card"
-              className="bg-white text-black hover:bg-gray-300 !w-[15%]"
+              className="toggle-more-btn bg-white text-black hover:bg-gray-300 !w-[15%]"
               onClick={() => setShowAll(!showAll)}
             >
               {showAll ? "Less" : "More"}

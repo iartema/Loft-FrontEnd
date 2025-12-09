@@ -25,8 +25,8 @@ const normalizeMediaType = (value: unknown) => {
   return 0;
 };
 
-const getAuthHeader = (req: NextRequest) => {
-  const jar = cookies();
+const getAuthHeader = async (req: NextRequest) => {
+  const jar = await cookies();
   const cookieToken = jar.get("auth_token")?.value;
   const headerToken = req.headers.get("authorization");
   return headerToken || (cookieToken ? `Bearer ${cookieToken}` : undefined);
@@ -73,23 +73,30 @@ const buildProductDto = (id: number, body: any) => {
   return dto;
 };
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
-  const { id } = params;
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   if (!id) {
     return NextResponse.json({ message: "Product id is required" }, { status: 400 });
   }
 
-  const authHeader = getAuthHeader(req);
+  const authHeader = await getAuthHeader(req);
 
   try {
-    const res = await fetch(`${API_BASE}/products/${encodeURIComponent(id)}`, {
-      method: "GET",
-      headers: {
-        ...(authHeader ? { Authorization: authHeader } : {}),
-        "Content-Type": "application/json",
-      },
-      cache: "no-store",
-    });
+    const doFetch = async (withAuth: boolean) =>
+      fetch(`${API_BASE}/products/${encodeURIComponent(id)}`, {
+        method: "GET",
+        headers: {
+          ...(withAuth && authHeader ? { Authorization: authHeader } : {}),
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+      });
+
+    let res = await doFetch(true);
+    if (res.status === 401 && authHeader) {
+      // fall back to unauthenticated fetch so public users can view products
+      res = await doFetch(false);
+    }
 
     const text = await res.text();
     let data: unknown = text;
@@ -118,13 +125,14 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
-  const { id } = params;
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   if (!id) {
     return NextResponse.json({ message: "Product id is required" }, { status: 400 });
   }
 
-  const token = cookies().get("auth_token")?.value;
+  const cookieStore = await cookies();
+  const token = cookieStore.get("auth_token")?.value;
   if (!token) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }

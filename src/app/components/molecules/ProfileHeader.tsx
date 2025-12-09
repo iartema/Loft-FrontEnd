@@ -30,7 +30,7 @@ export default function ProfileHeader({
           <p className="text-2xl font-semibold">
             {name} {surname}
           </p>
-          <p className="text-sm text-gray-400">{email}</p>
+          <p className="text-sm sort-label opacity-[70%]">{email}</p>
         </div>
       </div>
 

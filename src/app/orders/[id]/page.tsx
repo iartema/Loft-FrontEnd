@@ -59,7 +59,7 @@ export default function OrderDetailPage() {
       if (!order?.orderItems?.length) return;
       const ids: string[] = [];
       for (const item of order.orderItems) {
-        const productId = item.productId || item?.product?.id;
+        const productId = item.productId;
         if (!productId) continue;
         try {
           const product = await fetchProductById(productId);

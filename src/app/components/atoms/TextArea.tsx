@@ -14,6 +14,7 @@ export default function Textarea({ className = "", ...props }: Props) {
         WebkitAppearance: "none",
         WebkitBoxShadow: "0 0 0px 1000px transparent inset",
         backgroundClip: "padding-box",
+        boxShadow: "0 3px 3px 0px rgba(0, 0, 0, 0.25)"
       }}
     />
   );

@@ -53,6 +53,21 @@ function resolveFavoriteProductId(entry: any): number | null {
 }
 
 type SortOption = "views" | "price_desc" | "price_asc" | "season";
+type FlatCategory = { ID: number; Name: string; ParentCategoryId: number | null; Status?: string; Type?: ProductTypeKind };
+
+const formatPrice = (value?: number | null, currency?: string | number | null) => {
+  if (value == null) return "";
+  const symbolMap: Record<string, string> = { USD: "$", UAH: "₴", 0: "₴", 1: "$" };
+  const codeMap: Record<string, string> = { 0: "UAH", 1: "USD" };
+  const key =
+    currency == null ? "" : typeof currency === "number" ? String(currency) : currency.toString().toUpperCase();
+  const symbol = key ? symbolMap[key] : "";
+  const code = key ? codeMap[key] ?? key : "";
+  const formatted = value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  if (symbol) return `${symbol} ${formatted}`;
+  if (code) return `${formatted} ${code}`;
+  return formatted;
+};
 
 export default function SearchView() {
   const params = useSearchParams();
@@ -67,7 +82,7 @@ export default function SearchView() {
   const [priceMin, setPriceMin] = useState<number | null>(null);
   const [priceMax, setPriceMax] = useState<number | null>(null);
   const [attrFilters, setAttrFilters] = useState<Record<number, string | number | boolean | string[] | null>>({});
-  const [allCategories, setAllCategories] = useState<{ ID: number; Name: string; ParentCategoryId: number | null; Status?: string; Type?: ProductTypeKind | null }[]>([]);
+  const [allCategories, setAllCategories] = useState<FlatCategory[]>([]);
   const [categoryAttrs, setCategoryAttrs] = useState<{ ID: number; Name: string; Type: "text" | "number" | "select" | "multiselect" | "boolean" | "color"; Value?: string }[]>([]);
   const [attributeSuggestions, setAttributeSuggestions] = useState<Record<number, string[]>>({});
   type ProductWithFavorite = ProductDto & { isFavorite?: boolean };
@@ -149,19 +164,17 @@ export default function SearchView() {
   }, [favoriteIds]);
 
   useEffect(() => {
-    const flatten = (list: CategoryDto[], acc: { ID: number; Name: string; ParentCategoryId: number | null; Status?: string; Type?: ProductTypeKind | null }[] = []) => {
+    const flatten = (list: CategoryDto[], acc: FlatCategory[] = []) => {
       for (const c of list) {
+        const typeVal = normalizeProductType(
+          (c as any).type ?? (c as any).Type ?? (c as any).productType ?? (c as any).ProductType
+        );
         acc.push({
           ID: c.id,
           Name: c.name,
           ParentCategoryId: c.parentCategoryId ?? null,
           Status: c.status ?? undefined,
-          Type: normalizeProductType(
-            (c as any).type ??
-            (c as any).Type ??
-            (c as any).productType ??
-            (c as any).ProductType
-          ),
+          Type: typeVal ?? undefined,
         });
         if (c.subCategories && c.subCategories.length) flatten(c.subCategories, acc);
       }
@@ -512,9 +525,9 @@ export default function SearchView() {
   }, [sellerId]);
 
   const sellerCard = sellerId ? (
-    <div className={`${almarai.className} flex items-center gap-3 px-6 py-3 rounded-2xl pt-4 pb-4 justify-center shadow-md min-w-[280px]`}>
+    <div className={`${almarai.className} flex items-center gap-3 px-6 py-3 rounded-2xl pt-4 pb-4 justify-center min-w-[280px]`}>
       {sellerLoading ? (
-        <span className="text-white/70 text-sm">Loading seller…</span>
+        <span className="text-white/70 text-sm sort-label">Loading seller…</span>
       ) : sellerInfo ? (
         <>
           <div className="w-10 h-10 rounded-full overflow-hidden bg-[var(--bg-elev-3)] flex-shrink-0">
@@ -525,14 +538,14 @@ export default function SearchView() {
             />
           </div>
           <div className="text-sm">
-            <div className="text-white font-semibold">
+            <div className="text-white font-semibold sort-label">
               {[sellerInfo.firstName, sellerInfo.lastName].filter(Boolean).join(" ").trim() || "Seller"}
             </div>
-            <span className="text-white/60 text-sm">Seller</span>
+            <span className="text-white/60 text-sm sort-label">Seller</span>
           </div>
         </>
       ) : (
-        <span className="text-white/60 text-sm">Seller filter active</span>
+        <span className="text-white/60 text-sm sort-label">Seller filter active</span>
       )}
     </div>
   ) : null;
@@ -574,19 +587,20 @@ export default function SearchView() {
         <div className="relative w-full flex items-center min-h-[56px] pr-[280px]">
           <div className="flex-1 flex justify-center">{sellerCard}</div>
           <div className={`${almarai.className} flex items-center gap-2 absolute right-0 mr-12`}>
-            <span className="text-sm text-white/70">Sort by:</span>
+            <span className="text-sm sort-label">Sort by:</span>
             <div className="relative">
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortOption)}
                 className="appearance-none bg-[var(--bg-filter-inner)] text-white px-3 pr-14 py-2 rounded-[12px] border border-transparent focus:outline-none focus:border-[var(--divider)] text-md"
+                style={{ boxShadow: "0 2px 4px 0px rgba(0, 0, 0, 0.45)" }}
               >
                 <option value="views">Views</option>
                 <option value="season">Season (popular & recent)</option>
                 <option value="price_desc">Price (highest)</option>
                 <option value="price_asc">Price (lowest)</option>
               </select>
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/80 text-xs">
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/80 text-xs sort-label">
                 ▼
               </span>
             </div>
@@ -596,18 +610,19 @@ export default function SearchView() {
 
       <div className="grid grid-cols-[240px_1fr] gap-6">
         {/* Filters (no local search field here as per spec) */}
-        <aside className={`rounded-2xl p-0 space-y-0 h-fit sticky top-4 ${almarai.className}` }>
+        <aside className={`search-sidebar rounded-2xl p-0 space-y-0 h-fit sticky top-4 ${almarai.className}` }>
           <FilterSection title="Category">
             <div className="space-y-2">
               <button
                 type="button"
                 onClick={() => setCatModalOpen(true)}
                 className="w-full bg-[var(--bg-filter-inner)] text-white px-3 py-2 text-sm rounded-[12px] border border-[var(--divider)] hover:border-[var(--brand)] text-left"
+                style={{ boxShadow: "0 2px 6px -2px rgba(0, 0, 0, 0.45)" }}
               >
                 {categoryName || "All"}
               </button>
               {productType && (
-                <div className="text-xs text-white/60">Type: {productTypeLabel(productType)}</div>
+                <div className="text-xs text-white/60 sort-label">Type: {productTypeLabel(productType)}</div>
               )}
             </div>
           </FilterSection>
@@ -616,7 +631,7 @@ export default function SearchView() {
             categoryAttrs.map((a) => {
               const suggestions = attributeSuggestions[a.ID] ?? [];
               return (
-                <FilterSection key={a.ID} title={a.Name} defaultOpen>
+                <FilterSection key={a.ID} title={a.Name}>
               {a.Type === "text" && (
                 <input
                   type="text"
@@ -624,6 +639,7 @@ export default function SearchView() {
                   value={(attrFilters[a.ID] as string) ?? ""}
                   onChange={(e) => setAttrFilters((s) => ({ ...s, [a.ID]: e.target.value }))}
                   className={`w-full bg-[var(--bg-filter-inner)] text-white px-3 py-2 text-sm rounded-[12px] outline-none border border-transparent focus:outline-none focus:border-[var(--divider)] ${almarai.className}`}
+                  style={{ boxShadow: "0 2px 6px -2px rgba(0, 0, 0, 0.45)" }}
                 />
               )}
               {a.Type === "number" && (
@@ -714,6 +730,7 @@ export default function SearchView() {
                       type="button"
                       onClick={() => applySuggestionValue(a, opt)}
                       className="px-3 py-1 text-xs rounded-full bg-[var(--bg-filter-inner)] border border-[var(--divider)] hover:border-[var(--brand)]"
+                      style={{ boxShadow: "0 2px 6px -2px rgba(0, 0, 0, 0.45)" }}
                     >
                       {opt}
                     </button>
@@ -773,7 +790,7 @@ export default function SearchView() {
                 name={p.name}
                 productId={p.id}
                 description={`${p.viewCount ?? 0} views`}
-                price={`${['₴', '$'][Number(p.currency)]} ${p.price}`}
+                price={formatPrice(p.price, p.currency)}
                 image={getFirstPublicImageUrl(p.mediaFiles) || "/default-product.jpg"}
                 buttonLabel="View"
                 onClick={() => router.push(`/product/${p.id}`)}

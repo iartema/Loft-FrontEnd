@@ -688,10 +688,10 @@ export default function ProductForm({
         throw new Error(text || (isEdit ? "Failed to update product" : "Failed to create product"));
       }
       const data = await res.json().catch(() => null);
+      const parsedId = Number((data as any)?.id ?? (data as any)?.Id);
       const nextId =
         effectiveProductId ??
-        (data && (Number((data as any).id ?? (data as any).Id) || null)) ||
-        null;
+        (data ? (Number.isFinite(parsedId) ? parsedId : null) : null);
       if (isEdit && (nextId ?? effectiveProductId)) {
         const targetId = nextId ?? effectiveProductId!;
         if (onSaved) onSaved(targetId);
@@ -796,6 +796,7 @@ export default function ProductForm({
                 }`}
                 onClick={() => !categoryLocked && setCatOpen(true)}
                 disabled={categoryLocked}
+                style={{boxShadow: "0 3px 3px 0px rgba(0, 0, 0, 0.25)"}}
               >
                 {categoryLabel}
               </button>
@@ -856,6 +857,7 @@ export default function ProductForm({
                       }))
                     }
                     className="appearance-none w-full bg-[var(--bg-input)] rounded-[15px] px-4 pr-12 py-2 text-[20px] text-white outline-none"
+                    style={{boxShadow: "0 3px 3px 0px rgba(0, 0, 0, 0.25)"}}
                   >
                     <option value="0">UAH ₴</option>
                     <option value="1">USD $</option>

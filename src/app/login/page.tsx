@@ -7,7 +7,6 @@ import OverlayPortal from "../components/OverlayPortal";
 export default function LoginPage() {
   return (
     <main className="relative flex min-h-screen bg-[var(--bg-body)] text-white overflow-hidden">
-      <script src="https://accounts.google.com/gsi/client" async defer></script>
 
       <OverlayPortal>
         <div className="pointer-events-none fixed inset-0 z-50 flex justify-end items-start select-none">

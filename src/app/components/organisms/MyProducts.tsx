@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Title from "../atoms/Title";
 import ViewProductCardSearch from "../molecules/ViewProductCardSearch";
 import Button from "../atoms/Button";
@@ -43,13 +43,29 @@ const statusMatchesFilter = (status: string | number | null | undefined, filter:
   return true;
 };
 
-const formatPrice = (price?: number | null, currency?: string | null) => {
-  if (price === null || price === undefined) return "-";
-  const curr = ["₴", "$"][currency] ?? "";
-  return `${curr} ${price.toLocaleString(undefined, {
+const formatPrice = (value?: number | null, currency?: string | number | null) => {
+  if (value == null) return "-";
+  const symbolMap: Record<string, string> = {
+    USD: "$",
+    UAH: "₴",
+    0: "₴",
+    1: "$",
+  };
+  const codeMap: Record<string, string> = {
+    0: "UAH",
+    1: "USD",
+  };
+  const key =
+    currency == null ? "" : typeof currency === "number" ? String(currency) : currency.toString().toUpperCase();
+  const symbol = key ? symbolMap[key] : "";
+  const code = key ? codeMap[key] ?? key : "";
+  const formatted = value.toLocaleString(undefined, {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
-  })}`.trim();
+  });
+  if (symbol) return `${symbol} ${formatted}`;
+  if (code) return `${formatted} ${code}`;
+  return formatted;
 };
 
 export default function MyProducts() {
@@ -125,16 +141,14 @@ export default function MyProducts() {
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`${
-              filter === f ? "text-green-400 underline" : "hover:text-white"
-            } transition`}
+            className={`${filter === f ? "text-[var(--success)] underline" : "sort-label"} transition`}
           >
             {f}
           </button>
         ))}
       </div>
 
-      <div className="border-t border-neutral-800" />
+      <div className="border-t border-[var(--divider)]" />
 
       {loading && <div className="text-sm text-gray-400">Loading your listings...</div>}
       {error && !loading && <div className="text-sm text-red-400">{error}</div>}

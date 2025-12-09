@@ -319,14 +319,14 @@ export default function ProductViewPage() {
 
   if (!data) {
     return (
-      <div className={[almarai.className, "min-h-[calc(100dvh-80px)] bg-[var(--bg-subtle)] text-[var(--fg-primary)] flex items-center justify-center"].join(" ")}>
+      <div className={[almarai.className, "min-h-[calc(100dvh-80px)] text-[var(--fg-primary)] flex items-center justify-center"].join(" ")}>
         <div className="opacity-70">Loading product…</div>
       </div>
     );
   }
 
   return (
-    <div className={[almarai.className, "min-h-[calc(100dvh-80px)] bg-[var(--bg-subtle)] text-[var(--fg-primary)]"].join(" ")}>
+    <div className={[almarai.className, "min-h-[calc(100dvh-80px)] text-[var(--fg-primary)]"].join(" ")}>
       <div className="max-w-[1400px] mx-auto px-10 py-10">
         {/* top grid */}
         <section className="grid grid-cols-12 gap-8">

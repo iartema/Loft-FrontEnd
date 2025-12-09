@@ -71,13 +71,13 @@ export default function DigitalFileUploader({ files, onAdd, onRemove }: Props) {
             >
               <div className="flex-1 min-w-0 pr-4">
                 <p className="text-white truncate">{file.name}</p>
-                <p className="text-xs text-white/60">
+                <p className="text-xs text-white/60 sort-label">
                   {formatSize(file.size)} · {file.mediaId ? "Uploaded" : "Pending upload"}
                 </p>
               </div>
               <button
                 type="button"
-                className="text-white/70 hover:text-white text-base"
+                className="text-white/70 hover:text-white text-base sort-label"
                 onClick={() => onRemove(file.id)}
                 aria-label={`Remove ${file.name}`}
               >

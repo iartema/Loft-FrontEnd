@@ -17,7 +17,6 @@ const roles: Pillar[] = [
     title: "Backend & Architecture",
     items: [
       "Platon Reshetnikov — backend: ASP.NET Web API architecture, business logic, Stripe + OAuth2 integrations, hosting & CI/CD.",
-      "Dmytro Rozhyn — backend QA: unit/API tests, automation, documentation, code quality.",
       "Klym Zaika — backend: REST API optimization, DB design, moderation/search algorithms, microservice performance.",
     ],
   },
@@ -74,25 +73,25 @@ const acceptance: Pillar = {
 
 export default function AboutPage() {
   return (
-    <main className="relative min-h-screen text-white">
+    <main className="relative min-h-screen sort-label text-[var(--fg-primary)]">
       {/* ambient glows */}
       <div className="relative max-w-6xl mx-auto px-6 md:px-10 py-14 space-y-10">
         {/* hero */}
-        <header className="space-y-6">
+        <header className="space-y-6 !bg-[var(--bg-body)]">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70 backdrop-blur">
             <span className={`${almarai.className} uppercase tracking-[0.2em] text-[10px] text-[var(--fg-muted)]`}>
               Loft Marketplace
             </span>
             <span className="h-1 w-1 rounded-full bg-emerald-400" />
-            <span className="text-[11px] text-emerald-300/90">In active development</span>
+            <span className="text-[11px] sort-label">In active development</span>
           </div>
 
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
             <div className="space-y-3 max-w-3xl">
-              <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">
+              <h1 className="text-4xl md:text-5xl font-semibold tracking-tight sort-label">
                 About the Loft team
               </h1>
-              <p className="text-white/70">
+              <p className="sort-label">
                 A lean crew of engineers, DevOps, and designers building a secure, fast marketplace
                 for physical and digital goods, combining solid engineering, design craft, and
                 safety-first operations.
@@ -100,15 +99,15 @@ export default function AboutPage() {
             </div>
 
             {/* quick stats */}
-            <div className="grid grid-cols-3 gap-3 text-xs md:text-sm">
+            <div className="grid grid-cols-3 gap-3 text-xs md:text-sm sort-label">
               <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5 backdrop-blur-sm">
-                <div className="text-[10px] uppercase tracking-wide text-white/50">
+                <div className="text-[10px] uppercase tracking-wide text-white/50 sort-label">
                   Focus
                 </div>
                 <div className="mt-1 font-medium">Secure marketplace</div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5 backdrop-blur-sm">
-                <div className="text-[10px] uppercase tracking-wide text-white/50">
+                <div className="text-[10px] uppercase tracking-wide text-white/50 sort-label">
                   Stack
                 </div>
                 <div className="mt-1 font-medium text-xs">
@@ -116,7 +115,7 @@ export default function AboutPage() {
                 </div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5 backdrop-blur-sm">
-                <div className="text-[10px] uppercase tracking-wide text-white/50">
+                <div className="text-[10px] uppercase tracking-wide text-white/50 sort-label">
                   Disciplines
                 </div>
                 <div className="mt-1 font-medium text-xs">
@@ -128,7 +127,7 @@ export default function AboutPage() {
         </header>
 
         {/* product & delivery pillars */}
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-5 sort-label">
           {[goals, tech, craft, acceptance].map((pillar) => (
             <article
               key={pillar.title}
@@ -138,10 +137,10 @@ export default function AboutPage() {
               <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-fuchsia-500/5 blur-2xl transition-opacity group-hover:opacity-100" />
 
               <h2 className="text-lg font-semibold flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-400 shadow-[0_0_12px_rgba(244,63,94,0.6)]" />
+                <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-400 shadow-[0_0_12px_rgba(244,63,94,0.6)] sort-label" />
                 {pillar.title}
               </h2>
-              <ul className="mt-3 space-y-1.5 text-sm text-white/80">
+              <ul className="mt-3 space-y-1.5 text-sm text-white/80 sort-label">
                 {pillar.items.map((item, idx) => (
                   <li key={idx} className="flex gap-2">
                     <span className="mt-1 h-1 w-3 rounded-full bg-white/25" />
@@ -154,10 +153,10 @@ export default function AboutPage() {
         </section>
 
         {/* team roles as timeline */}
-        <section className="mt-4 space-y-4">
+        <section className="mt-4 space-y-4 sort-label">
           <div className="flex items-center gap-2 text-xs text-white/60">
             <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-            <span>Team & ownership</span>
+            <span className="sort-label">Team & ownership</span>
             <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
           </div>
 
@@ -174,25 +173,25 @@ export default function AboutPage() {
                   </div>
 
                   <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-sm hover:border-cyan-400/50 transition-colors">
-                    <h3 className="text-sm font-semibold uppercase tracking-wide text-white/75">
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-white/75 sort-label">
                       {pillar.title}
                     </h3>
-                    <ul className="mt-2 space-y-1.5 text-sm text-white/80">
+                    <ul className="mt-2 space-y-1.5 text-sm text-white/80 sort-label">
                       {pillar.items.map((item, idx) => {
                         const [namePart, rest] = item.split(" — ");
                         const [rolePart, description] = (rest ?? "").split(":");
 
                         return (
                           <li key={idx} className="leading-relaxed">
-                            <span className="font-semibold">{namePart}</span>
+                            <span className="font-semibold sort-label">{namePart}</span>
                             {rolePart && (
-                              <span className="text-white/60">
+                              <span className="text-white/60 sort-label">
                                 {" "}
                                 · {rolePart.trim()}
                               </span>
                             )}
                             {description && (
-                              <span className="block text-xs text-white/60 mt-0.5">
+                              <span className="block text-xs text-white/60 mt-0.5 sort-label">
                                 {description.trim()}
                               </span>
                             )}
@@ -203,7 +202,7 @@ export default function AboutPage() {
                   </div>
 
                   {/* subtle step label */}
-                  <div className="mt-1 text-[11px] uppercase tracking-wide text-white/30">
+                  <div className="mt-1 text-[11px] uppercase tracking-wide text-white/30 sort-label">
                     {String(pillarIdx + 1).padStart(2, "0")}
                   </div>
                 </div>
@@ -212,15 +211,15 @@ export default function AboutPage() {
 
             {/* side summary */}
             <aside className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 md:p-5 backdrop-blur-sm">
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-white/75">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-white/75 sort-label">
                 Operating model
               </h3>
-              <p className="text-sm text-white/70">
+              <p className="text-sm text-white/70 sort-label">
                 Each track has clear ownership: frontend, backend, security, and design. The team
                 works as a single product squad, shipping vertical slices of the marketplace instead
                 of isolated features.
               </p>
-              <ul className="space-y-1.5 text-xs text-white/65">
+              <ul className="space-y-1.5 text-xs text-white/65 sort-label">
                 <li>• Shared rituals: planning, design reviews, and release retros.</li>
                 <li>• Engineers collaborate directly with designers on interaction details.</li>
                 <li>• DevOps and security are integrated in every stage, not a final gate.</li>

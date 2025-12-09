@@ -1,5 +1,6 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import Image from "next/image";
 import { Almarai } from "next/font/google";
 import { addCartItem, type CartItemMeta } from "../lib/api";
@@ -12,6 +13,7 @@ const almarai = Almarai({
 });
 
 interface ProductCardProps {
+  key?: React.Key;
   id?: number;
   name: string;
   description: string;
@@ -32,7 +34,6 @@ export default function ViewProductCardSearch({
   price,
   image,
   onClick,
-  buttonLabel = "View",
   className = "",
   productId,
   isFavorite = false,
@@ -95,9 +96,9 @@ export default function ViewProductCardSearch({
 
   return (
     <div
-      className={`${almarai.className} bg-[var(--bg-input)] rounded-[10px] overflow-hidden 
-      shadow-md hover:shadow-lg transition-all flex flex-col ${className} mb-4 mr-5 max-w-60 min-w-50`}
-      style={{ }}
+      className={`${almarai.className} view-product-card-search bg-[var(--bg-input)] rounded-[10px] overflow-hidden 
+      shadow-lg hover:shadow-xl transition-all flex flex-col ${className} mb-4 mr-5 max-w-60 min-w-50`}
+      style={{ boxShadow: "0 5px 5px -2px rgba(0, 0, 0, 0.45)" }}
     >
       <div className="relative w-full h-[200px] flex-shrink-0 cursor-pointer" onClick={onClick}>
         <Image
@@ -127,14 +128,14 @@ export default function ViewProductCardSearch({
         <div className="space-y-1">
           <p className="text-sm text-white line-clamp-1 mt-1 ml-[2px] mr-[2px]">{name}</p>
         </div>
-        <p className="text-xs text-gray-200 line-clamp-2 mt-5 opacity-[50%]">{description}</p>
+        <p className="text-xs text-gray-200 line-clamp-2 opacity-[50%] mt-7">{description}</p>
         <div className="flex items-center justify-between relative mb-3">
           <span className="text-white text-lg">{price}</span>
           <div className="flex items-center gap-2 text-white/90">
             <button
               aria-label="favorite"
               className={`p-1 rounded-full transition ${
-                isFavorite ? "text-[var(--success)]" : "text-white/70 hover:text-white"
+                isFavorite ? "text-[var(--success)] favorite-on" : "text-white/70 hover:text-white favorite-off"
               } ${favoriteBusy ? "opacity-60 pointer-events-none" : ""}`}
               title={isFavorite ? "Remove from favorites" : "Add to favorites"}
               onClick={() => productId && onToggleFavorite?.(productId)}
@@ -156,15 +157,24 @@ export default function ViewProductCardSearch({
             </button>
             <button
               aria-label="add-to-cart"
-              className={`p-1 rounded-full transition mb-[2px] ${added ? "bg-[var(--success)] text-black" : "hover:text-white"}`}
+              className="p-1 rounded-full transition mb-[2px] hover:text-white"
               title="Add to cart"
               onClick={handleAddToCart}
               disabled={adding}
             >
-              <img src="/mynaui_cart-solid.svg" alt="Cart" className="w-5 h-5" />
+              <img
+                src="/mynaui_cart-solid.svg"
+                alt="Cart"
+                className="w-5 h-5"
+                style={{
+                  filter: added
+                    ? "brightness(0) saturate(100%) invert(71%) sepia(73%) saturate(322%) hue-rotate(92deg) brightness(95%) contrast(96%)"
+                    : "brightness(0) invert(1)",
+                }}
+              />
             </button>
-         </div>
-       </div>
+          </div>
+        </div>
      </div>
     </div>
   );

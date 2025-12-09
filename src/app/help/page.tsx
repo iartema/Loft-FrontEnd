@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Input from "../components/atoms/Input";
 
 type StepCard = {
   id: string;
@@ -126,30 +127,29 @@ export default function HelpPage() {
   }, [query]);
 
   return (
-    <main className="min-h-screen bg-[var(--bg-body)] text-white">
+    <main className="min-h-screen bg-[var(--bg-body)] text-[var(--fg-primary)]">
       <div className="max-w-[1300px] mx-auto px-6 md:px-10 py-10 space-y-8">
-        <header className="text-center space-y-4">
-          <div className="text-3xl md:text-4xl font-semibold">Do you have a question?</div>
+        <header className="text-center space-y-4 !bg-[var(--bg-body)]">
+          <div className="text-3xl md:text-4xl font-semibold sort-label">Do you have a question?</div>
           <div className="mx-auto max-w-2xl">
-            <div className="relative">
-              <input
-                type="text"
+            <form className="relative" onSubmit={(e) => e.preventDefault()}>
+              <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search help topics..."
-                className="w-full rounded-2xl bg-[var(--bg-input)] px-4 py-3 pr-12 text-sm outline-none border border-[var(--divider)] focus:border-[var(--brand)]"
+                className="!rounded-[16px] bg-[var(--bg-input)] pr-20 text-base md:text-lg"
               />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--brand)]">🔍</span>
-            </div>
-          </div>
-          <div className="flex justify-center">
-            <button
-              type="button"
-              className="px-5 py-2 rounded-[12px] bg-[var(--success,#9ef1c7)] text-black font-semibold hover:opacity-90"
-              onClick={() => setQuery("")}
-            >
-              Contact support
-            </button>
+              <button
+                aria-label="Search help"
+                type="submit"
+                className="absolute right-3 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full text-black flex items-center justify-center"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
+                  <path d="M20 20l-3.2-3.2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </button>
+            </form>
           </div>
         </header>
 
@@ -163,7 +163,7 @@ export default function HelpPage() {
                   className="bg-[var(--bg-elev-1)]/80 border border-[var(--divider)] rounded-2xl px-5 py-4"
                 >
                   <div className="text-lg font-semibold mb-3">{card.title}</div>
-                  <ol className="list-decimal list-outside space-y-1 pl-5 text-sm text-white/80">
+                  <ol className="list-decimal list-outside space-y-1 pl-5 text-sm">
                     {card.steps.map((step, i) => (
                       <li key={i}>{step}</li>
                     ))}
@@ -175,7 +175,7 @@ export default function HelpPage() {
           <div className="space-y-4">
             <section id="faq" className="bg-[var(--bg-elev-1)]/80 border border-[var(--divider)] rounded-2xl px-5 py-4">
               <div className="text-lg font-semibold mb-3">FAQ — Quick steps</div>
-              <ul className="list-decimal list-outside space-y-2 pl-5 text-sm text-white/80">
+              <ul className="list-decimal list-outside space-y-2 pl-5 text-sm text-[var(--fg-primary)] opacity-80">
                 {quickFaq.map((item, idx) => (
                   <li key={idx}>{item}</li>
                 ))}
@@ -187,7 +187,7 @@ export default function HelpPage() {
               className="bg-[var(--bg-elev-1)]/80 border border-[var(--divider)] rounded-2xl px-5 py-4"
             >
               <div className="text-lg font-semibold mb-3">Security and privacy</div>
-              <ol className="list-decimal list-outside space-y-2 pl-5 text-sm text-white/80">
+              <ol className="list-decimal list-outside space-y-2 pl-5 text-sm text-[var(--fg-primary)] opacity-80">
                 {safety.map((item, idx) => (
                   <li key={idx}>{item}</li>
                 ))}

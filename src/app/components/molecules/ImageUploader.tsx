@@ -35,7 +35,11 @@ export default function ImageUploader({ files, onAdd, onRemove }: Props) {
 
   const handleFiles = (incoming: FileList | null) => {
     if (!incoming || !incoming.length) return;
-    onAdd(Array.from(incoming));
+    const images = Array.from(incoming).filter(
+      (file) => !file.type || file.type.toLowerCase().startsWith("image/")
+    );
+    if (!images.length) return;
+    onAdd(images);
     if (fileRef.current) fileRef.current.value = "";
   };
 
@@ -81,7 +85,7 @@ export default function ImageUploader({ files, onAdd, onRemove }: Props) {
               />
               <button
                 type="button"
-                className="absolute top-4 right-4 bg-black/70 text-white rounded-full w-8 h-8 flex items-center justify-center text-lg hover:bg-black/80"
+                className="absolute top-4 right-4 bg-black/70 text-[#ffffff] rounded-full w-8 h-8 flex items-center justify-center text-lg hover:bg-black/80"
                 onClick={(event) => {
                   event.stopPropagation();
                   onRemove(active.id);
@@ -94,7 +98,7 @@ export default function ImageUploader({ files, onAdd, onRemove }: Props) {
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center p-8 text-[var(--fg-muted)]">
               <p className="text-lg">Drop files here or click to upload</p>
-              <p className="text-sm opacity-80">Supported file types: any</p>
+              <p className="text-sm opacity-80">Supported file types: png, jpg, jpeg...</p>
             </div>
           )}
           {dragActive && (
@@ -123,7 +127,7 @@ export default function ImageUploader({ files, onAdd, onRemove }: Props) {
               />
               <button
                 type="button"
-                className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white text-xs opacity-0 group-hover:opacity-100 transition"
+                className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-[#ffffff] text-xs opacity-0 group-hover:opacity-100 transition"
                 onClick={(event) => {
                   event.stopPropagation();
                   onRemove(file.id);
@@ -138,7 +142,7 @@ export default function ImageUploader({ files, onAdd, onRemove }: Props) {
           {files.length < 5 && (
             <button
               type="button"
-              className="w-full aspect-square rounded-2xl border border-dashed border-[var(--border)] text-white/70 hover:text-white hover:border-[var(--fg-muted)] flex items-center justify-center text-3xl"
+              className="w-full aspect-square rounded-2xl border border-dashed border-[var(--border)] text-white/70 hover:text-white hover:border-[var(--fg-muted)] flex items-center justify-center text-3xl  sort-label"
               onClick={() => fileRef.current?.click()}
               aria-label="Add photo"
             >
@@ -152,6 +156,7 @@ export default function ImageUploader({ files, onAdd, onRemove }: Props) {
         ref={fileRef}
         type="file"
         multiple
+        accept="image/*"
         className="hidden"
         onChange={(e) => handleFiles(e.target.files)}
       />

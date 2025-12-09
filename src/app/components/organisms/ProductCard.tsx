@@ -43,6 +43,8 @@ export default function ProductCard({
   sellerId: number;
   stockQuantity?: number | null;
 }) {
+  const sellerIdNum = Number(sellerId ?? 0);
+  const hasSeller = Number.isFinite(sellerIdNum) && sellerIdNum > 0;
   const [seller, setSeller] = useState<PublicUserDto | null>(null);
   const [adding, setAdding] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -55,14 +57,14 @@ export default function ProductCard({
   useEffect(() => {
     let cancelled = false;
 
-    if (!sellerId) {
+    if (!hasSeller) {
       setSeller(null);
       return;
     }
 
     (async () => {
       try {
-        const user = await fetchPublicUserById(sellerId);
+        const user = await fetchPublicUserById(sellerIdNum);
         if (!cancelled) setSeller(user);
       } catch {
         if (!cancelled) setSeller(null);
@@ -106,7 +108,7 @@ export default function ProductCard({
     };
   }, []);
 
-  const isOwner = currentUserId != null && sellerId === currentUserId;
+  const isOwner = currentUserId != null && hasSeller && sellerIdNum === currentUserId;
   const sellerName =
     [seller?.firstName, seller?.lastName].filter(Boolean).join(" ").trim() ||
     "Seller";
@@ -165,7 +167,7 @@ export default function ProductCard({
   };
 
   const handleMessageSeller = async () => {
-    if (!sellerId || messaging) return;
+    if (!hasSeller || messaging) return;
     setMessaging(true);
     try {
       const me = await getCurrentUserCached();
@@ -178,8 +180,8 @@ export default function ProductCard({
           ? window.location.origin
           : "https://loft-shop.pp.ua";
       const link = `${origin}/product/${productId}`;
-      await sendChatMessage(sellerId, `Hello, I'm interested in this product. ${link}`);
-      router.push(`/chat/${sellerId}`);
+      await sendChatMessage(sellerIdNum, `Hello, I'm interested in this product. ${link}`);
+      router.push(`/chat/${sellerIdNum}`);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         router.push("/login");
@@ -194,11 +196,12 @@ export default function ProductCard({
   return (
     <div className={`${almarai.className} space-y-6`}>
       {/* PRODUCT CARD */}
-      <div className="bg-[var(--bg-frame)] rounded-xl border border-[var(--bg-frame)] p-6 space-y-4 relative">
+      <div className="bg-[var(--bg-frame)] rounded-xl border border-[var(--bg-frame)] p-6 space-y-4 relative border-[1px] border-[var(--divider)]"
+      style={{boxShadow: "0 3px 3px 0px rgba(0, 0, 0, 0.25)"}}>
         <button
           type="button"
           className={`absolute top-4 right-4 p-2 rounded-full transition ${
-            isFavorite ? "text-[var(--success)]" : "text-white/70 hover:text-white"
+            isFavorite ? "text-[var(--success)] favorite-on" : "text-white/70 hover:text-white favorite-off"
           } ${favoriteBusy ? "opacity-60 pointer-events-none" : ""}`}
           aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
           onClick={handleToggleFavorite}
@@ -253,7 +256,8 @@ export default function ProductCard({
       </div>
 
       {/* SELLER CARD */}
-      <div className="bg-[var(--bg-frame)] rounded-lg p-2 flex items-center justify-between">
+      <div className="bg-[var(--bg-frame)] rounded-lg p-2 flex items-center justify-between border-[1px] border-[var(--divider)]"
+      style={{boxShadow: "0 3px 3px 0px rgba(0, 0, 0, 0.25)"}}>
         <div className="flex items-center gap-3">
           <div className="w-15 h-15 rounded-full bg-[var(--border)] overflow-hidden">
             <img
@@ -270,7 +274,7 @@ export default function ProductCard({
 
         {!(currentUserId && sellerId === currentUserId) && (
           <Button
-            className="max-w-[120px] !bg-[var(--bg-input)] !hover:bg-[var(--bg-input)]"
+            className="message-btn max-w-[120px] !bg-[var(--bg-input)] !hover:bg-[var(--bg-input)]"
             disabled={messaging}
             onClick={handleMessageSeller}
           >

@@ -15,7 +15,7 @@ export default function FilterSection({ title, defaultOpen = false, className = 
     <div className={className}>
       <button
         type="button"
-        className={`w-full flex items-center justify-between px-3 py-3 bg-[var(--bg-filter)] text-sm border-b border-[var(--divider)]`}
+        className={`w-full flex items-center justify-between px-3 py-3 search-sidebar text-sm border-b border-[var(--divider)]`}
         onClick={() => setOpen((v) => !v)}
       >
         <span className="opacity-80">{title}</span>

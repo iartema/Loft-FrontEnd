@@ -267,7 +267,7 @@ export default function HomePage() {
           </div>
           <div className="flex flex-col items-center md:items-end text-center md:text-left gap-4 w-full mr-30">
             <h2 className="text-3xl font-semibold">Start selling your products now!</h2>
-            <p className="text-white/70 max-w-md">
+            <p className="sort-label max-w-md">
               Join hundreds of creators showcasing their best work. Upload your products, manage inventory, and reach new buyers in minutes.
             </p>
             <button

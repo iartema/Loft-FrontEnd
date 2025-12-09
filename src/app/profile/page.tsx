@@ -48,7 +48,7 @@ export default function ProfilePage() {
 
       {/* Sidebar (floating box, centered vertically) */}
       <aside className="hidden lg:flex items-center justify-center w-[300px] h-[700px]">
-        <div className="bg-[var(--bg-elev-1)] rounded-2xl p-6 w-[240px]">
+        <div className="bg-[var(--bg-elev-1)] rounded-2xl p-6 w-[240px] border-[1px] border-[var(--divider)]">
           <ProfileSidebar />
         </div>
       </aside>

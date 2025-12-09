@@ -294,11 +294,13 @@ export default function ChatConversationPage() {
       : "";
 
     return (
-      <div key={message.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
+      <div key={message.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}
+      >
         <div
-          className={`max-w-[70%] rounded-3xl px-4 py-2 text-sm pt-3 pb-3 pl-4 pr-4 ${
-            isMine ? "bg-[#222222] text-white" : "bg-[var(--bg-elev-2)]"
+          className={`max-w-[70%] rounded-3xl px-4 py-2 text-sm pt-3 pb-3 pl-4 pr-4 ml-3 mb-1 mt-1 ${
+            isMine ? "bg-[var(--bg-elev-3)] text-white" : "bg-[var(--bg-elev-2)]"
           }`}
+          style={{boxShadow: "0 2px 3px 2px rgba(0, 0, 0, 0.25)"}}
         >
           {attachedUrl && (
             <div className="mb-3">
@@ -395,11 +397,11 @@ export default function ChatConversationPage() {
   };
 
   return (
-    <main className="relative flex min-h-screen bg-[var(--bg-body)] text-white">
+    <main className="relative flex min-h-screen !bg-[var(--bg-body)] text-white">
       <section className="flex flex-col flex-1 px-6 md:px-12 py-6 gap-4">
-        <header className="flex items-center gap-4">
+        <header className="flex items-center gap-4 !bg-[var(--bg-body)]">
           <button
-            className="text-white/70 hover:text-white"
+            className="sort-label"
             onClick={() => router.push("/chat/all")}
             aria-label="Back"
           >
@@ -411,7 +413,7 @@ export default function ChatConversationPage() {
 
         <Divider text=""/>
 
-        <header className="flex items-center gap-4">
+        <header className="flex items-center gap-4 !bg-[var(--bg-body)]">
         {otherUserAvatar ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -420,12 +422,12 @@ export default function ChatConversationPage() {
               className="w-12 h-12 rounded-full object-cover"
             />
           ) : (
-            <div className="w-12 h-12 rounded-full bg-[var(--bg-elev-2)] grid place-items-center text-lg text-white/80">
+            <div className="w-12 h-12 rounded-full bg-[var(--bg-elev-2)] grid place-items-center text-lg !sort-label">
               {otherUserName?.charAt(0) ?? "?"}
             </div>
           )}
           <div>
-            <div className="text-xl font-semibold">{otherUserName}</div>
+            <div className="text-xl font-semibold sort-label">{otherUserName}</div>
           </div>
         </header>
 
@@ -446,7 +448,8 @@ export default function ChatConversationPage() {
 
         {error && <div className="text-sm text-red-400">{error}</div>}
 
-        <div className="bg-[var(--bg-frame)] rounded-[5px] flex items-center gap-3 px-4 py-2">
+        <div className="bg-[var(--bg-frame)] rounded-[5px] flex items-center gap-3 px-4 py-2"
+        style={{boxShadow: "0 2px 3px 2px rgba(0, 0, 0, 0.25)"}}>
           <input
             type="text"
             className={`${almarai.className} flex-1 outline-none`}
@@ -462,7 +465,7 @@ export default function ChatConversationPage() {
             disabled={sending || uploading}
           />
           <div className="flex items-center gap-1">
-            <label className="cursor-pointer p-2 rounded-lg hover:bg-white/5">
+            <label className="cursor-pointer p-2 rounded-lg hover:bg-white/5 chat-attach">
               <input
                 type="file"
                 accept="image/*"
@@ -474,9 +477,9 @@ export default function ChatConversationPage() {
                 }}
                 disabled={uploading}
               />
-              <img src="/photo.svg" alt="Add photo" className="w-[22px] h-[22px]" />
+              <img src="/photo.svg" alt="Add photo" className="w-[22px] h-[22px] chat-attach-icon" />
             </label>
-            <label className="cursor-pointer p-2 rounded-lg hover:bg-white/5">
+            <label className="cursor-pointer p-2 rounded-lg hover:bg-white/5 chat-attach">
               <input
                 type="file"
                 className="hidden"
@@ -487,7 +490,7 @@ export default function ChatConversationPage() {
                 }}
                 disabled={uploading}
               />
-              <img src="/paper-clip.svg" alt="Attach file" className="w-[22px] h-[22px]" />
+              <img src="/paper-clip.svg" alt="Attach file" className="w-[22px] h-[22px] chat-attach-icon" />
             </label>
           </div>
         </div>
@@ -496,7 +499,7 @@ export default function ChatConversationPage() {
       {/* Sidebar on right */}
             <aside className="hidden lg:block w-[300px] px-4 py-10">
               <div className="sticky top-10">
-                <div className="bg-[var(--bg-elev-1)] rounded-2xl p-6 w-[240px] shadow-lg">
+                <div className="bg-[var(--bg-elev-1)] rounded-2xl p-6 w-[240px] shadow-lg border-[1px] border-[var(--divider)]">
                   <ProfileSidebar />
                 </div>
               </div>

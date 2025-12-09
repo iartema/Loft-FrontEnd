@@ -24,6 +24,7 @@ export default function SimpleSelect({
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
         className="appearance-none w-full bg-[var(--bg-filter-inner)] text-white rounded-[12px] px-3 pr-10 py-2 text-sm outline-none"
+        style={{boxShadow: "0 3px 3px 0px rgba(0, 0, 0, 0.25)"}}
       >
         <option value="">{placeholder}</option>
         {options.map((o) => (

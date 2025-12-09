@@ -43,7 +43,7 @@ export default function OrderHistory() {
       <Title className="font-semibold text-white" size="lg">
         Order history
       </Title>
-      <div className="border-t border-neutral-800" />
+      <div className="border-t border-[var(--divider)]" />
 
       {error && <div className="text-sm text-red-400">{error}</div>}
       {loading ? (

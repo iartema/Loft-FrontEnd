@@ -49,7 +49,7 @@ export default function ProfileSidebar() {
   ];
 
   return (
-    <div className="flex flex-col justify-between h-full w-full bg-[var(--bg-elev-1)] rounded-2xl py-6 shadow-lg">
+    <div className="flex flex-col justify-between h-full w-full bg-[var(--bg-elev-1)] rounded-2xl py-6">
       {/* User info */}
       <div className="flex items-center gap-1 mb-8 w-full">
         <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 border border-white/10">

@@ -40,12 +40,13 @@ export default function Button({
       ? `${almarai.className} font-semibold bg-[var(--brand)] hover:bg-[#ffde7a] text-black px-5 py-3`
       : variant === "google"
       ? `${almarai.className} bg-white border border-gray-300 text-black font-semibold px-5 py-3 hover:bg-gray-200`
-      : `${almarai.className} font-semibold bg-[var(--bg-elev-3)] hover:bg-[var(--bg-hover)] text-white px-5 py-3`;
+      : `${almarai.className} bg-[var(--bg-elev-3)] hover:bg-[var(--bg-hover)] text-white px-5 py-3`;
 
   return (
     <button
       {...props}
       className={`${baseStyles} ${variantStyles} active:scale-[0.98] ${className}`}
+      style={variant !== "submit" ? { boxShadow: "0 3px 3px 0px rgba(0, 0, 0, 0.25)" } : undefined}
     >
       {label ?? props.children}
     </button>

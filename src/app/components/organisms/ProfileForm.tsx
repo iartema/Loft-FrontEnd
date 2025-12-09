@@ -239,7 +239,7 @@ export default function ProfileForm() {
         onChange={handleAvatarChange}
       />
 
-      <div className="border-t border-neutral-800" />
+      <div className="border-t border-[var(--divider)]" />
 
       {error && (
         <div className="text-red-500 text-sm ml-1">{error}</div>
@@ -247,7 +247,7 @@ export default function ProfileForm() {
 
       {/* Change Information */}
       <section>
-        <Title color="text-green-400" className="mb-4">
+        <Title color="title-color" className="mb-4">
           {loading ? "Loading profile..." : saving ? "Saving..." : "Change information"}
         </Title>
         <div className="grid grid-cols-2 gap-x-12 gap-y-1 ml-9 mt-8">
@@ -258,11 +258,11 @@ export default function ProfileForm() {
         </div>
       </section>
 
-      <div className="border-t border-neutral-800" />
+      <div className="border-t border-[var(--divider)]" />
 
       {/* Address Information */}
       <section>
-        <Title color="text-green-400" className="mb-4">
+        <Title color="title-color" className="mb-4">
           Shipping Address
         </Title>
         <div className="grid grid-cols-2 gap-x-12 gap-y-1 ml-9 mt-8">

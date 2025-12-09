@@ -19,6 +19,22 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        <link rel="icon" type="image/png" sizes="32x32" href="/loft-logo-circle.png" />
+        <link rel="shortcut icon" href="/loft-logo-circle.png" />
+        <Script
+          id="theme-init"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                const saved = localStorage.getItem('theme');
+                if (saved === 'light') {
+                  document.documentElement.setAttribute('data-theme', 'light');
+                }
+              } catch {}
+            `,
+          }}
+        />
         <Script
           src="https://accounts.google.com/gsi/client"
           strategy="beforeInteractive"

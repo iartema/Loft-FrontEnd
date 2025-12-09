@@ -14,7 +14,7 @@ export default function MyFavoritesPage() {
       {/* Sidebar on right */}
       <aside className="hidden lg:block w-[300px] px-4 py-10">
         <div className="sticky top-10">
-          <div className="bg-[var(--bg-elev-1)] rounded-2xl p-6 w-[240px] shadow-lg">
+          <div className="bg-[var(--bg-elev-1)] rounded-2xl p-6 w-[240px] shadow-lg border-[1px] border-[var(--divider)]">
             <ProfileSidebar />
           </div>
         </div>

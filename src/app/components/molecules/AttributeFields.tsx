@@ -53,6 +53,7 @@ export default function AttributeFields({ attributes, values, onChange }: Props)
                   value={String(v || "")}
                   onChange={(e) => onChange(a.ID, e.target.value)}
                   className={`appearance-none w-full bg-[var(--bg-input)] rounded-[15px] px-4 pr-12 py-2 text-[20px] text-white outline-none ${akatab.className}`}
+                  style={{boxShadow: "0 3px 3px 0px rgba(0, 0, 0, 0.25)"}}
                 >
                   <option value="">Choose…</option>
                   {options.map((o) => (
@@ -200,6 +201,7 @@ function CompactMultiSelect({
                   checked={checked}
                   onChange={() => toggle(o)}
                   className="accent-[var(--brand)]"
+                  style={{boxShadow: "0 3px 3px 0px rgba(0, 0, 0, 0.25)"}}
                 />
                 <span>{o}</span>
               </label>
@@ -210,4 +212,3 @@ function CompactMultiSelect({
     </div>
   );
 }
-

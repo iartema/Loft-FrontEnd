@@ -13,6 +13,7 @@ import {
 } from "./lib/api";
 import { normalizeProductType, type ProductTypeKind } from "../lib/productTypes";
 import CategoryModal, { type Category } from "./molecules/CategoryModal";
+import { getCurrentUserCached } from "./lib/userCache";
 
 export default function Header() {
   const pathname = usePathname();
@@ -92,6 +93,7 @@ export default function Header() {
     "/chat"
   ].some((p) => pathname?.startsWith(p));
   const iconClass = "header-icon h-7 w-7 object-contain";
+  const iconStyle = { filter: "brightness(0) invert(1)" } as const;
 
   React.useEffect(() => {
     let cancelled = false;
@@ -141,7 +143,7 @@ export default function Header() {
 
   if (isLogoOnly) {
     return (
-      <header className="w-full bg-[var(--bg-body)]">
+      <header className="w-screen relative left-[50%] right-[50%] ml-[-50vw] mr-[-50vw] bg-[var(--bg-body)]">
         <div className="flex items-center px-8 py-3">
           <Link href="/" className="flex items-center" aria-label="Go to home">
             <Image src="/loft-logo.svg" alt="Loft Logo" width={120} height={48} className="h-9 w-auto cursor-pointer" />
@@ -152,17 +154,25 @@ export default function Header() {
   }
 
   return (
-    <header className="w-full bg-[var(--bg-body)] pt-4">
+    <header className="w-screen relative left-[50%] right-[50%] ml-[-50vw] mr-[-50vw] bg-[var(--bg-body)]">
       {/* Top row: logo, search, right icons */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between px-3 md:px-6 lg:px-13 mt-4">
         <div className="flex items-center flex-1">
           <Link href="/" className="flex items-center mt-2" aria-label="Go to home">
             <Image src="/loft-logo.svg" alt="Loft Logo" width={50} height={48} className="h-15 w-auto cursor-pointer" />
           </Link>
           {/* Search bar with round green button (hidden on small screens) */}
-          <form action="/search" method="GET" className="relative flex-1 max-w-none mr-23 hidden md:block">
-            <Input name="q" placeholder="Search" className="!rounded-[16px] bg-[var(--bg-input)] pr-20" />
-            <button aria-label="search" type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-[var(--success)] text-black flex items-center justify-center">
+          <form action="/search" method="GET" className="relative flex-1 max-w-none mr-23 hidden md:block mt-3 mb-3">
+            <Input
+              name="q"
+              placeholder="Search"
+              className="header-search-input !rounded-[12px] bg-[var(--bg-input)] pr-20"
+            />
+            <button
+              aria-label="search"
+              type="submit"
+              className="header-search-btn absolute right-3 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-[var(--success)] text-black flex items-center justify-center"
+            >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
                 <path d="M20 20l-3.2-3.2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -175,15 +185,15 @@ export default function Header() {
         <div className="hidden sm:flex items-center gap-8 text-[var(--fg-primary)] mr-10">
           {/* theme toggle */}
           <button title="Theme" onClick={toggleTheme} className="cursor-pointer">
-            <Image src="/Component 29.svg" alt="Theme" width={32} height={32}  className={iconClass} />
+            <Image src="/Component 29.svg" alt="Theme" width={32} height={32}  className={iconClass} style={iconStyle} />
           </button>
           {/* store -> /product */}
           <button title="My Products" onClick={() => router.push("/myproducts")} className="cursor-pointer">
-            <Image src="/iconoir_shop.svg" alt="Store" width={32} height={32}  className={iconClass} />
+            <Image src="/iconoir_shop.svg" alt="Store" width={32} height={32}  className={iconClass} style={iconStyle} />
           </button>
           {/* favorites -> /myfavorites */}
           <button title="Favorites" onClick={() => router.push("/myfavorites")} className="cursor-pointer">
-            <Image src="/icon-park-solid_like.svg" alt="Favorites" width={32} height={32}  className={iconClass} />
+            <Image src="/icon-park-solid_like.svg" alt="Favorites" width={32} height={32}  className={iconClass} style={iconStyle} />
           </button>
           {/* notifications -> chat/all */}
           <button
@@ -197,6 +207,7 @@ export default function Header() {
               width={25}
               height={25}
               className={`${iconClass} w-6 h-6`}
+              style={iconStyle}
             />
 
             {hasUnread && (
@@ -205,40 +216,42 @@ export default function Header() {
           </button>
           {/* cart -> /mycart */}
           <button title="Cart" onClick={() => router.push("/mycart")} className="cursor-pointer">
-            <Image src="/mynaui_cart-solid.svg" alt="Cart" width={32} height={32}  className={iconClass} />
+            <Image src="/mynaui_cart-solid.svg" alt="Cart" width={32} height={32}  className={iconClass} style={iconStyle} />
           </button>
           {/* account -> /profile */}
           <button title="Account" onClick={() => router.push("/profile")} className="cursor-pointer">
-            <Image src="/iconamoon_profile-circle-fill.svg" alt="Account" width={32} height={32}  className={iconClass} />
+            <Image src="/iconamoon_profile-circle-fill.svg" alt="Account" width={32} height={32}  className={iconClass} style={iconStyle} />
           </button>
         </div>
       </div>
 
       {/* Bottom row: categories / quick links (hidden for profile area) */}
       {!isProfileArea && (
-        <div className="px-8 pb-2 ml-5 flex items-center gap-10 text-[var(--fg-primary)] ml-4">
-          <button
-            type="button"
-            onClick={openCategories}
-            className="flex items-center gap-2 cursor-pointer"
-          >
-            <span className="text-xl">≡</span>
-            <span className="font-semibold text-xl">All categories</span>
-          </button>
-          <button
-            type="button"
-            onClick={handlePopular}
-            className="opacity-80 cursor-pointer hover:opacity-100"
-          >
-            Popular
-          </button>
-          <button
-            type="button"
-            onClick={handleSeason}
-            className="opacity-80 cursor-pointer hover:opacity-100"
-          >
-            Season
-          </button>
+        <div className="w-full bg-[var(--bg-body)] px-13">
+          <div className="pt-2 px-8 pb-2 ml-5 flex items-center gap-10 text-[var(--fg-primary)] ml-4">
+            <button
+              type="button"
+              onClick={openCategories}
+              className="flex items-center gap-2 cursor-pointer opacity-90 hover:opacity-100"
+            >
+              <span className="text-xl">≡</span>
+              <span className="font-semibold text-xl">All categories</span>
+            </button>
+            <button
+              type="button"
+              onClick={handlePopular}
+              className="opacity-80 cursor-pointer hover:opacity-100"
+            >
+              Popular
+            </button>
+            <button
+              type="button"
+              onClick={handleSeason}
+              className="opacity-80 cursor-pointer hover:opacity-100"
+            >
+              Season
+            </button>
+          </div>
         </div>
       )}
       <div className="w-full h-px bg-[var(--divider)]" />

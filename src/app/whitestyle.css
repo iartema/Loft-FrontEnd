@@ -8,17 +8,17 @@
   color: #000000;
 
   /* Backgrounds */
-  --bg-body: #ffffff;       /* main app background */
+  --bg-body: #f4f4f9;       /* main app background */
   --bg-subtle: #f9fafb;     /* large containers/backdrops */
   --bg-elev-1: #f5f5f7;     /* sidebars/panels */
   --bg-elev-2: #efeff2;     /* menus/dropdowns/cards */
-  --bg-elev-3: #e8e8eb;     /* secondary surfaces/badges */
-  --bg-filter: #e6e6e6;     /* filters frame and elements */
-  --bg-filter-inner: #f0f0f0; /* inputs/selects inside expanded filters */
+  --bg-elev-3: #ffffff;     /* secondary surfaces/badges */
+  --bg-filter: #f4f4f9;     /* filters frame and elements */
+  --bg-filter-inner: #ffffff; /* inputs/selects inside expanded filters */
   --bg-card: #f5f5f7;       /* product cards background */
-  --bg-frame: #efeff2;      /* product/view frames background */
-  --bg-input: #f3f4f6;      /* inputs/search fields */
-  --bg-hover: #ededed;      /* hover/active states */
+  --bg-frame: #ffffff;      /* product/view frames background */
+  --bg-input: #ffffff;      /* inputs/search fields */
+  --bg-hover: #ffffff;      /* hover/active states */
 
   /* Foregrounds */
   --fg-primary: #171717;    /* primary text */
@@ -28,11 +28,11 @@
 
   /* Borders and dividers */
   --border: #e0e0e0;
-  --divider: #e6e6e6;
+  --divider: #d4d4d4;
 
   /* Accents and state colors */
   --brand: #ffc107;
-  --success: #000000;       /* canonical success/green */
+  --success: #005d00;       /* canonical success/green */
   --link: #596bc2;          /* slightly darker blue on light */
   --link-alt: #6695ff;
   --danger: #eb4335;
@@ -68,6 +68,73 @@
   filter: none !important;
 }
 
+[data-theme="light"] .header-search-input {
+  background-color: #7c9e7a !important;
+  color: #ffffff !important;
+}
+
+[data-theme="light"] .header-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+[data-theme="light"] .header-search-btn {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .view-product-card-search {
+  color: #000000 !important;
+}
+
+[data-theme="light"] .view-product-card-search .text-white,
+[data-theme="light"] .view-product-card-search .text-gray-200,
+[data-theme="light"] .view-product-card-search .text-white\/90 {
+  color: #000000 !important;
+}
+[data-theme="light"] .view-product-card-search .text-white\/70 {
+  color: #000000 !important;
+}
+
+[data-theme="light"] .favorite-off {
+  color: #000000 !important;
+}
+
+[data-theme="light"] .view-product-card-search .text-\[var\(--success\)\] {
+  color: #ff4f84 !important;
+}
+
+[data-theme="light"] .favorite-on svg,
+[data-theme="light"] .favorite-on path {
+  color: #ff4f84 !important;
+  stroke: #ff4f84 !important;
+  fill: #ff4f84 !important;
+}
+
+[data-theme="light"] .view-product-card-search img[alt="Cart"] {
+  filter: brightness(0) !important;
+}
+
+[data-theme="light"] .sort-label {
+  color: #000000 !important;
+}
+
+[data-theme="light"] .title-color {
+  color: #000000 !important;
+}
+
+[data-theme="light"] .chat-attach-icon {
+  filter: brightness(0) saturate(100%) invert(46%) sepia(0%) saturate(0%) hue-rotate(186deg) brightness(85%) contrast(90%);
+}
+
+[data-theme="light"] .message-btn {
+  border: 1px solid var(--brand) !important;
+}
+
+[data-theme="light"] .toggle-more-btn {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border: 1px solid #000000 !important;
+}
 [data-theme="light"] header,
 [data-theme="light"] footer {
   background-color: #44553B;
