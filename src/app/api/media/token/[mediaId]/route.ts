@@ -8,9 +8,9 @@ const MEDIA_API_BASE =
 
 export async function POST(
   _req: Request,
-  { params }: { params: { mediaId: string } }
+  { params }: { params: Promise<{ mediaId: string }> }
 ) {
-  const { mediaId } = params;
+  const { mediaId } = await params;
   if (!mediaId) {
     return NextResponse.json({ message: "mediaId is required" }, { status: 400 });
   }

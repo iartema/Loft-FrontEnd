@@ -190,7 +190,7 @@ export default function HomePage() {
     if (!products.length) return [];
     const shuffled = [...products].sort(() => Math.random() - 0.5);
     return shuffled.slice(0, 12).map(kvProduct);
-  }, [products]);
+  }, [products, kvProduct]);
 
   const interestIcons = useMemo(() => {
     const base =
@@ -354,48 +354,31 @@ function ProductSection({
 }) {
   const rowRef = useRef<HTMLDivElement>(null);
 
-  const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
-  if (!rowRef.current) return;
+  useEffect(() => {
+    const el = rowRef.current;
+    if (!el) return;
 
-  // Always block vertical page scroll while hovering
-  event.preventDefault();
-  event.stopPropagation();
+    const handler = (e: WheelEvent) => {
+      // Always block vertical page scroll
+      e.preventDefault();
 
-  // Use vertical wheel movement to scroll horizontally
-  const scrollAmount =
-    Math.abs(event.deltaY) > Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
+      // Scroll horizontally using wheel input
+      const delta =
+        Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
 
-  rowRef.current.scrollBy({
-    left: scrollAmount,
-    behavior: "smooth",
-  });
-};
+      el.scrollBy({
+        left: delta,
+        behavior: "smooth",
+      });
+    };
 
-useEffect(() => {
-  const el = rowRef.current;
-  if (!el) return;
+    // Add non-passive listener
+    el.addEventListener("wheel", handler, { passive: false });
 
-  const handler = (e: WheelEvent) => {
-    // Always block vertical page scroll
-    e.preventDefault();
-
-    // Scroll horizontally using wheel input
-    const delta =
-      Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
-
-    el.scrollBy({
-      left: delta,
-      behavior: "smooth",
-    });
-  };
-
-  // Add non-passive listener
-  el.addEventListener("wheel", handler, { passive: false });
-
-  return () => {
-    el.removeEventListener("wheel", handler);
-  };
-}, []);
+    return () => {
+      el.removeEventListener("wheel", handler);
+    };
+  }, []);
 
 
   return (
