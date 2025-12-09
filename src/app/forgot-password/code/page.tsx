@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Almarai } from "next/font/google";
 import RecoverLayout from "../../components/organisms/RecoverLayout";
@@ -9,7 +9,7 @@ import OtpInput from "../../components/molecules/OtpInput";
 
 const almarai = Almarai({ subsets: ["latin"], weight: ["400", "700"] });
 
-export default function ForgotPasswordCodePage() {
+function ForgotPasswordCodeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email") ?? "";
@@ -62,5 +62,13 @@ export default function ForgotPasswordCodePage() {
         <ButtonAuth type="submit" label="Next" disabled={!isValidCode || submitting} />
       </form>
     </RecoverLayout>
+  );
+}
+
+export default function ForgotPasswordCodePage() {
+  return (
+    <Suspense fallback={null}>
+      <ForgotPasswordCodeContent />
+    </Suspense>
   );
 }

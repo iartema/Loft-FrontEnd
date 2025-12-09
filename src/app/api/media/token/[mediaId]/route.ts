@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { cookies } from "next/headers";
 
 const MEDIA_API_BASE =
@@ -7,7 +7,7 @@ const MEDIA_API_BASE =
   "https://www.loft-shop.pp.ua/api/media";
 
 export async function POST(
-  _req: Request,
+  _req: NextRequest,
   { params }: { params: Promise<{ mediaId: string }> }
 ) {
   const { mediaId } = await params;

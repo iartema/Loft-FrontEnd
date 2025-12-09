@@ -1,15 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { cookies } from "next/headers";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "https://www.loft-shop.pp.ua/api";
 
-export async function GET(_req: Request, { params }: { params: { customerId: string } }) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ customerId: string }> }) {
+  const { customerId } = await params;
   const jar = await cookies();
   const token = jar.get("auth_token")?.value;
   if (!token) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
-  const { customerId } = params;
   try {
     const res = await fetch(`${API_BASE}/orders/customer/${customerId}`, {
       headers: { Authorization: `Bearer ${token}` },

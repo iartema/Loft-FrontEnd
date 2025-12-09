@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import RecoverLayout from "../../components/organisms/RecoverLayout";
 import InputField from "../../components/molecules/InputField";
 import ButtonAuth from "../../components/atoms/ButtonAuth";
 import { confirmPasswordReset } from "../../components/lib/api";
 
-export default function ForgotPasswordNewPasswordPage() {
+function ForgotPasswordNewPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email") ?? "";
@@ -77,5 +77,13 @@ export default function ForgotPasswordNewPasswordPage() {
         <ButtonAuth type="submit" label={loading ? "Saving..." : "Reset password"} disabled={loading} />
       </form>
     </RecoverLayout>
+  );
+}
+
+export default function ForgotPasswordNewPasswordPage() {
+  return (
+    <Suspense fallback={null}>
+      <ForgotPasswordNewPasswordContent />
+    </Suspense>
   );
 }
