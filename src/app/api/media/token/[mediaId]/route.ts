@@ -6,11 +6,8 @@ const MEDIA_API_BASE =
   process.env.MEDIA_API_BASE ||
   "https://www.loft-shop.pp.ua/api/media";
 
-export async function POST(
-  _req: NextRequest,
-  { params }: { params: Promise<{ mediaId: string }> }
-) {
-  const { mediaId } = await params;
+export async function POST(request: NextRequest, context: { params: Promise<{ mediaId: string }> }) {
+  const { mediaId } = await context.params;
   if (!mediaId) {
     return NextResponse.json({ message: "mediaId is required" }, { status: 400 });
   }
