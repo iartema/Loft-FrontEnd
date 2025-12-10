@@ -228,12 +228,12 @@ export default function ProductCard({
 
         <Divider text="" className="[&>div]:bg-white" />
 
-        <div className="flex items-center justify-between gap-3">
-          <div className="text-2xl font-bold">{price}</div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="text-2xl font-bold w-full sm:w-auto">{price}</div>
           {isOwner ? (
             <Button
               variant="submit"
-              className="ml-55 w-[120px]"
+              className="w-full sm:w-[120px] sm:flex-shrink-0"
               onClick={() => router.push(`/product/${productId}/edit`)}
             >
               Edit product
@@ -241,7 +241,7 @@ export default function ProductCard({
           ) : (
             <Button
               variant="submit"
-              className="max-w-[150px] min-w-[150px]"
+              className="w-full sm:max-w-[150px] sm:min-w-[150px] sm:flex-shrink-0"
               disabled={!inStock || adding}
               onClick={handleAddToCart}
             >

@@ -745,7 +745,7 @@ export default function SearchView() {
               <p className="text-xs opacity-70">This category has no filters.</p>
             </FilterSection>
           )}
-          {categoryId && ( <FilterSection title="Price">
+          <FilterSection title="Price">
         <div className={`flex items-center gap-2 ${almarai.className}`}>
               <input
                 type="number"
@@ -753,6 +753,7 @@ export default function SearchView() {
                 value={priceMin ?? ""}
                 onChange={(e) => setPriceMin(e.target.value === "" ? null : Number(e.target.value))}
                 className={`w-full bg-[var(--bg-filter-inner)] text-white px-3 py-2 text-sm rounded-[12px] outline-none border border-transparent focus:ring-0 focus:outline-none focus:border-[var(--divider)] ${almarai.className}` }
+                style={{ boxShadow: "0 2px 6px -2px rgba(0, 0, 0, 0.45)" }}
               />
               <span className="opacity-50">-</span>
               <input
@@ -761,9 +762,10 @@ export default function SearchView() {
                 value={priceMax ?? ""}
                 onChange={(e) => setPriceMax(e.target.value === "" ? null : Number(e.target.value))}
                 className={`w-full bg-[var(--bg-filter-inner)] text-white px-3 py-2 text-sm rounded-[12px] outline-none border border-transparent focus:ring-0 focus:outline-none focus:border-[var(--divider)] ${almarai.className}` }
+                style={{ boxShadow: "0 2px 6px -2px rgba(0, 0, 0, 0.45)" }}
               />
             </div>
-          </FilterSection> )}
+          </FilterSection>
           <button
             onClick={clearFilters}
             className={`w-full bg-[var(--bg-filter)] text-white px-3 py-2 text-sm border-b border-[var(--divider)] ${almarai.className}` }

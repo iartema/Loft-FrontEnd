@@ -9,7 +9,7 @@ interface InputFieldProps {
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   required?: boolean;
   shape?: "rounded" | "office";
-  className?: string; // 👈 add this line
+  className?: string; // à?'? add this line
 }
 
 

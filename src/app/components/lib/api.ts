@@ -775,6 +775,7 @@ export type ChatMessageDto = {
   recipientId: number;
   messageText: string;
   fileUrl?: string | null;
+  isMod?: boolean;
   isRead: boolean;
   sentAt: string;
 };

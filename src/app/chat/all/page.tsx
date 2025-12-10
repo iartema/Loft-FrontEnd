@@ -21,7 +21,11 @@ type EnrichedChat = ChatDto & {
   lastMessageText: string;
   lastMessageDate: string;
   unread: boolean;
+  isOfficial: boolean;
 };
+
+const isModeratorMessage = (msg?: any) =>
+  Boolean(msg?.isMod ?? msg?.is_mod ?? msg?.IsMod);
 
 const FILTERS: string[] = [];
 
@@ -57,6 +61,7 @@ export default function ChatAllPage() {
           const lastMessageDate = lastMessage?.sentAt ?? chat.createdAt;
           const unread =
             Boolean(lastMessage) && lastMessage!.recipientId === meId && !lastMessage!.isRead;
+          const isOfficial = isModeratorMessage(lastMessage);
           return {
             ...chat,
             otherUserId,
@@ -65,6 +70,7 @@ export default function ChatAllPage() {
             lastMessageText,
             lastMessageDate,
             unread,
+            isOfficial,
           };
         })
       );
@@ -178,7 +184,19 @@ export default function ChatAllPage() {
             </div>
           )}
           <div className="flex flex-col">
-            <span className="font-semibold">{chat.otherUserName}</span>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold">{chat.otherUserName}</span>
+              {chat.isOfficial && (
+                <span
+                  className="text-[var(--brand)]"
+                  title="This is an official account of Loft"
+                  style={{ textShadow: "0 0 8px rgba(255, 193, 7, 0.55)" }}
+                  aria-label="Official Loft account"
+                >
+                  ★
+                </span>
+              )}
+            </div>
             <span className="text-sm opacity-70 line-clamp-1">{chat.lastMessageText}</span>
           </div>
         </div>

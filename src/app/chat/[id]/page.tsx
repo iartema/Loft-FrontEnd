@@ -38,9 +38,15 @@ export default function ChatConversationPage() {
   const [otherUserName, setOtherUserName] = useState("Chat");
   const [otherUserAvatar, setOtherUserAvatar] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [isOfficialAccount, setIsOfficialAccount] = useState(false);
   const [productPreviews, setProductPreviews] = useState<Record<number, ProductDto>>({});
   const [orderPreviews, setOrderPreviews] = useState<Record<number, OrderDto>>({});
   const messagesRef = useRef<HTMLDivElement>(null);
+
+  const normalizeMessage = (message: any): ChatMessageDto => ({
+    ...message,
+    isMod: Boolean(message?.isMod ?? message?.is_mod ?? message?.IsMod ?? false),
+  });
 
   useEffect(() => {
     getCurrentUserCached().then((user) => setCurrentUserId(user?.id ?? null));
@@ -58,11 +64,10 @@ export default function ChatConversationPage() {
           fetchPublicUserById(otherUserId).catch(() => null),
         ]);
         if (!active) return;
-        setMessages(
-          msgs
-            .slice()
-            .sort((a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime())
-        );
+        const normalizedMsgs = msgs
+          .map(normalizeMessage)
+          .sort((a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime());
+        setMessages(normalizedMsgs);
 
         if (user) {
           const resolvedName =
@@ -106,9 +111,10 @@ export default function ChatConversationPage() {
         (incoming.senderId === currentUserId && incoming.recipientId === otherUserId);
       if (!isForThisChat) return;
 
+      const normalizedIncoming = normalizeMessage(incoming);
       setMessages((prev) => {
-        if (prev.some((m) => m.id === incoming.id)) return prev;
-        return [...prev, incoming].sort(
+        if (prev.some((m) => m.id === normalizedIncoming.id)) return prev;
+        return [...prev, normalizedIncoming].sort(
           (a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime()
         );
       });
@@ -136,11 +142,10 @@ export default function ChatConversationPage() {
       try {
         const msgs = await fetchConversationWith(otherUserId);
         if (cancelled) return;
-        setMessages(
-          msgs
-            .slice()
-            .sort((a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime())
-        );
+        const normalizedMsgs = msgs
+          .map(normalizeMessage)
+          .sort((a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime());
+        setMessages(normalizedMsgs);
       } catch {
         // swallow polling errors
       }
@@ -196,6 +201,10 @@ export default function ChatConversationPage() {
     return () => clearTimeout(timeout);
   }, [loading, scrollMessagesToBottom]);
 
+  useEffect(() => {
+    setIsOfficialAccount(messages.some((m) => m.isMod));
+  }, [messages]);
+
   const extractProductId = (text: string): number | null => {
     if (!text) return null;
     const match = text.match(/product\/(\d+)/i);
@@ -231,7 +240,8 @@ export default function ChatConversationPage() {
     setSending(true);
     try {
       const message = await sendChatMessage(otherUserId, input.trim());
-      setMessages((prev) => [...prev, message]);
+      const normalized = normalizeMessage(message);
+      setMessages((prev) => [...prev, normalized]);
       setInput("");
     } catch (err: any) {
       setError(err?.message || "Failed to send message");
@@ -261,7 +271,8 @@ export default function ChatConversationPage() {
       const rawUrl = payload?.url || payload?.fileUrl || payload?.fullUrl || payload?.path;
       const resolved = resolveMediaUrl(rawUrl);
       const sent = await sendChatMessage(otherUserId, input.trim() || file.name, resolved);
-      setMessages((prev) => [...prev, sent]);
+      const normalized = normalizeMessage(sent);
+      setMessages((prev) => [...prev, normalized]);
       setInput("");
     } catch (err: any) {
       setError(err?.message || "Failed to upload file");
@@ -347,7 +358,7 @@ export default function ChatConversationPage() {
                 <div className="w-full h-32 bg-black/30" />
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
-              <div className="absolute bottom-2 left-3 right-3 text-sm font-semibold">
+              <div className="absolute bottom-2 left-3 right-3 text-sm font-semibold text-[#ffffff]">
                 {product.name}
               </div>
             </a>
@@ -369,9 +380,9 @@ export default function ChatConversationPage() {
                 <div className="w-full h-32 bg-black/30" />
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
-              <div className="absolute bottom-2 left-3 right-3 text-sm font-semibold space-y-1">
+              <div className="absolute bottom-2 left-3 right-3 text-sm font-semibold space-y-1 text-[#ffffff]">
                 <div>Order #{order.id}</div>
-                <div className="text-xs opacity-80 flex items-center gap-2">
+                <div className="text-xs opacity-80 flex items-center gap-2 text-[#ffffff]">
                   <span>{order.status}</span>
                   {order.orderItems?.[0]?.productName && (
                     <span className="truncate">{order.orderItems[0].productName}</span>
@@ -427,7 +438,19 @@ export default function ChatConversationPage() {
             </div>
           )}
           <div>
-            <div className="text-xl font-semibold sort-label">{otherUserName}</div>
+            <div className="text-xl font-semibold sort-label flex items-center gap-2">
+              <span>{otherUserName}</span>
+              {isOfficialAccount && (
+                <span
+                  className="text-[var(--brand)]"
+                  style={{ textShadow: "0 0 8px rgba(255, 193, 7, 0.55)" }}
+                  title="This is an official account of Loft"
+                  aria-label="Official Loft account"
+                >
+                  ★
+                </span>
+              )}
+            </div>
           </div>
         </header>
 
