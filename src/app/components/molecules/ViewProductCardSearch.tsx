@@ -43,17 +43,19 @@ export default function ViewProductCardSearch({
   const router = useRouter();
   const normalizeImageSrc = (src?: string) => {
     if (!src) return "/default-product.jpg";
-    const s = src.trim();
+    const trimmed = src.trim();
+    // Extract the first valid http/https URL even if the string is noisy
+    const urlMatch = trimmed.match(/https?:\/\/[^\s"'<>]+/i);
+    if (urlMatch?.[0]) return urlMatch[0];
+
     if (
-      s.startsWith("http://") ||
-      s.startsWith("https://") ||
-      s.startsWith("data:") ||
-      s.startsWith("blob:") ||
-      s.startsWith("/")
+      trimmed.startsWith("data:") ||
+      trimmed.startsWith("blob:") ||
+      trimmed.startsWith("/")
     ) {
-      return s;
+      return trimmed;
     }
-    return "/" + s;
+    return "/" + trimmed;
   };
   const resolvedImage = normalizeImageSrc(image);
   const [imgSrc, setImgSrc] = useState<string>(resolvedImage);

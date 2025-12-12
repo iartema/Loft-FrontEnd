@@ -12,6 +12,7 @@ const nextConfig = {
       "www.loft-shop.pp.ua",
       "loft-shop.pp.ua",
       "images.unsplash.com",
+      "picsum.photos",
     ],
     remotePatterns: [
       {
@@ -32,6 +33,11 @@ const nextConfig = {
       {
         protocol: "https",
         hostname: "lh3.googleusercontent.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "picsum.photos",
         pathname: "/**",
       },
     ],
