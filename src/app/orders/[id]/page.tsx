@@ -130,7 +130,7 @@ export default function OrderDetailPage() {
     try {
       const responses = await Promise.all(
         digitalMediaIds.map(async (mediaId) => {
-          const res = await fetch(`/api/media/token/${mediaId}`, { method: "POST" });
+          const res = await fetch(`/bff/media/token/${mediaId}`, { method: "POST" });
           if (!res.ok) {
             throw new Error(await res.text());
           }

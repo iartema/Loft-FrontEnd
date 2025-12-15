@@ -7,7 +7,7 @@ export class ApiError extends Error {
 }
 
 export async function registerUser(email: string, password: string) {
-  const res = await fetch(`/api/auth/register`, {
+  const res = await fetch(`/bff/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password, confirmPassword: password }),
@@ -22,7 +22,7 @@ export async function registerUser(email: string, password: string) {
 }
 
 export async function loginUser(email: string, password: string) {
-  const res = await fetch(`/api/auth/login`, {
+  const res = await fetch(`/bff/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
@@ -37,7 +37,7 @@ export async function loginUser(email: string, password: string) {
 }
 
 export async function requestPasswordReset(email: string) {
-  const res = await fetch(`/api/users/request-password-reset`, {
+  const res = await fetch(`/bff/users/request-password-reset`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email }),
@@ -52,7 +52,7 @@ export async function requestPasswordReset(email: string) {
 }
 
 export async function confirmPasswordReset(email: string, code: string, newPassword: string) {
-  const res = await fetch(`/api/users/confirm-password-reset`, {
+  const res = await fetch(`/bff/users/confirm-password-reset`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, code, newPassword }),
@@ -68,13 +68,13 @@ export async function confirmPasswordReset(email: string, code: string, newPassw
 
 export async function logout() {
   // Clear auth cookies via internal API and ignore response shape
-  await fetch(`/api/auth/logout`, { method: "POST" });
+  await fetch(`/bff/auth/logout`, { method: "POST" });
 }
 
 // Client cannot read httpOnly cookies; rely on internal API routes
 
 export async function getMyProfile() {
-  const res = await fetch(`/api/users/me`, {
+  const res = await fetch(`/bff/users/me`, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
@@ -96,7 +96,7 @@ export type UpdateProfilePayload = {
 };
 
 export async function updateMyProfile(payload: UpdateProfilePayload) {
-  const res = await fetch(`/api/users/me`, {
+  const res = await fetch(`/bff/users/me`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -113,7 +113,7 @@ export async function updateMyProfile(payload: UpdateProfilePayload) {
 export async function uploadAvatar(file: File) {
   const form = new FormData();
   form.append("file", file, file.name);
-  const res = await fetch(`/api/media/avatar`, {
+  const res = await fetch(`/bff/media/avatar`, {
     method: "POST",
     body: form,
   });
@@ -163,7 +163,7 @@ const normalizeShippingAddress = (data: any): ShippingAddressDto => ({
 });
 
 export async function fetchMyDefaultShippingAddress(): Promise<ShippingAddressDto | null> {
-  const res = await fetch(`/api/shipping-addresses/default`, { cache: "no-store" });
+  const res = await fetch(`/bff/shipping-addresses/default`, { cache: "no-store" });
   if (res.status === 404) return null;
   if (res.status === 401) {
     throw new ApiError("Unauthorized", 401);
@@ -176,7 +176,7 @@ export async function fetchMyDefaultShippingAddress(): Promise<ShippingAddressDt
 }
 
 export async function createShippingAddress(payload: ShippingAddressCreatePayload): Promise<ShippingAddressDto> {
-  const res = await fetch(`/api/shipping-addresses`, {
+  const res = await fetch(`/bff/shipping-addresses`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -194,7 +194,7 @@ export async function updateShippingAddress(
   id: number,
   payload: ShippingAddressUpdatePayload
 ): Promise<ShippingAddressDto> {
-  const res = await fetch(`/api/shipping-addresses/${id}`, {
+  const res = await fetch(`/bff/shipping-addresses/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -309,7 +309,7 @@ export type CartItemMeta = {
 };
 
 export async function fetchCartByCustomer(customerId: number): Promise<CartDto | null> {
-  const res = await fetch(`/api/cart/customer/${customerId}`, {
+  const res = await fetch(`/bff/cart/customer/${customerId}`, {
     cache: "no-store",
   });
   if (res.status === 404) return null;
@@ -363,7 +363,7 @@ export async function addCartItem(
     // ignore logging failures
   }
 
-  const res = await fetch(`/api/cart/${customerId}/items`, {
+  const res = await fetch(`/bff/cart/${customerId}/items`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -386,7 +386,7 @@ export async function addCartItem(
 
 
 export async function updateCartItem(customerId: number, productId: number, quantity: number): Promise<CartItemDto> {
-  const res = await fetch(`/api/cart/${customerId}/items`, {
+  const res = await fetch(`/bff/cart/${customerId}/items`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ productId, quantity }),
@@ -396,7 +396,7 @@ export async function updateCartItem(customerId: number, productId: number, quan
 }
 
 export async function removeCartItem(customerId: number, productId: number): Promise<void> {
-  const res = await fetch(`/api/cart/${customerId}/items/${productId}`, {
+  const res = await fetch(`/bff/cart/${customerId}/items/${productId}`, {
     method: "DELETE",
   });
   if (!res.ok && res.status !== 404) throw new Error(await res.text());
@@ -559,13 +559,13 @@ const normalizeOrder = (data: any): OrderDto => {
 };
 
 export async function fetchPaymentMethods(): Promise<PaymentMethod[]> {
-  const res = await fetch(`/api/payments/methods`, { cache: "no-store" });
+  const res = await fetch(`/bff/payments/methods`, { cache: "no-store" });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
 export async function createOrderFromCart(customerId: number): Promise<{ order: OrderDto; paymentMethods: PaymentMethod[] }> {
-  const res = await fetch(`/api/orders/checkout/${customerId}`, { method: "POST" });
+  const res = await fetch(`/bff/orders/checkout/${customerId}`, { method: "POST" });
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
   if (!res.ok) throw new Error((data && data.message) || text || "Failed to create order");
@@ -575,14 +575,14 @@ export async function createOrderFromCart(customerId: number): Promise<{ order: 
 }
 
 export async function fetchOrdersByCustomer(customerId: number): Promise<OrderDto[]> {
-  const res = await fetch(`/api/orders/customer/${customerId}`, { cache: "no-store" });
+  const res = await fetch(`/bff/orders/customer/${customerId}`, { cache: "no-store" });
   if (!res.ok) throw new Error(await res.text());
   const data = await res.json();
   return Array.isArray(data) ? data.map(normalizeOrder) : [];
 }
 
 export async function fetchOrderById(id: number): Promise<OrderDto> {
-  const res = await fetch(`/api/orders/${id}`, { cache: "no-store" });
+  const res = await fetch(`/bff/orders/${id}`, { cache: "no-store" });
   if (!res.ok) throw new Error(await res.text());
   return normalizeOrder(await res.json());
 }
@@ -594,7 +594,7 @@ export type CreatePaymentPayload = {
 };
 
 export async function createPayment(payload: CreatePaymentPayload) {
-  const res = await fetch(`/api/payments`, {
+  const res = await fetch(`/bff/payments`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -604,19 +604,19 @@ export async function createPayment(payload: CreatePaymentPayload) {
 }
 
 export async function confirmPayment(paymentId: number) {
-  const res = await fetch(`/api/payments/${paymentId}/confirm`, { method: "POST" });
+  const res = await fetch(`/bff/payments/${paymentId}/confirm`, { method: "POST" });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
 export async function fetchProductById(id: number): Promise<ProductDto> {
-  const res = await fetch(`/api/products/${id}`, { cache: "no-store" });
+  const res = await fetch(`/bff/products/${id}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`Failed to fetch product ${id}`);
   return res.json();
 }
 
 export async function fetchMyProducts(): Promise<ProductDto[]> {
-  const res = await fetch(`/api/products/myproducts`, { cache: "no-store" });
+  const res = await fetch(`/bff/products/myproducts`, { cache: "no-store" });
   if (res.status === 401) {
     throw new ApiError("Unauthorized", 401);
   }
@@ -625,7 +625,7 @@ export async function fetchMyProducts(): Promise<ProductDto[]> {
 }
 
 export async function fetchPublicUserById(id: number): Promise<PublicUserDto> {
-  const res = await fetch(`/api/users/${id}`, {
+  const res = await fetch(`/bff/users/${id}`, {
     cache: "no-store",
     credentials: "include",
   });
@@ -731,7 +731,7 @@ export type FavoriteItemDto = {
 };
 
 export async function fetchFavoriteItems(): Promise<number[]> {
-  const res = await fetch(`/api/favorite`, { cache: "no-store" });
+  const res = await fetch(`/bff/favorite`, { cache: "no-store" });
   if (res.status === 401) {
     throw new ApiError("Unauthorized", 401);
   }
@@ -750,7 +750,7 @@ async function mutateFavorite(productId: number, method: "POST" | "DELETE"): Pro
   if (!productId) {
     throw new Error("productId is required");
   }
-  const res = await fetch(`/api/favorite/${productId}`, { method });
+  const res = await fetch(`/bff/favorite/${productId}`, { method });
   if (res.status === 401) {
     throw new ApiError("Unauthorized", 401);
   }
@@ -789,7 +789,7 @@ export type ChatDto = {
 };
 
 export async function fetchMyChats(): Promise<ChatDto[]> {
-  const res = await fetch(`/api/chat/my-chats`, { cache: "no-store" });
+  const res = await fetch(`/bff/chat/my-chats`, { cache: "no-store" });
   if (res.status === 401) {
     throw new ApiError("Unauthorized", 401);
   }
@@ -800,7 +800,7 @@ export async function fetchMyChats(): Promise<ChatDto[]> {
 }
 
 export async function fetchConversationWith(userId: number): Promise<ChatMessageDto[]> {
-  const res = await fetch(`/api/chat/conversation/${userId}`, { cache: "no-store" });
+  const res = await fetch(`/bff/chat/conversation/${userId}`, { cache: "no-store" });
   if (res.status === 401) {
     throw new ApiError("Unauthorized", 401);
   }
@@ -811,7 +811,7 @@ export async function fetchConversationWith(userId: number): Promise<ChatMessage
 }
 
 export async function sendChatMessage(recipientId: number, messageText: string, fileUrl?: string | null) {
-  const res = await fetch(`/api/chat/send`, {
+  const res = await fetch(`/bff/chat/send`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ recipientId, messageText, fileUrl }),
@@ -826,7 +826,7 @@ export async function sendChatMessage(recipientId: number, messageText: string, 
 }
 
 export async function markChatRead(otherUserId: number) {
-  const res = await fetch(`/api/chat/mark-read/${otherUserId}`, { method: "POST" });
+  const res = await fetch(`/bff/chat/mark-read/${otherUserId}`, { method: "POST" });
   if (res.status === 401) {
     throw new ApiError("Unauthorized", 401);
   }
@@ -836,7 +836,7 @@ export async function markChatRead(otherUserId: number) {
 }
 
 export async function deleteChat(chatId: number) {
-  const res = await fetch(`/api/chat/${chatId}`, { method: "DELETE" });
+  const res = await fetch(`/bff/chat/${chatId}`, { method: "DELETE" });
   if (res.status === 401) {
     throw new ApiError("Unauthorized", 401);
   }

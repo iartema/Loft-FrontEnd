@@ -45,7 +45,7 @@ export default function ModerationPendingPage() {
     setError(null);
 
     try {
-      const res = await fetch("/api/moderation/products/pending", {
+      const res = await fetch("/bff/moderation/products/pending", {
         cache: "no-store",
         credentials: "include",
       });
@@ -75,7 +75,7 @@ export default function ModerationPendingPage() {
       await Promise.all(
         idsToFetch.map(async (userId) => {
           try {
-            const userRes = await fetch(`/api/users/${userId}`, { cache: "no-store" });
+            const userRes = await fetch(`/bff/users/${userId}`, { cache: "no-store" });
             if (!userRes.ok) throw new Error();
             const user = await userRes.json();
             const name = [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim();
@@ -111,7 +111,7 @@ export default function ModerationPendingPage() {
   const notifySeller = async (userId: number | null | undefined, message: string) => {
     if (!userId) return;
     try {
-      await fetch("/api/moderation/notify-seller", {
+      await fetch("/bff/moderation/notify-seller", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ recipientId: userId, messageText: message }),
@@ -128,7 +128,7 @@ export default function ModerationPendingPage() {
 
     try {
       const res = await fetch(
-        `/api/moderation/products/${id}/status?status=${status}`,
+        `/bff/moderation/products/${id}/status?status=${status}`,
         { method: "PUT", credentials: "include" }
       );
 

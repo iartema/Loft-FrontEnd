@@ -179,7 +179,7 @@ export default function CheckoutPage() {
           : "https://www.loft-shop.pp.ua";
       const link = `${origin}/orders/${order.id}`;
       try {
-        await fetch("/api/notify/user", {
+        await fetch("/bff/notify/user", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -252,7 +252,7 @@ export default function CheckoutPage() {
         cancelUrl: `${origin}/checkout?payment=stripe-cancel`,
       };
 
-      const res = await fetch("/api/stripe/create-checkout-session", {
+      const res = await fetch("/bff/stripe/create-checkout-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

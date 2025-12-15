@@ -501,7 +501,7 @@ export default function ProductForm({
     payload.append("file", file, file.name || "upload");
     payload.append("category", "products");
     payload.append("isPrivate", "false");
-    const res = await fetch("/api/media/upload", {
+    const res = await fetch("/bff/media/upload", {
       method: "POST",
       body: payload,
     });
@@ -522,7 +522,7 @@ export default function ProductForm({
     payload.append("file", file, file.name || "upload");
     payload.append("category", "digital");
     payload.append("isPrivate", "true");
-    const res = await fetch("/api/media/upload", {
+    const res = await fetch("/bff/media/upload", {
       method: "POST",
       body: payload,
     });
@@ -676,8 +676,8 @@ export default function ProductForm({
 
       const endpoint =
         isEdit && effectiveProductId
-          ? `/api/products/${effectiveProductId}`
-          : "/api/products/create";
+          ? `/bff/products/${effectiveProductId}`
+          : "/bff/products/create";
       const res = await fetch(endpoint, {
         method: isEdit ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },

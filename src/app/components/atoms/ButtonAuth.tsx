@@ -60,7 +60,7 @@ export default function ButtonAuth({
           const idToken = response.credential;
 
           try {
-            const res = await fetch("/api/auth/google", {
+            const res = await fetch("/bff/auth/google", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ idToken }),

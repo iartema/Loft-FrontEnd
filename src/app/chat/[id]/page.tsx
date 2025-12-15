@@ -259,7 +259,7 @@ export default function ChatConversationPage() {
       form.append("file", file);
       form.append("category", category);
       form.append("isPrivate", "false");
-      const res = await fetch("/api/media/upload", {
+      const res = await fetch("/bff/media/upload", {
         method: "POST",
         body: form,
       });

@@ -285,7 +285,7 @@ export default function ProductViewPage() {
     try {
       const responses = await Promise.all(
         privateMediaIds.map(async (id) => {
-          const res = await fetch(`/api/media/token/${id}`, { method: "POST" });
+          const res = await fetch(`/bff/media/token/${id}`, { method: "POST" });
           if (!res.ok) {
             throw new Error(await res.text());
           }
