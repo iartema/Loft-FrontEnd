@@ -13,8 +13,10 @@ import {
 } from "../lib/api";
 import { MEDIA_PUBLIC_BASE } from "../../lib/media";
 import { getCurrentUserCached } from "../lib/userCache";
+import { useLocale } from "../../i18n/LocaleProvider";
 
 export default function CartView() {
+  const { t } = useLocale();
   const [userId, setUserId] = useState<number | null>(null);
   const [cart, setCart] = useState<CartDto | null>(null);
   const [selected, setSelected] = useState<Record<number, boolean>>({});
@@ -28,14 +30,14 @@ export default function CartView() {
       try {
         const me = await getCurrentUserCached();
         if (!me?.id) {
-          setError("Sign in to view your cart.");
+          setError(t("cart.signIn"));
           setLoading(false);
           return;
         }
         setUserId(me.id);
         await refreshCart(me.id);
       } catch (err: any) {
-        setError(err?.message || "Failed to load cart.");
+        setError(err?.message || t("cart.loadError"));
         setLoading(false);
       }
     })();
@@ -54,7 +56,7 @@ export default function CartView() {
         setSelected({});
       }
     } catch (err: any) {
-      setError(err?.message || "Failed to load cart.");
+      setError(err?.message || t("cart.loadError"));
     } finally {
       setLoading(false);
     }
@@ -95,7 +97,7 @@ export default function CartView() {
     try {
       await updateCartItem(userId, item.productId, quantity);
     } catch (err: any) {
-      setError(err?.message || "Failed to update item.");
+      setError(err?.message || t("cart.updateError"));
       setCart((prev) =>
         prev
           ? {
@@ -127,7 +129,7 @@ export default function CartView() {
         return copy;
       });
     } catch (err: any) {
-      setError(err?.message || "Failed to remove item.");
+      setError(err?.message || t("cart.removeError"));
     } finally {
       setPendingItems((p) => ({ ...p, [item.id]: false }));
     }
@@ -145,7 +147,7 @@ export default function CartView() {
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center text-white opacity-70">
-        Loading cart…
+        {t("common.loading")}
       </div>
     );
   }
@@ -161,9 +163,9 @@ export default function CartView() {
   if (!cart || cart.cartItems.length === 0) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-white gap-4">
-        <div className="text-lg opacity-80">Your cart is empty.</div>
+        <div className="text-lg opacity-80">{t("cart.empty")}</div>
         <Button className="max-w-[220px]" onClick={() => router.push("/search")}>
-          Browse products
+          {t("cart.browse")}
         </Button>
       </div>
     );
@@ -183,9 +185,9 @@ export default function CartView() {
             onChange={(e) => toggleAll(e.target.checked)}
             className="accent-[var(--brand)]"
           />
-          <span className="text-lg font-semibold">All</span>
+          <span className="text-lg font-semibold">{t("cart.selectAll")}</span>
         </div>
-        <div className="text-2xl font-semibold text-center">Cart</div>
+        <div className="text-2xl font-semibold text-center">{t("cart.title")}</div>
       </div>
 
       <div className="divide-y divide-[var(--divider)] border-t border-[var(--divider)]">
@@ -209,7 +211,7 @@ export default function CartView() {
             className="px-6 py-2 rounded-[12px] bg-white/80 text-black font-semibold hover:bg-white"
             onClick={() => router.push("/checkout")}
           >
-            Checkout
+            {t("cart.checkout")}
           </button>
         </div>
       </div>

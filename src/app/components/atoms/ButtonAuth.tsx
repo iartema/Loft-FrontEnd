@@ -40,7 +40,7 @@ export default function ButtonAuth({
 }: ButtonProps) {
 
   const handleGoogleLogin = () => {
-    const clientId = "1031648550234-v296d5d0efagr4mlmpigha8kb1ufmouo.apps.googleusercontent.com";
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
     if (!clientId) {
       console.error("Google Client ID is not configured.");

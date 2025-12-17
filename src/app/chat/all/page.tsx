@@ -13,6 +13,7 @@ import { getCurrentUserCached } from "../../components/lib/userCache";
 import { resolveMediaUrl } from "../../lib/media";
 import { subscribeToChatMessages } from "../../components/lib/chatHubClient";
 import Title from "../../components/atoms/Title";
+import { useLocale } from "../../i18n/LocaleProvider";
 
 type EnrichedChat = ChatDto & {
   otherUserId: number;
@@ -30,6 +31,7 @@ const isModeratorMessage = (msg?: any) =>
 const FILTERS: string[] = [];
 
 export default function ChatAllPage() {
+  const { t } = useLocale();
   const router = useRouter();
   const [chats, setChats] = useState<EnrichedChat[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +46,7 @@ export default function ChatAllPage() {
       return Promise.all(
         rawChats.map(async (chat) => {
           const otherUserId = chat.user1Id === meId ? chat.user2Id : chat.user1Id;
-          let otherUserName = "Unknown";
+          let otherUserName = t("chats.unknownUser");
           let otherUserAvatar: string | null = null;
           try {
             const u = await fetchPublicUserById(otherUserId);
@@ -57,7 +59,7 @@ export default function ChatAllPage() {
             // ignore user lookup errors
           }
           const lastMessage = chat.lastMessage;
-          const lastMessageText = lastMessage?.messageText ?? "(no messages yet)";
+          const lastMessageText = lastMessage?.messageText ?? t("chats.emptyThread");
           const lastMessageDate = lastMessage?.sentAt ?? chat.createdAt;
           const unread =
             Boolean(lastMessage) && lastMessage!.recipientId === meId && !lastMessage!.isRead;
@@ -75,7 +77,7 @@ export default function ChatAllPage() {
         })
       );
     },
-    []
+    [t]
   );
 
   useEffect(() => {
@@ -92,7 +94,7 @@ export default function ChatAllPage() {
         const enriched = await buildEnrichedChats(meId);
         if (active) setChats(enriched);
       } catch (err: any) {
-        if (active) setError(err?.message || "Failed to load chats");
+        if (active) setError(err?.message || t("chats.loadError"));
       } finally {
         if (active) setLoading(false);
       }
@@ -116,12 +118,12 @@ export default function ChatAllPage() {
       }
       buildEnrichedChats(currentUserId)
         .then((updated) => setChats(updated))
-        .catch((err) => setError(err?.message || "Failed to refresh chats"));
+        .catch((err) => setError(err?.message || t("chats.refreshError")));
     })
       .then((stop) => {
         unsubscribe = stop;
       })
-      .catch((err) => setError(err?.message || "Failed to connect to chat hub"));
+      .catch((err) => setError(err?.message || t("chats.refreshError")));
 
     return () => {
       unsubscribe?.();
@@ -228,7 +230,7 @@ export default function ChatAllPage() {
       <section className="flex flex-col flex-1 px-4 md:px-8 lg:px-16 py-10 bg-[var(--bg-body)]">
         <header className="mb-6 !bg-[var(--bg-body)]">
           <Title size="lg" color="sort-label">
-            My chats
+            {t("chats.title")}
           </Title>
           <div className="border-t border-[var(--divider)] mt-5" />
           <div className="flex items-center gap-4 mt-4 flex-wrap">
@@ -253,9 +255,9 @@ export default function ChatAllPage() {
         )}
 
         {loading ? (
-          <div className="text-center opacity-70">Loading chats…</div>
+          <div className="text-center opacity-70">{t("chats.loading")}</div>
         ) : filteredChats.length === 0 ? (
-          <div className="text-center opacity-70 mt-20">You have no chats yet.</div>
+          <div className="text-center opacity-70 mt-20">{t("chats.empty")}</div>
         ) : (
           <div className="flex flex-col gap-2">
             {filteredChats.map(renderChatRow)}

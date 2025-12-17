@@ -16,6 +16,7 @@ import {
 import { getCurrentUserCached } from "../components/lib/userCache";
 import { getFirstPublicImageUrl, resolveMediaUrl } from "../lib/media";
 import { Almarai, Ysabeau_Office } from "next/font/google";
+import { useLocale } from "../i18n/LocaleProvider";
 
 const almarai = Almarai({ subsets: ["latin"], weight: ["400", "700"] });
 const ysabeau = Ysabeau_Office({ subsets: ["latin"], weight: ["600", "700"] });
@@ -49,6 +50,7 @@ const DEFAULT_PAYMENT_METHODS = [
 ];
 
 export default function CheckoutPage() {
+  const { t } = useLocale();
   const router = useRouter();
   const [form, setForm] = useState<OrderFormState>(EMPTY_FORM);
   const [cartItems, setCartItems] = useState<CartItemDto[]>([]);
@@ -115,19 +117,19 @@ export default function CheckoutPage() {
             setPaymentMethods(normalized);
             setPaymentMethod(normalized.length ? normalized[0].value : null);
             if (!methods?.length) {
-              setError((prev) => prev ?? "Using default payment methods.");
+              setError((prev) => prev ?? t("checkout.paymentDefaultNote"));
             }
           }
         } catch {
           if (!cancelled) {
             setPaymentMethods(DEFAULT_PAYMENT_METHODS);
             setPaymentMethod(DEFAULT_PAYMENT_METHODS[0].value);
-            setError((prev) => prev ?? "Failed to load payment methods. Showing defaults.");
+            setError((prev) => prev ?? t("checkout.paymentLoadError"));
           }
         }
       } catch (err: any) {
         if (!cancelled) {
-          setError(err?.message || "Failed to load checkout data");
+          setError(err?.message || t("checkout.loadError"));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -142,13 +144,22 @@ export default function CheckoutPage() {
     return cartItems.reduce((sum, item) => sum + (Number(item.price ?? 0) * item.quantity), 0);
   }, [cartItems]);
 
+  const paymentLabel = (name: string | null | undefined) => {
+    const normalized = (name ?? "").toUpperCase();
+    if (normalized === "CREDIT_CARD") return t("checkout.methods.creditCard");
+    if (normalized === "CASH_ON_DELIVERY") return t("checkout.methods.cashOnDelivery");
+    if (normalized === "STRIPE") return t("checkout.methods.stripe");
+    if (normalized.includes("CARD")) return t("checkout.methods.card");
+    return name ?? "";
+  };
+
   const selectedPaymentName = useMemo(
     () => paymentMethods.find((m) => m.value === paymentMethod)?.name ?? null,
     [paymentMethod, paymentMethods]
   );
-  const isStripeSelected = selectedPaymentName?.toUpperCase() === "STRIPE";
+  const isStripeSelected = (selectedPaymentName ?? "").toUpperCase() === "STRIPE";
   const isCardSelected =
-    !isStripeSelected && (selectedPaymentName?.toUpperCase().includes("CARD") ?? false);
+    !isStripeSelected && ((selectedPaymentName ?? "").toUpperCase().includes("CARD") ?? false);
 
   const handleChange = (field: keyof OrderFormState) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
@@ -160,7 +171,7 @@ export default function CheckoutPage() {
       return;
     }
     if (paymentMethod === null || paymentMethod === undefined) {
-      setError("Select a payment method.");
+      setError(t("checkout.selectPayment"));
       return;
     }
     setSubmitting(true);
@@ -184,7 +195,7 @@ export default function CheckoutPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             recipientId: userId,
-            messageText: `Your order #${order.id} has been created and paid. ${link}`,
+            messageText: `${t("checkout.orderNotice")} #${order.id}. ${link}`,
           }),
         });
       } catch {
@@ -192,7 +203,7 @@ export default function CheckoutPage() {
       }
       router.push(`/orders/${order.id}`);
     } catch (err: any) {
-      setError(err?.message || "Checkout failed");
+      setError(err?.message || t("checkout.error"));
     } finally {
       setSubmitting(false);
     }
@@ -205,7 +216,7 @@ export default function CheckoutPage() {
       return;
     }
     if (paymentMethod === null || paymentMethod === undefined) {
-      setError("Select a payment method.");
+      setError(t("checkout.selectPayment"));
       return;
     }
     if (isStripeSelected) {
@@ -223,7 +234,7 @@ export default function CheckoutPage() {
   const handleCardPay = () => {
     const digits = cardForm.number.replace(/\D/g, "");
     if (digits.length < 12 || !cardForm.exp || cardForm.cvc.trim().length < 3) {
-      setCardError("Enter a valid card number, expiry, and CVC.");
+      setCardError(t("checkout.cardInvalid"));
       return;
     }
     setCardError(null);
@@ -266,19 +277,19 @@ export default function CheckoutPage() {
           data,
         });
         throw new Error(
-          (data && (data.message || data.error)) || "Failed to start Stripe checkout"
+          (data && (data.message || data.error)) || t("checkout.stripeStartError")
         );
       }
 
       const url = data.url || data.sessionUrl;
       if (!url) {
-        throw new Error("Stripe checkout URL was not returned from the server.");
+        throw new Error(t("checkout.stripeUrlError"));
       }
 
       window.location.href = url;
     } catch (err: any) {
       console.error("[checkout] stripe redirect error", err);
-      setError(err?.message || "Stripe checkout failed");
+      setError(err?.message || t("checkout.stripeFail"));
       setSubmitting(false);
     }
   };
@@ -298,7 +309,7 @@ export default function CheckoutPage() {
   if (loading) {
     return (
       <div className="min-h-[calc(100dvh-80px)] bg-[var(--bg-body)] text-white flex items-center justify-center">
-        <div className="opacity-70">Loading checkout…</div>
+        <div className="opacity-70">{t("common.loading")}</div>
       </div>
     );
   }
@@ -306,33 +317,33 @@ export default function CheckoutPage() {
   return (
     <main className={`${almarai.className} bg-[var(--bg-body)] text-white min-h-screen px-6 py-10`}>
       <div className="max-w-[1400px] mx-auto">
-        <h1 className={`${ysabeau.className} text-3xl font-semibold mb-6 text-center`}>Checkout</h1>
+        <h1 className={`${ysabeau.className} text-3xl font-semibold mb-6 text-center`}>{t("checkout.title")}</h1>
         {error && <div className="mb-4 text-sm text-red-400 bg-red-400/10 px-4 py-3 rounded-2xl">{error}</div>}
         <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
           <div className="space-y-6">
             <section className="bg-[var(--bg-elev-2)]/60 border border-[var(--border)] rounded-2xl p-5 space-y-4">
-              <h2 className="text-lg font-semibold">Contact</h2>
+              <h2 className="text-lg font-semibold">{t("checkout.form.contact")}</h2>
               <InputField
-                label="Phone number"
+                label={t("checkout.form.phone")}
                 type="tel"
-                placeholder="Enter phone number"
+                placeholder={t("auth.phonePlaceholder")}
                 value={form.phone}
                 onChange={handleChange("phone")}
                 shape="office"
               />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <InputField
-                  label="Name"
+                  label={t("checkout.form.name")}
                   type="text"
-                  placeholder="Enter name"
+                  placeholder={t("auth.enter")}
                   value={form.customerName}
                   onChange={handleChange("customerName")}
                   shape="office"
                 />
                 <InputField
-                  label="Email"
+                  label={t("checkout.form.email")}
                   type="email"
-                  placeholder="Enter email"
+                  placeholder={t("auth.emailPlaceholder")}
                   value={form.customerEmail}
                   onChange={handleChange("customerEmail")}
                   shape="office"
@@ -341,43 +352,43 @@ export default function CheckoutPage() {
             </section>
 
             <section className="bg-[var(--bg-elev-2)]/60 border border-[var(--border)] rounded-2xl p-5 space-y-4">
-              <h2 className="text-lg font-semibold">Shipping</h2>
+              <h2 className="text-lg font-semibold">{t("checkout.form.shipping")}</h2>
               <InputField
-                label="Recipient name"
+                label={t("checkout.form.recipient")}
                 type="text"
-                placeholder="Enter recipient name"
+                placeholder={t("auth.enter")}
                 value={form.shippingRecipientName}
                 onChange={handleChange("shippingRecipientName")}
                 shape="office"
               />
               <InputField
-                label="Country / Region"
+                label={t("checkout.form.country")}
                 type="text"
-                placeholder="Enter country or region"
+                placeholder={t("auth.enter")}
                 value={form.shippingCountry}
                 onChange={handleChange("shippingCountry")}
                 shape="office"
               />
               <InputField
-                label="City"
+                label={t("checkout.form.city")}
                 type="text"
-                placeholder="Enter city"
+                placeholder={t("auth.enter")}
                 value={form.shippingCity}
                 onChange={handleChange("shippingCity")}
                 shape="office"
               />
               <InputField
-                label="Postal code"
+                label={t("checkout.form.postal")}
                 type="text"
-                placeholder="Enter postal code"
+                placeholder={t("auth.enter")}
                 value={form.shippingPostalCode}
                 onChange={handleChange("shippingPostalCode")}
                 shape="office"
               />
               <InputField
-                label="Address"
+                label={t("checkout.form.address")}
                 type="text"
-                placeholder="Street, house, apartment"
+                placeholder={t("auth.enter")}
                 value={form.shippingAddress}
                 onChange={handleChange("shippingAddress")}
                 shape="office"
@@ -387,20 +398,26 @@ export default function CheckoutPage() {
 
           <aside className="space-y-4">
             <div className="bg-[var(--bg-elev-2)]/60 border border-[var(--border)] rounded-2xl p-4 space-y-3">
-              <h3 className="text-lg font-semibold">Order items</h3>
+              <h3 className="text-lg font-semibold">{t("checkout.cart")}</h3>
               {cartItems.length === 0 ? (
-                <div className="text-sm opacity-70">Your cart is empty.</div>
+                <div className="text-sm opacity-70">{t("cart.empty")}</div>
               ) : (
                 cartItems.map((item) => {
                   const display = resolveImage(item.imageUrl, (item as any)?.mediaFiles);
                   return (
                     <div key={item.id} className="flex items-center gap-3 rounded-xl bg-[var(--bg-elev-3)] px-3 py-2">
                       <div className="w-14 h-14 rounded-lg overflow-hidden bg-[var(--bg-elev-1)] flex-shrink-0">
-                        <img src={display} alt={item.productName ?? "Product"} className="w-full h-full object-cover" />
+                        <img
+                          src={display}
+                          alt={item.productName ?? t("product.fallbackName")}
+                          className="w-full h-full object-cover"
+                        />
                       </div>
                       <div className="flex-1">
-                        <div className="text-sm font-semibold line-clamp-2">{item.productName ?? `Product ${item.productId}`}</div>
-                        <div className="text-xs opacity-70">Qty: {item.quantity}</div>
+                        <div className="text-sm font-semibold line-clamp-2">
+                          {item.productName ?? `${t("product.fallbackName")} #${item.productId}`}
+                        </div>
+                        <div className="text-xs opacity-70">{t("cart.quantity")}: {item.quantity}</div>
                       </div>
                       <div className="text-sm font-semibold">
                         {(item.price ?? 0).toFixed(2)}$
@@ -413,15 +430,15 @@ export default function CheckoutPage() {
 
             <div className="bg-[var(--bg-elev-2)]/60 border border-[var(--border)] rounded-2xl p-4 space-y-3">
               <div className="flex justify-between text-sm opacity-80">
-                <span>Items total</span>
+                <span>{t("checkout.itemsTotal")}</span>
                 <span>{total.toFixed(2)}$</span>
               </div>
               <div className="flex justify-between text-base font-semibold">
-                <span>Total</span>
+                <span>{t("checkout.total")}</span>
                 <span>{total.toFixed(2)}$</span>
               </div>
               <div className="space-y-1 text-sm">
-                <div className="text-xs uppercase opacity-70">Payment method</div>
+                <div className="text-xs uppercase opacity-70">{t("checkout.paymentMethod")}</div>
                 {paymentMethods.length > 0 ? (
                   <select
                     value={paymentMethod ?? ""}
@@ -430,16 +447,16 @@ export default function CheckoutPage() {
                   >
                     {paymentMethods.map((m) => (
                       <option key={m.value} value={m.value}>
-                        {m.name}
+                        {paymentLabel(m.name)}
                       </option>
                     ))}
                   </select>
                 ) : (
-                  <div className="text-xs text-red-400">No payment methods available.</div>
+                  <div className="text-xs text-red-400">{t("checkout.noPayment")}</div>
                 )}
                 {isStripeSelected && (
                   <div className="text-xs text-[var(--success)] mt-1">
-                    You&apos;ll be redirected to Stripe Checkout to complete payment.
+                    {t("checkout.stripeNote")}
                   </div>
                 )}
               </div>
@@ -450,7 +467,7 @@ export default function CheckoutPage() {
                 onClick={handleSubmit}
                 disabled={paymentMethods.length === 0 || submitting}
               >
-                {submitting ? "Processing..." : "Order and Pay"}
+                {submitting ? t("checkout.processing") : t("checkout.submit")}
               </Button>
             </div>
           </aside>
@@ -460,20 +477,20 @@ export default function CheckoutPage() {
           <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center px-4">
             <div className="w-full max-w-lg bg-[var(--bg-elev-2)] text-white border border-[var(--border)] rounded-2xl p-6 space-y-4 shadow-2xl">
               <div className="flex items-center justify-between">
-                <h3 className="text-xl font-semibold">Pay with card</h3>
+                <h3 className="text-xl font-semibold">{t("checkout.cardPayTitle")}</h3>
                 <button
                   type="button"
                   className="text-sm opacity-70 hover:opacity-100"
                   onClick={() => setCardOpen(false)}
                   disabled={submitting}
                 >
-                  Close
+                  {t("checkout.close")}
                 </button>
               </div>
               <div className="grid grid-cols-1 gap-3">
                 <input
                   className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 outline-none"
-                  placeholder="Card number"
+                  placeholder={t("checkout.cardNumber")}
                   value={cardForm.number}
                   onChange={(e) => setCardForm((prev) => ({ ...prev, number: e.target.value }))}
                   inputMode="numeric"
@@ -481,13 +498,13 @@ export default function CheckoutPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <input
                     className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 outline-none"
-                    placeholder="MM/YY"
+                    placeholder={t("checkout.cardExp")}
                     value={cardForm.exp}
                     onChange={(e) => setCardForm((prev) => ({ ...prev, exp: e.target.value }))}
                   />
                   <input
                     className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 outline-none"
-                    placeholder="CVC"
+                    placeholder={t("checkout.cardCvc")}
                     value={cardForm.cvc}
                     onChange={(e) => setCardForm((prev) => ({ ...prev, cvc: e.target.value }))}
                     inputMode="numeric"
@@ -495,14 +512,14 @@ export default function CheckoutPage() {
                 </div>
                 <input
                   className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 outline-none"
-                  placeholder="ZIP / Postal code"
+                  placeholder={t("checkout.cardZip")}
                   value={cardForm.zip}
                   onChange={(e) => setCardForm((prev) => ({ ...prev, zip: e.target.value }))}
                 />
               </div>
               {cardError && <div className="text-sm text-red-400 bg-red-400/10 px-3 py-2 rounded-xl">{cardError}</div>}
               <Button type="button" className="w-full" variant="submit" onClick={handleCardPay} disabled={submitting}>
-                {submitting ? "Processing..." : "Pay and Place Order"}
+                {submitting ? t("checkout.processing") : t("checkout.cardPay")}
               </Button>
             </div>
           </div>

@@ -110,7 +110,7 @@
   fill: #ff4f84 !important;
 }
 
-[data-theme="light"] .view-product-card-search img[alt="Cart"] {
+[data-theme="light"] .view-product-card-search img.cart-icon {
   filter: brightness(0) !important;
 }
 
@@ -148,4 +148,3 @@ body { background: var(--bg-body); color: var(--fg-primary); }
 ::-webkit-scrollbar-thumb { background-color: var(--scrollbar-thumb); border: 2px solid var(--scrollbar-track); }
 ::-webkit-scrollbar-thumb:hover { background-color: var(--scrollbar-thumb-hover); }
 */
-

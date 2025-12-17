@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import ProfileSidebar from "../components/molecules/ProfileSidebar";
 import ProfileForm from "../components/organisms/ProfileForm";
 import { getCurrentUserCached } from "../components/lib/userCache";
+import { useLocale } from "../i18n/LocaleProvider";
 
 // this is profile page uh yeah commit please commit it
 export default function ProfilePage() {
+  const { t } = useLocale();
   const router = useRouter();
   const [authorized, setAuthorized] = useState<boolean | null>(null);
 
@@ -34,7 +36,7 @@ export default function ProfilePage() {
   if (!authorized) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[var(--bg-body)] text-white">
-        <span className="opacity-70">Redirecting…</span>
+        <span className="opacity-70">{t("profile.redirecting")}</span>
       </main>
     );
   }

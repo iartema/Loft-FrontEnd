@@ -7,8 +7,10 @@ import { useRouter, usePathname } from "next/navigation";
 import { getCurrentUserCached, clearCurrentUserCache } from "../lib/userCache";
 import { logout as logoutApi } from "../lib/api";
 import { resolveMediaUrl } from "../../lib/media";
+import { useLocale } from "../../i18n/LocaleProvider";
 
 export default function ProfileSidebar() {
+  const { t, locale, setLocale } = useLocale();
   const router = useRouter();
   const [email, setEmail] = useState<string>("");
   const [avatar, setAvatar] = useState<string>("/default-avatar.jpg");
@@ -33,19 +35,20 @@ export default function ProfileSidebar() {
       mounted = false;
     };
   }, []);
-  const pathname = usePathname(); // 👈 gives us current URL path (e.g. "/profile")
+
+  const pathname = usePathname();
 
   const menuItems = [
-    { label: "Profile settings", path: "/profile" },
-    { label: "Order history", path: "/orderhistory" },
-    { label: "My favorites", path: "/myfavorites" },
-    { label: "My products", path: "/myproducts" },
-    { label: "My chats", path: "/chat/all" },
+    { label: t("sidebar.profile"), path: "/profile" },
+    { label: t("sidebar.orderHistory"), path: "/orderhistory" },
+    { label: t("sidebar.favorites"), path: "/myfavorites" },
+    { label: t("sidebar.myProducts"), path: "/myproducts" },
+    { label: t("sidebar.myChats"), path: "/chat/all" },
   ];
 
   const accItems = [
-    { label: "Help", path: "/help" },
-    { label: "Log out", path: "/logout" },
+    { label: t("sidebar.help"), path: "/help" },
+    { label: t("sidebar.logout"), path: "/logout" },
   ];
 
   return (
@@ -70,7 +73,7 @@ export default function ProfileSidebar() {
       {/* Main navigation */}
       <div className="flex-1 flex flex-col gap-3">
         {menuItems.map((item, i) => {
-          const isActive = pathname === item.path; // 👈 check current path
+          const isActive = pathname === item.path;
           return (
             <Button
               key={i}
@@ -82,12 +85,18 @@ export default function ProfileSidebar() {
             />
           );
         })}
+        <Button
+          label={locale === "en" ? t("sidebar.english") : t("sidebar.ukrainian")}
+          className="text-sm py-2 text-white"
+          onClick={() => setLocale(locale === "en" ? "uk" : "en")}
+        />
       </div>
 
       {/* Bottom section */}
       <div className="mt-8 flex flex-col gap-3">
         {accItems.map((item, i) => {
           const isActive = pathname === item.path;
+          const isLogout = item.path === "/logout";
           return (
             <Button
               key={i}
@@ -96,7 +105,7 @@ export default function ProfileSidebar() {
                 isActive ? "text-[var(--success)]" : "text-white"
               }`}
               onClick={async () => {
-                if (item.label === "Log out") {
+                if (isLogout) {
                   try {
                     await logoutApi();
                   } catch {}

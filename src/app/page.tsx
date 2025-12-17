@@ -16,26 +16,27 @@ import { loadRecentProducts, type RecentProduct } from "./components/lib/recentl
 import ViewProductCardSearch from "./components/molecules/ViewProductCardSearch";
 import { getFirstPublicImageUrl, resolveMediaUrl } from "./lib/media";
 import { useRouter } from "next/navigation";
+import { useLocale } from "./i18n/LocaleProvider";
 
 const CATEGORY_ICONS = [
-  { src: "/categories/solar_confetti-bold.svg", label: "Events" },
-  { src: "/categories/ri_shirt-fill.svg", label: "Apparel" },
-  { src: "/categories/ph_dress-fill.svg", label: "Dresses" },
-  { src: "/categories/mdi_teddy-bear.svg", label: "Toys" },
-  { src: "/categories/streamline-ultimate_bicycle-bold.svg", label: "Cycling" },
-  { src: "/categories/entypo_game-controller.svg", label: "Gaming" },
-  { src: "/categories/oi_brush.svg", label: "Art" },
-  { src: "/categories/solar_cosmetic-bold.svg", label: "Beauty" },
-  { src: "/categories/fa7-solid_mobile-phone.svg", label: "Mobile" },
-  { src: "/categories/fa-solid_car-alt.svg", label: "Auto" },
-  { src: "/categories/map_clothing-store.svg", label: "Fashion" },
-  { src: "/categories/ph_soccer-ball-fill.svg", label: "Sport" },
-  { src: "/categories/solar_body-bold.svg", label: "Lifestyle" },
-  { src: "/categories/fa-solid_tools.svg", label: "Tools" },
-  { src: "/categories/fluent_sound-wave-circle-28-filled.svg", label: "Audio" },
-  { src: "/categories/ic_baseline-child-friendly.svg", label: "Kids" },
-  { src: "/categories/streamline-flex_dog-1-remix.svg", label: "Pets" },
-  { src: "/categories/streamline-block_shopping-furniture.svg", label: "Home" },
+  { src: "/categories/solar_confetti-bold.svg", key: "events" },
+  { src: "/categories/ri_shirt-fill.svg", key: "apparel" },
+  { src: "/categories/ph_dress-fill.svg", key: "dresses" },
+  { src: "/categories/mdi_teddy-bear.svg", key: "toys" },
+  { src: "/categories/streamline-ultimate_bicycle-bold.svg", key: "cycling" },
+  { src: "/categories/entypo_game-controller.svg", key: "gaming" },
+  { src: "/categories/oi_brush.svg", key: "art" },
+  { src: "/categories/solar_cosmetic-bold.svg", key: "beauty" },
+  { src: "/categories/fa7-solid_mobile-phone.svg", key: "mobile" },
+  { src: "/categories/fa-solid_car-alt.svg", key: "auto" },
+  { src: "/categories/map_clothing-store.svg", key: "fashion" },
+  { src: "/categories/ph_soccer-ball-fill.svg", key: "sport" },
+  { src: "/categories/solar_body-bold.svg", key: "lifestyle" },
+  { src: "/categories/fa-solid_tools.svg", key: "tools" },
+  { src: "/categories/fluent_sound-wave-circle-28-filled.svg", key: "audio" },
+  { src: "/categories/ic_baseline-child-friendly.svg", key: "kids" },
+  { src: "/categories/streamline-flex_dog-1-remix.svg", key: "pets" },
+  { src: "/categories/streamline-block_shopping-furniture.svg", key: "home" },
 ];
 
 type ProductCardItem = {
@@ -48,6 +49,7 @@ type ProductCardItem = {
 };
 
 export default function HomePage() {
+  const { t } = useLocale();
   const router = useRouter();
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [products, setProducts] = useState<ProductDto[]>([]);
@@ -205,13 +207,16 @@ export default function HomePage() {
     while (icons.length < 18) {
       const fallback = CATEGORY_ICONS[idx % CATEGORY_ICONS.length] ?? {
         src: "/categories/ri_shirt-fill.svg",
-        label: "Category",
+        label: t("home.categoryFallback"),
       };
       icons.push(fallback);
       idx += 1;
     }
-    return icons;
-  }, [categories]);
+    return icons.map((icon) => ({
+      ...icon,
+      label: icon.key ? t(`home.categories.${icon.key}`) : icon.label,
+    }));
+  }, [categories, t]);
 
   const handleToggleFavorite = useCallback(
     async (productId: number) => {
@@ -258,7 +263,7 @@ export default function HomePage() {
           <div className="flex-shrink-0 w-full md:w-auto ml-30">
             <Image
               src="/start-selling.svg"
-              alt="Start selling illustration"
+            alt={t("home.heroTitle")}
               width={520}
               height={220}
               className="w-full max-w-[520px] h-auto object-contain"
@@ -266,21 +271,21 @@ export default function HomePage() {
             />
           </div>
           <div className="flex flex-col items-center md:items-end text-center md:text-left gap-4 w-full mr-30">
-            <h2 className="text-3xl font-semibold">Start selling your products now!</h2>
+            <h2 className="text-3xl font-semibold text-end">{t("home.heroTitle")}</h2>
             <p className="sort-label max-w-md">
-              Join hundreds of creators showcasing their best work. Upload your products, manage inventory, and reach new buyers in minutes.
+              {t("home.heroSubtitle")}
             </p>
             <button
               onClick={() => router.push("/product/new")}
               className="px-16 py-4 rounded-full border-[2px] border-yellow-400 text-white text-2xl font-semibold hover:bg-yellow-400 hover:text-black transition"
             >
-              Start
+              {t("home.heroCta")}
             </button>
           </div>
         </section>
 
         <section className="space-y-4">
-          <h2 className="text-lg text-[var(--success)]">This might interest you.</h2>
+          <h2 className="text-lg text-[var(--success)]">{t("home.interestTitle")}</h2>
           <div className="grid grid-cols-3 sm:grid-cols-6 lg:grid-cols-9 gap-4">
             {interestIcons.map((icon, idx) => (
               <button
@@ -295,7 +300,7 @@ export default function HomePage() {
         </section>
 
         <ProductSection
-          title="Recently viewed items"
+          title={t("home.recent")}
           products={recentItems}
           loading={loading && !recent.length}
           wrapLink
@@ -305,8 +310,8 @@ export default function HomePage() {
         />
 
         <ProductSection
-          title="Trending picks"
-          subtitle="Top categories right now"
+          title={t("home.trending")}
+          subtitle={t("home.trendingSubtitle")}
           products={trendingItems}
           loading={loading}
           wrapLink
@@ -319,7 +324,7 @@ export default function HomePage() {
           <ProductSection
             key={highlight.category.id}
             title={highlight.category.name}
-            subtitle="Popular right now"
+            subtitle={t("home.popularNow")}
             products={highlight.products.map(kvProduct)}
             loading={false}
             wrapLink
@@ -352,6 +357,7 @@ function ProductSection({
   favoriteBusyIds: Set<number>;
   onToggleFavorite: (productId: number) => void;
 }) {
+  const { t } = useLocale();
   const rowRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -388,7 +394,7 @@ function ProductSection({
         {subtitle && <span className="text-sm opacity-70">{subtitle}</span>}
       </div>
       {loading && !products.length ? (
-        <div className="text-white/70 text-sm">Loading…</div>
+        <div className="text-white/70 text-sm">{t("home.loading")}</div>
       ) : (
         <div
           ref={rowRef}
@@ -420,7 +426,7 @@ function ProductSection({
             className="text-sm text-[var(--success)] hover:underline"
             onClick={() => (window.location.href = "/search")}
           >
-            View more
+            {t("home.viewMore")}
           </button>
         </div>
       )}

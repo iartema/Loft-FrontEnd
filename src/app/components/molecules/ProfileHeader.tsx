@@ -1,6 +1,7 @@
 "use client";
 import Avatar from "../atoms/Avatar";
 import Button from "../atoms/Button";
+import { useLocale } from "../../i18n/LocaleProvider";
 
 interface ProfileHeaderProps {
   name: string;
@@ -21,6 +22,7 @@ export default function ProfileHeader({
   saveDisabled,
   saveLabel,
 }: ProfileHeaderProps) {
+  const { t } = useLocale();
   return (
     <div className="flex items-center justify-between">
       {/* Left side */}
@@ -42,7 +44,7 @@ export default function ProfileHeader({
           className="py-2 px-4 w-auto disabled:opacity-60 disabled:cursor-not-allowed"
           disabled={saveDisabled}
         >
-          {saveLabel ?? "Save changes"}
+          {saveLabel ?? t("common.saveChanges")}
         </Button>
       </div>
     </div>

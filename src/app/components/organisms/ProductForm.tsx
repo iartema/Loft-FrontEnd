@@ -26,6 +26,7 @@ import {
   productTypeToEnumValue,
 } from "../../lib/productTypes";
 import { extractMediaUrl, isImageMediaType, resolveMediaUrl } from "../../lib/media";
+import { useLocale } from "../../i18n/LocaleProvider";
 
 type Currency = "0" | "1"; // 0 -> UAH, 1 -> USD
 type AttributeValue = string | number | boolean | string[] | null;
@@ -80,6 +81,7 @@ export default function ProductForm({
   productId,
   onSaved,
 }: ProductFormProps = {}) {
+  const { t } = useLocale();
   const router = useRouter();
   const [form, setForm] = useState<ProductFormState>({
     name: "",
@@ -507,12 +509,12 @@ export default function ProductForm({
     });
     if (!res.ok) {
       const text = await res.text();
-      throw new Error(text || "Failed to upload file.");
+      throw new Error(text || t("product.form.uploadFailed"));
     }
     const data = await res.json();
     const url = data?.url ?? extractMediaUrl(data);
     if (!url) {
-      throw new Error("Upload succeeded but no URL returned.");
+      throw new Error(t("product.form.uploadNoUrl"));
     }
     return url;
   };
@@ -528,12 +530,12 @@ export default function ProductForm({
     });
     if (!res.ok) {
       const text = await res.text();
-      throw new Error(text || "Failed to upload secure file.");
+      throw new Error(text || t("product.form.uploadSecureFailed"));
     }
     const data = await res.json();
     const mediaId = data?.mediaId || data?.id || data?.Id;
     if (!mediaId) {
-      throw new Error("Upload succeeded but no media id returned.");
+      throw new Error(t("product.form.uploadSecureNoId"));
     }
     return String(mediaId);
   };
@@ -574,8 +576,8 @@ export default function ProductForm({
   );
 
   const categoryLabel = useMemo(() => {
-    if (!form.productType) return "Select product type to continue";
-    if (!form.categoryId) return "Choose a category";
+    if (!form.productType) return t("product.form.selectTypeFirst");
+    if (!form.categoryId) return t("product.form.chooseCategory");
     const path: string[] = [];
     let cur = allCategories.find((c) => c.ID === form.categoryId);
     while (cur) {
@@ -585,28 +587,28 @@ export default function ProductForm({
         : undefined;
     }
     const label = path.join(" > ");
-    return label || `Category ${form.categoryId}`;
-  }, [form.productType, form.categoryId, allCategories]);
+    return label || `${t("product.form.category")} ${form.categoryId}`;
+  }, [form.productType, form.categoryId, allCategories, t]);
 
   const validate = (): string | null => {
-    if (!form.name.trim()) return "Please enter product name.";
-    if (!form.productType) return "Please choose whether your product is physical or digital.";
-    if (!form.categoryId) return "Please choose a category.";
-    if (form.price === "" || isNaN(Number(form.price))) return "Please enter a valid price.";
-    if (Number(form.price) < 0) return "Price cannot be negative.";
-    if (form.quantity === "" || isNaN(Number(form.quantity))) return "Please enter a valid quantity.";
-    if (Number(form.quantity) <= 0) return "Quantity must be greater than zero.";
-    if (form.photos.length === 0) return "Please add at least one file.";
+    if (!form.name.trim()) return t("product.form.nameRequired");
+    if (!form.productType) return t("product.form.typeRequired");
+    if (!form.categoryId) return t("product.form.categoryRequired");
+    if (form.price === "" || isNaN(Number(form.price))) return t("product.form.priceRequired");
+    if (Number(form.price) < 0) return t("product.form.priceNegative");
+    if (form.quantity === "" || isNaN(Number(form.quantity))) return t("product.form.quantityRequired");
+    if (Number(form.quantity) <= 0) return t("product.form.quantityPositive");
+    if (form.photos.length === 0) return t("product.form.photoRequired");
     if (form.productType === "digital" && form.digitalFiles.length === 0) {
-      return "Please attach at least one secure file for digital products.";
+      return t("product.form.digitalRequired");
     }
     for (const id of requiredAttrIds) {
       const val = form.attributes[id];
-      if (val === undefined || val === null) return "Please fill all required attributes.";
+      if (val === undefined || val === null) return t("product.form.attributesRequired");
       if (Array.isArray(val)) {
-        if (val.length === 0) return "Please fill all required attributes.";
+        if (val.length === 0) return t("product.form.attributesRequired");
       } else {
-        if (String(val).trim() === "") return "Please fill all required attributes.";
+        if (String(val).trim() === "") return t("product.form.attributesRequired");
       }
     }
     return null;
@@ -638,11 +640,11 @@ export default function ProductForm({
       ]);
       const missingUploads = uploadedPhotos.filter((photo) => !photo.remoteUrl);
       if (missingUploads.length) {
-        throw new Error("Failed to upload one or more files. Please try again.");
+        throw new Error(t("product.form.uploadMissing"));
       }
       const missingProtected = uploadedDigital.filter((file) => !file.mediaId);
       if (missingProtected.length) {
-        throw new Error("Failed to upload one or more secure files. Please try again.");
+        throw new Error(t("product.form.uploadSecureMissing"));
       }
       setForm((prev) => ({ ...prev, photos: uploadedPhotos, digitalFiles: uploadedDigital }));
 
@@ -701,7 +703,7 @@ export default function ProductForm({
       }
     } catch (e) {
       const anyErr: any = e;
-      setError(anyErr?.message || "Unexpected error");
+      setError(anyErr?.message || t("product.form.unexpectedError"));
     } finally {
       setSubmitting(false);
     }
@@ -739,7 +741,9 @@ export default function ProductForm({
     return Math.round(overall * 100);
   };
 
-  const submitLabel = isEdit ? (submitting ? "Saving..." : "Save changes") : (submitting ? "Publishing..." : "Publish");
+  const submitLabel = isEdit
+    ? (submitting ? t("product.form.saving") : t("product.form.save"))
+    : (submitting ? t("product.form.publishing") : t("product.form.publish"));
 
   return (
     <>
@@ -756,9 +760,9 @@ export default function ProductForm({
             />
             {form.productType === "digital" && (
               <div className="mt-8">
-                <label className="block mb-2 text-white text-lg">Digital files</label>
+                <label className="block mb-2 text-white text-lg">{t("product.form.digitalFiles")}</label>
                 <p className="text-sm text-white/60 mb-3">
-                  Upload the files buyers will receive after purchase. They remain private.
+                  {t("product.form.digitalInfo")}
                 </p>
                 <DigitalFileUploader
                   files={form.digitalFiles}
@@ -771,9 +775,9 @@ export default function ProductForm({
 
           <div className="col-span-12 md:col-span-5 flex flex-col w-[100%]">
             <InputField
-              label="Name"
+              label={t("product.form.name")}
               type="text"
-              placeholder="Enter..."
+              placeholder={t("auth.enter")}
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               required
@@ -781,12 +785,14 @@ export default function ProductForm({
             />
 
             <div className="mb-4 w-full">
-              <label className="block mb-2">Category</label>
+              <label className="block mb-2">{t("product.form.category")}</label>
               <div className="text-sm text-[var(--fg-muted)] mb-2">
-                Product type:{" "}
+                {t("product.form.type")}:{" "}
                 <span className="text-white">{productTypeLabel(form.productType)}</span>
                 {categoryLocked && (
-                  <span className="ml-2 text-xs text-white/60">(Category cannot be changed for existing listings)</span>
+                  <span className="ml-2 text-xs text-white/60">
+                    {t("product.form.categoryLocked")}
+                  </span>
                 )}
               </div>
               <button
@@ -813,10 +819,10 @@ export default function ProductForm({
         </section>
 
         <section>
-          <label className="block mb-2 ml-0">Description</label>
+          <label className="block mb-2 ml-0">{t("product.form.description")}</label>
           <div className="ml-0">
             <Textarea
-              placeholder="Tell buyers about the product…"
+              placeholder={t("product.form.descriptionPlaceholder")}
               value={form.description}
               onChange={(e) =>
                 setForm((f) => ({ ...f, description: e.target.value }))
@@ -834,7 +840,7 @@ export default function ProductForm({
             <div className="grid grid-cols-12 gap-6">
               <div className="col-span-5">
                 <InputField
-                  label="Price"
+                  label={t("product.form.price")}
                   type="number"
                   placeholder="0"
                   value={form.price}
@@ -846,7 +852,7 @@ export default function ProductForm({
                 />
               </div>
               <div className="col-span-4">
-                <label className="block mb-2">Currency</label>
+                <label className="block mb-2">{t("product.form.currency")}</label>
                 <div className="relative">
                   <select
                     value={form.currency}
@@ -859,8 +865,8 @@ export default function ProductForm({
                     className="appearance-none w-full bg-[var(--bg-input)] rounded-[15px] px-4 pr-12 py-2 text-[20px] text-white outline-none"
                     style={{boxShadow: "0 3px 3px 0px rgba(0, 0, 0, 0.25)"}}
                   >
-                    <option value="0">UAH ₴</option>
-                    <option value="1">USD $</option>
+                    <option value="0">{t("product.form.currencyUah")}</option>
+                    <option value="1">{t("product.form.currencyUsd")}</option>
                   </select>
                   <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-white opacity-70">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -871,7 +877,7 @@ export default function ProductForm({
               </div>
               <div className="col-span-3">
                 <InputField
-                  label="Quantity"
+                  label={t("product.form.quantity")}
                   type="number"
                   placeholder="1"
                   value={form.quantity}
@@ -918,7 +924,7 @@ export default function ProductForm({
                 });
               }}
             >
-              Delete
+              {t("product.form.clear")}
             </Button>
           </div>
         </div>

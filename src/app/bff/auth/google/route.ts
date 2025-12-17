@@ -5,9 +5,8 @@ export async function POST(req: Request) {
 
   console.log(JSON.parse(atob(idToken.split('.')[1])));
 
-  const clientId = "1031648550234-v296d5d0efagr4mlmpigha8kb1ufmouo.apps.googleusercontent.com";
+  const clientId = process.env.GOOGLE_CLIENT_ID;
   
-
   if (!clientId) {
     return NextResponse.json(
       { message: "Google client ID is not configured." },

@@ -1,4 +1,5 @@
-﻿"use client";
+/* eslint-disable @next/next/no-img-element */
+"use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -19,6 +20,7 @@ import Divider from "../../components/atoms/Divider";
 import { subscribeToChatMessages } from "../../components/lib/chatHubClient";
 import { getCurrentUserCached } from "../../components/lib/userCache";
 import { getFirstPublicImageUrl, resolveMediaUrl } from "../../lib/media";
+import { useLocale } from "../../i18n/LocaleProvider";
 
 const almarai = Almarai({
   subsets: ["latin"],
@@ -26,6 +28,7 @@ const almarai = Almarai({
 });
 
 export default function ChatConversationPage() {
+  const { t } = useLocale();
   const params = useParams<{ id: string }>();
   const otherUserId = Number(params.id);
   const router = useRouter();
@@ -35,7 +38,7 @@ export default function ChatConversationPage() {
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [otherUserName, setOtherUserName] = useState("Chat");
+  const [otherUserName, setOtherUserName] = useState(t("chats.title"));
   const [otherUserAvatar, setOtherUserAvatar] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [isOfficialAccount, setIsOfficialAccount] = useState(false);
@@ -317,7 +320,6 @@ export default function ChatConversationPage() {
             <div className="mb-3">
               {isImage ? (
                 <a href={attachedUrl} target="_blank" rel="noreferrer">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={attachedUrl}
                     alt="Attachment"
@@ -347,7 +349,6 @@ export default function ChatConversationPage() {
               className="block mb-3 overflow-hidden rounded-2xl relative group"
             >
               {imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={imageUrl}
                   alt={product.name}
@@ -369,7 +370,6 @@ export default function ChatConversationPage() {
               className="block mb-3 overflow-hidden rounded-2xl relative group border border-[var(--bg-elev-1)]"
             >
               {orderPreviewImage ? (
-                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={orderPreviewImage}
                   alt={`Order ${order.id}`}
@@ -416,7 +416,7 @@ export default function ChatConversationPage() {
             onClick={() => router.push("/chat/all")}
             aria-label="Back"
           >
-            ← Back
+            {t("common.back")}
           </button>
           
           
@@ -426,7 +426,6 @@ export default function ChatConversationPage() {
 
         <header className="flex items-center gap-4 !bg-[var(--bg-body)]">
         {otherUserAvatar ? (
-            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={otherUserAvatar}
               alt={otherUserName}
@@ -444,8 +443,8 @@ export default function ChatConversationPage() {
                 <span
                   className="text-[var(--brand)]"
                   style={{ textShadow: "0 0 8px rgba(255, 193, 7, 0.55)" }}
-                  title="This is an official account of Loft"
-                  aria-label="Official Loft account"
+                  title={t("chats.official")}
+                  aria-label={t("chats.official")}
                 >
                   ★
                 </span>
@@ -461,9 +460,9 @@ export default function ChatConversationPage() {
         ref={messagesRef}
       >
           {loading ? (
-            <div className="text-center opacity-70 mt-10">Loading conversation…</div>
+            <div className="text-center opacity-70 mt-10">{t("chats.loadingThread")}</div>
           ) : messages.length === 0 ? (
-            <div className="text-center opacity-70 mt-10">No messages yet.</div>
+            <div className="text-center opacity-70 mt-10">{t("chats.emptyThread")}</div>
           ) : (
             messages.map(renderMessage)
           )}
@@ -476,7 +475,7 @@ export default function ChatConversationPage() {
           <input
             type="text"
             className={`${almarai.className} flex-1 outline-none`}
-            placeholder="Type a message..."
+            placeholder={t("chats.typeMessage")}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {

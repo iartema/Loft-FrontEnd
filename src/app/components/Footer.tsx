@@ -2,76 +2,85 @@
 
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useLocale } from "../i18n/LocaleProvider";
+
+type FooterItem = { label: string; href: string };
+const HIDE_ON = [
+  "/register",
+  "/login",
+  "/profile",
+  "/myfavorites",
+  "/orderhistory",
+  "/myproducts",
+  "/forgot-password",
+];
 
 export default function Footer() {
+  const { t } = useLocale();
   const pathname = usePathname();
   const [lastEdited, setLastEdited] = useState<string>("");
+
   useEffect(() => {
-    // Compute only on client after mount to avoid SSR hydration mismatch
     try {
       setLastEdited(new Date().toLocaleString());
     } catch {
       setLastEdited("");
     }
   }, []);
-  const hideOn = [
-    "/register",
-    "/login",
-    "/profile",
-    "/myfavorites",
-    "/orderhistory",
-    "/myproducts",
-    "/forgot-password"
-  ];
-  if (hideOn.some((p) => pathname?.startsWith(p))) return null;
+
+  const infoItems = useMemo<FooterItem[]>(
+    () => [
+      { label: t("footer.info.about"), href: "/about" },
+      { label: t("footer.info.terms"), href: "/terms" },
+      { label: t("footer.info.cookies"), href: "/cookies" },
+    ],
+    [t]
+  );
+
+  const catalogItems = useMemo<FooterItem[]>(
+    () => [
+      { label: t("footer.catalog.material"), href: "/search?category=material" },
+      { label: t("footer.catalog.digital"), href: "/search?category=digital" },
+      { label: t("footer.catalog.popular"), href: "/search" },
+      { label: t("footer.catalog.latest"), href: "/search" },
+    ],
+    [t]
+  );
+
+  const helpItems = useMemo<FooterItem[]>(
+    () => [
+      { label: t("footer.help.buy"), href: "/help#how-to-buy" },
+      { label: t("footer.help.sell"), href: "/help#how-to-sell" },
+      { label: t("footer.help.protection"), href: "/help#buyer-protection" },
+      { label: t("footer.help.safety"), href: "/help#buyer-protection" },
+    ],
+    [t]
+  );
+
+  const shouldHide = useMemo(() => HIDE_ON.some((p) => pathname?.startsWith(p)), [pathname]);
+  if (shouldHide) return null;
 
   return (
     <footer className="w-screen relative left-[50%] right-[50%] ml-[-50vw] mr-[-50vw] bg-[var(--bg-body)] mt-8">
       <div className="w-full h-px bg-[var(--divider)]" />
       <div className="px-8 py-10">
         <div className="max-w-[1400px] mx-auto grid grid-cols-12 gap-8 items-start">
-          {/* Brand */}
           <div className="col-span-12 md:col-span-3 flex items-start gap-3">
             <Image src="/loft-logo.svg" alt="Loft Logo" width={120} height={48} className="h-10 w-auto" />
             <div className="leading-tight">
               <div className="text-lg font-semibold">loft</div>
-              <div className="text-xs text-white/60">Online store</div>
+              <div className="text-xs text-white/60">{t("footer.brand")}</div>
             </div>
           </div>
 
-          {/* Columns */}
-          <FooterColumn
-            title="Information"
-            items={[
-              { label: "About us", href: "/about" },
-              { label: "Terms of use", href: "/terms" },
-              { label: "Cookie policy", href: "/cookies" },
-            ]}
-          />
-          <FooterColumn
-            title="Catalog"
-            items={[
-              { label: "Material goods", href: "/search?category=material" },
-              { label: "Digital products", href: "/search?category=digital" },
-              { label: "Popular categories", href: "/search" },
-              { label: "Latest listings", href: "/search" },
-            ]}
-          />
-          <FooterColumn
-            title="Help"
-            items={[
-              { label: "How to buy", href: "/help#how-to-buy" },
-              { label: "How to sell", href: "/help#how-to-sell" },
-              { label: "Buyer protection", href: "/help#buyer-protection" },
-              { label: "Safety rules", href: "/help#buyer-protection" },
-            ]}
-          />
+          <FooterColumn title={t("footer.info.title")} items={infoItems} />
+          <FooterColumn title={t("footer.catalog.title")} items={catalogItems} />
+          <FooterColumn title={t("footer.help.title")} items={helpItems} />
 
-          {/* Contact */}
           <div className="col-span-12 md:col-span-3 md:ml-auto">
             <div className="mt-8 text-[11px] text-white/60">
-              This page was last edited
+              {t("footer.lastEdited")}
               <br />
               {lastEdited}
             </div>
@@ -82,7 +91,7 @@ export default function Footer() {
   );
 }
 
-function FooterColumn({ title, items }: { title: string; items: { label: string; href: string }[] }) {
+function FooterColumn({ title, items }: { title: string; items: FooterItem[] }) {
   return (
     <div className="col-span-12 md:col-span-2">
       <div className="text-lg font-semibold mb-4">{title}</div>
@@ -96,13 +105,5 @@ function FooterColumn({ title, items }: { title: string; items: { label: string;
         ))}
       </ul>
     </div>
-  );
-}
-
-function IconCircle({ children, label }: { children: React.ReactNode; label: string }) {
-  return (
-    <span title={label} className="inline-flex items-center justify-center h-9 w-9 rounded-full bg-[var(--bg-elev-1)] text-white/90">
-      {children}
-    </span>
   );
 }

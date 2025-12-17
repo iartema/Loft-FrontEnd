@@ -12,6 +12,7 @@ import {
 } from "../lib/api";
 import { getFirstPublicImageUrl } from "../../lib/media";
 import { useRouter } from "next/navigation";
+import { useLocale } from "../../i18n/LocaleProvider";
 
 type FavoriteCard = {
   id: number;
@@ -43,6 +44,7 @@ const formatPrice = (value?: number | null, currency?: string | number | null) =
 };
 
 export default function MyFavorites() {
+  const { t } = useLocale();
   const router = useRouter();
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
   const [favoriteBusyIds, setFavoriteBusyIds] = useState<Set<number>>(new Set());
@@ -83,7 +85,7 @@ export default function MyFavorites() {
           }
         } else {
           console.error("Failed to load favorites", err);
-          if (active) setError("Failed to load favorites.");
+          if (active) setError(t("favorites.error"));
         }
       } finally {
         if (active) setLoading(false);
@@ -93,7 +95,7 @@ export default function MyFavorites() {
     return () => {
       active = false;
     };
-  }, [router]);
+  }, [router, t]);
 
   const handleToggleFavorite = useCallback(
     async (productId: number) => {
@@ -117,9 +119,11 @@ export default function MyFavorites() {
         );
       } catch (err) {
         if (err instanceof ApiError && err.status === 401) {
+          setError(t("favorites.login"));
           router.push("/login");
         } else {
           console.error("Failed to toggle favorite", err);
+          setError(currentlyFavorite ? t("favorites.removeError") : t("favorites.addError"));
         }
       } finally {
         setFavoriteBusyIds((prev) => {
@@ -129,18 +133,18 @@ export default function MyFavorites() {
         });
       }
     },
-    [favoriteIds, router]
+    [favoriteIds, router, t]
   );
 
   const content = useMemo(() => {
     if (loading) {
-      return <div className="text-white/70 text-sm">Loading favorites…</div>;
+      return <div className="text-white/70 text-sm">{t("favorites.loading")}</div>;
     }
     if (error) {
       return <div className="text-red-400 text-sm">{error}</div>;
     }
     if (!items.length) {
-      return <div className="text-white/60 text-sm">You have no favorites yet.</div>;
+      return <div className="text-white/60 text-sm">{t("favorites.empty")}</div>;
     }
     return (
       <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 gap-6">
@@ -161,12 +165,12 @@ export default function MyFavorites() {
         ))}
       </div>
     );
-  }, [items, loading, error, favoriteIds, favoriteBusyIds, handleToggleFavorite, router]);
+  }, [items, loading, error, favoriteIds, favoriteBusyIds, handleToggleFavorite, router, t]);
 
   return (
     <div className="flex flex-col gap-8">
       <Title className="font-semibold text-white" size="lg">
-        My favorites
+        {t("favorites.title")}
       </Title>
       <div className="border-t border-[var(--divider)]" />
       {content}

@@ -675,6 +675,9 @@ export async function searchProductsExternal(filter: ProductFilterDto): Promise<
     CategoryId: filter.categoryId ?? undefined,
     // Search is kept for backward compatibility; ignored by newer backend if unsupported
     Search: filter.search ?? undefined,
+    // Fallbacks for different backend contract variants
+    SearchText: filter.search ?? undefined,
+    Name: filter.search ?? undefined,
     SellerId: filter.sellerId ?? undefined,
     MinPrice: filter.minPrice ?? undefined,
     MaxPrice: filter.maxPrice ?? undefined,
@@ -789,6 +792,12 @@ export type ChatDto = {
 };
 
 export async function fetchMyChats(): Promise<ChatDto[]> {
+  // Lazy import to avoid circular issues
+  const { getCurrentUserCached } = await import("./userCache");
+  const me = await getCurrentUserCached().catch(() => null);
+  if (!me?.id) {
+    throw new ApiError("Unauthorized", 401);
+  }
   const res = await fetch(`/bff/chat/my-chats`, { cache: "no-store" });
   if (res.status === 401) {
     throw new ApiError("Unauthorized", 401);

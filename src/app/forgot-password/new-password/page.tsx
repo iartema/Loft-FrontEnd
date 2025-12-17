@@ -6,8 +6,10 @@ import RecoverLayout from "../../components/organisms/RecoverLayout";
 import InputField from "../../components/molecules/InputField";
 import ButtonAuth from "../../components/atoms/ButtonAuth";
 import { confirmPasswordReset } from "../../components/lib/api";
+import { useLocale } from "../../i18n/LocaleProvider";
 
 function ForgotPasswordNewPasswordContent() {
+  const { t } = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email") ?? "";
@@ -30,42 +32,42 @@ function ForgotPasswordNewPasswordContent() {
     setError("");
     setSuccess("");
     if (!password) {
-      setError("New password is required");
+      setError(t("auth.passwordRequired"));
       return;
     }
     if (password !== confirm) {
-      setError("Passwords do not match");
+      setError(t("auth.passwordMismatch"));
       return;
     }
 
     setLoading(true);
     try {
       await confirmPasswordReset(email, code, password);
-      setSuccess("Password updated. Redirecting to login...");
+      setSuccess(t("auth.passwordResetSuccess"));
       setTimeout(() => router.push("/login"), 1200);
     } catch (err: any) {
-      setError(err?.message || "Failed to reset password");
+      setError(err?.message || t("auth.resetPassword"));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <RecoverLayout subtitle="Enter a new password to secure your account.">
+    <RecoverLayout subtitle={t("recover.subtitleNewPassword")}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <InputField
-          label="Enter new password"
+          label={t("auth.newPasswordLabel")}
           type="password"
-          placeholder="New password"
+          placeholder={t("auth.newPasswordPlaceholder")}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
         />
 
         <InputField
-          label="Confirm new password"
+          label={t("auth.confirmPasswordLabel")}
           type="password"
-          placeholder="Repeat password"
+          placeholder={t("auth.repeatPasswordPlaceholder")}
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
           required
@@ -74,7 +76,7 @@ function ForgotPasswordNewPasswordContent() {
         {error && <p className="text-red-500 text-sm">{error}</p>}
         {success && <p className="text-green-400 text-sm">{success}</p>}
 
-        <ButtonAuth type="submit" label={loading ? "Saving..." : "Reset password"} disabled={loading} />
+        <ButtonAuth type="submit" label={loading ? t("profile.saving") : t("auth.resetPassword")} disabled={loading} />
       </form>
     </RecoverLayout>
   );

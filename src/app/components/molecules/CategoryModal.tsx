@@ -6,6 +6,7 @@ import {
   type ProductTypeKind,
   productTypeLabel,
 } from "../../lib/productTypes";
+import { useLocale } from "../../i18n/LocaleProvider";
 
 export interface Category {
   ID: number;
@@ -34,6 +35,7 @@ export default function CategoryModal({
   onClose,
   onSelect,
 }: Props) {
+  const { t } = useLocale();
   // path holds the clicked chain: [level1Id, level2Id, ...]
   const [path, setPath] = useState<number[]>([]);
 
@@ -77,7 +79,7 @@ export default function CategoryModal({
   const renderTypeSelector = () => (
     <div className="mb-6">
       <p className="text-sm text-[var(--fg-muted)] mb-3">
-        Select product type to filter categories
+        {t("product.categoryModal.typePrompt")}
       </p>
       <div className="flex gap-4">
         {PRODUCT_TYPE_OPTIONS.map((option) => {
@@ -117,7 +119,7 @@ export default function CategoryModal({
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--bg-elev-1)] border border-[var(--border)] rounded-2xl p-6 w-[900px] max-w-[95vw]">
         <div className="flex justify-between items-center mb-4">
           <div>
-            <h3 className="text-xl font-bold">Choose category</h3>
+            <h3 className="text-xl font-bold">{t("product.categoryModal.title")}</h3>
             <p className="text-sm text-[var(--fg-muted)]">
               {productTypeLabel(productType)}
             </p>
@@ -128,12 +130,13 @@ export default function CategoryModal({
               setPath([]);
               onClose();
             }}
+            aria-label={t("product.categoryModal.close")}
           >
-            ✕
+            x
           </button>
         </div>
 
-        {renderTypeSelector()}
+          {renderTypeSelector()}
 
         <div className="relative grid grid-cols-3 gap-6">
           {/* level 1 */}
@@ -142,6 +145,7 @@ export default function CategoryModal({
             activeId={path[0]}
             selectedId={selectedId}
             onClick={(id) => handleClick(0, id)}
+            t={t}
           />
           {/* show level 2 only after a level1 click */}
           <Column
@@ -149,6 +153,7 @@ export default function CategoryModal({
             activeId={path[1]}
             selectedId={selectedId}
             onClick={(id) => handleClick(1, id)}
+            t={t}
             hidden={!path[0]}
           />
           {/* show level 3 only after a level2 click */}
@@ -157,13 +162,14 @@ export default function CategoryModal({
             activeId={path[2]}
             selectedId={selectedId}
             onClick={(id) => handleClick(2, id)}
+            t={t}
             hidden={!path[1]}
           />
 
           {!productType && (
             <div className="absolute inset-0 rounded-2xl bg-[var(--bg-elev-1)]/90 backdrop-blur-[2px] flex items-center justify-center text-center px-8">
               <div className="text-base text-[var(--fg-muted)]">
-                Choose a product type above to browse matching categories.
+                {t("product.categoryModal.typeOverlay")}
               </div>
             </div>
           )}
@@ -179,17 +185,19 @@ function Column({
   selectedId,
   onClick,
   hidden,
+  t,
 }: {
   items: Category[];
   activeId?: number;
   selectedId: number | null;
   onClick: (id: number) => void;
   hidden?: boolean;
+  t: (k: string) => string;
 }) {
   if (hidden) return <div className="space-y-2 opacity-40 pointer-events-none" />;
   return (
     <div className="space-y-2">
-      {items.length === 0 && <div className="text-[var(--fg-muted)] text-sm">No items</div>}
+      {items.length === 0 && <div className="text-[var(--fg-muted)] text-sm">{t("product.categoryModal.empty")}</div>}
       {items.map((c) => {
         const isActive = activeId === c.ID;
         const isSelected = selectedId === c.ID;
@@ -203,12 +211,14 @@ function Column({
             onClick={() => onClick(c.ID)}
           >
             <span>{c.Name}</span>
-            <span className="opacity-70"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg></span>
+            <span className="opacity-70">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
           </button>
         );
       })}
     </div>
   );
 }
-
-

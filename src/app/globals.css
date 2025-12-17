@@ -53,3 +53,19 @@ body {
   filter: invert(1) brightness(0.2);
 }
 
+.animate-pop {
+  animation: pop-scale 0.28s ease;
+  will-change: transform;
+}
+
+@keyframes pop-scale {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}

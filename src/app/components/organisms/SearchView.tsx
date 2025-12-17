@@ -29,6 +29,7 @@ import {
   type ProductTypeKind,
   productTypeLabel,
 } from "../../lib/productTypes";
+import { useLocale } from "../../i18n/LocaleProvider";
 // import { mockCategories, mockFetchAttributesByCategory } from "../lib/mockCatalog";
 
 const almarai = Almarai({ subsets: ["latin"], weight: ["400", "700"] });
@@ -70,6 +71,7 @@ const formatPrice = (value?: number | null, currency?: string | number | null) =
 };
 
 export default function SearchView() {
+  const { t } = useLocale();
   const params = useSearchParams();
   const qParam = params.get("q") ?? "";
   const categoryParam = params.get("categoryId") ?? params.get("category");
@@ -310,10 +312,7 @@ export default function SearchView() {
         pageSize,
       });
       if (cancelled) return;
-      const trimmed = (query || "").trim().toLowerCase();
-      let filtered = trimmed
-        ? (res.items || []).filter((item) => item?.name?.toLowerCase().includes(trimmed))
-        : res.items || [];
+      let filtered = res.items || [];
 
       const cutoff = Date.now() - 1000 * 60 * 60 * 24 * 30;
       const toDate = (value: any): number | null => {
@@ -587,7 +586,7 @@ export default function SearchView() {
         <div className="relative w-full flex items-center min-h-[56px] pr-[280px]">
           <div className="flex-1 flex justify-center">{sellerCard}</div>
           <div className={`${almarai.className} flex items-center gap-2 absolute right-0 mr-12`}>
-            <span className="text-sm sort-label">Sort by:</span>
+            <span className="text-sm sort-label">{t("search.sortBy")}</span>
             <div className="relative">
               <select
                 value={sortBy}
@@ -595,10 +594,10 @@ export default function SearchView() {
                 className="appearance-none bg-[var(--bg-filter-inner)] text-white px-3 pr-14 py-2 rounded-[12px] border border-transparent focus:outline-none focus:border-[var(--divider)] text-md"
                 style={{ boxShadow: "0 2px 4px 0px rgba(0, 0, 0, 0.45)" }}
               >
-                <option value="views">Views</option>
-                <option value="season">Season (popular & recent)</option>
-                <option value="price_desc">Price (highest)</option>
-                <option value="price_asc">Price (lowest)</option>
+                <option value="views">{t("search.sortViews")}</option>
+                <option value="season">{t("search.sortSeason")}</option>
+                <option value="price_desc">{t("search.sortPriceHigh")}</option>
+                <option value="price_asc">{t("search.sortPriceLow")}</option>
               </select>
               <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/80 text-xs sort-label">
                 ▼
@@ -611,7 +610,7 @@ export default function SearchView() {
       <div className="grid grid-cols-[240px_1fr] gap-6">
         {/* Filters (no local search field here as per spec) */}
         <aside className={`search-sidebar rounded-2xl p-0 space-y-0 h-fit sticky top-4 ${almarai.className}` }>
-          <FilterSection title="Category">
+          <FilterSection title={t("search.category")}>
             <div className="space-y-2">
               <button
                 type="button"
@@ -619,10 +618,12 @@ export default function SearchView() {
                 className="w-full bg-[var(--bg-filter-inner)] text-white px-3 py-2 text-sm rounded-[12px] border border-[var(--divider)] hover:border-[var(--brand)] text-left"
                 style={{ boxShadow: "0 2px 6px -2px rgba(0, 0, 0, 0.45)" }}
               >
-                {categoryName || "All"}
+                {categoryName || t("search.all")}
               </button>
               {productType && (
-                <div className="text-xs text-white/60 sort-label">Type: {productTypeLabel(productType)}</div>
+                <div className="text-xs text-white/60 sort-label">
+                  {t("search.typeLabel")}: {productTypeLabel(productType)}
+                </div>
               )}
             </div>
           </FilterSection>
@@ -635,7 +636,7 @@ export default function SearchView() {
               {a.Type === "text" && (
                 <input
                   type="text"
-                  placeholder={`Type the ${a.Name.toLowerCase()}...`}
+                  placeholder={t("search.attributePlaceholder")}
                   value={(attrFilters[a.ID] as string) ?? ""}
                   onChange={(e) => setAttrFilters((s) => ({ ...s, [a.ID]: e.target.value }))}
                   className={`w-full bg-[var(--bg-filter-inner)] text-white px-3 py-2 text-sm rounded-[12px] outline-none border border-transparent focus:outline-none focus:border-[var(--divider)] ${almarai.className}`}
@@ -741,15 +742,15 @@ export default function SearchView() {
               );
             })}
           {categoryId && categoryAttrs.length === 0 && (
-            <FilterSection title="Attributes" defaultOpen>
-              <p className="text-xs opacity-70">This category has no filters.</p>
+            <FilterSection title={t("search.attributes")} defaultOpen>
+              <p className="text-xs opacity-70">{t("search.noFilters")}</p>
             </FilterSection>
           )}
-          <FilterSection title="Price">
+          <FilterSection title={t("search.price")}>
         <div className={`flex items-center gap-2 ${almarai.className}`}>
               <input
                 type="number"
-                placeholder="Min"
+                placeholder={t("search.min")}
                 value={priceMin ?? ""}
                 onChange={(e) => setPriceMin(e.target.value === "" ? null : Number(e.target.value))}
                 className={`w-full bg-[var(--bg-filter-inner)] text-white px-3 py-2 text-sm rounded-[12px] outline-none border border-transparent focus:ring-0 focus:outline-none focus:border-[var(--divider)] ${almarai.className}` }
@@ -758,7 +759,7 @@ export default function SearchView() {
               <span className="opacity-50">-</span>
               <input
                 type="number"
-                placeholder="Max"
+                placeholder={t("search.max")}
                 value={priceMax ?? ""}
                 onChange={(e) => setPriceMax(e.target.value === "" ? null : Number(e.target.value))}
                 className={`w-full bg-[var(--bg-filter-inner)] text-white px-3 py-2 text-sm rounded-[12px] outline-none border border-transparent focus:ring-0 focus:outline-none focus:border-[var(--divider)] ${almarai.className}` }
@@ -770,7 +771,7 @@ export default function SearchView() {
             onClick={clearFilters}
             className={`w-full bg-[var(--bg-filter)] text-white px-3 py-2 text-sm border-b border-[var(--divider)] ${almarai.className}` }
           >
-            Clear filters
+            {t("search.clearFilters")}
           </button>
         </aside>
 
@@ -784,17 +785,17 @@ export default function SearchView() {
           {/* Responsive product grid */}
           <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-y-3 w-[98%]">
             {paged.length === 0 && (
-              <div className="opacity-70 col-span-full">No products match your filters.</div>
+              <div className="opacity-70 col-span-full">{t("search.noResults")}</div>
             )}
             {paged.map((p) => (
               <ViewProductCardSearch
                 key={p.id}
                 name={p.name}
                 productId={p.id}
-                description={`${p.viewCount ?? 0} views`}
+                description={`${p.viewCount ?? 0} ${t("search.viewsSuffix")}`}
                 price={formatPrice(p.price, p.currency)}
                 image={getFirstPublicImageUrl(p.mediaFiles) || "/default-product.jpg"}
-                buttonLabel="View"
+                buttonLabel={t("search.viewButton")}
                 onClick={() => router.push(`/product/${p.id}`)}
                 isFavorite={Boolean(p.isFavorite)}
                 favoriteBusy={favoriteBusyIds.has(p.id)}
@@ -812,23 +813,54 @@ export default function SearchView() {
             >
               {"<"}
             </button>
-            {Array.from({ length: totalPages }).slice(0, 9).map((_, i) => {
-              const n = i + 1;
-              return (
-                <button
-                  key={n}
-                  onClick={() => setPage(n)}
-                  className={`px-3 py-1 rounded ${
-                    page === n ? "bg-[var(--bg-input)]" : "bg-[var(--bg-elev-1)] hover:bg-[var(--bg-elev-1)]"
-                  }`}
-                >
-                  {n}
-                </button>
-              );
-            })}
-            {totalPages > 9 && (
-              <span className="px-2 opacity-60">... {totalPages}</span>
-            )}
+            {(() => {
+              const windowSize = 9;
+              const start = Math.max(1, Math.min(page - Math.floor(windowSize / 2), totalPages - windowSize + 1));
+              const end = Math.min(totalPages, start + windowSize - 1);
+              const buttons = [];
+              if (start > 1) {
+                buttons.push(
+                  <button
+                    key={1}
+                    onClick={() => setPage(1)}
+                    className={`px-3 py-1 rounded ${
+                      page === 1 ? "bg-[var(--bg-input)]" : "bg-[var(--bg-elev-1)] hover:bg-[var(--bg-elev-1)]"
+                    }`}
+                  >
+                    1
+                  </button>
+                );
+                if (start > 2) buttons.push(<span key="start-ellipsis" className="px-2 opacity-60">...</span>);
+              }
+              for (let n = start; n <= end; n++) {
+                buttons.push(
+                  <button
+                    key={n}
+                    onClick={() => setPage(n)}
+                    className={`px-3 py-1 rounded ${
+                      page === n ? "bg-[var(--bg-input)]" : "bg-[var(--bg-elev-1)] hover:bg-[var(--bg-elev-1)]"
+                    }`}
+                  >
+                    {n}
+                  </button>
+                );
+              }
+              if (end < totalPages) {
+                if (end < totalPages - 1) buttons.push(<span key="end-ellipsis" className="px-2 opacity-60">...</span>);
+                buttons.push(
+                  <button
+                    key={totalPages}
+                    onClick={() => setPage(totalPages)}
+                    className={`px-3 py-1 rounded ${
+                      page === totalPages ? "bg-[var(--bg-input)]" : "bg-[var(--bg-elev-1)] hover:bg-[var(--bg-elev-1)]"
+                    }`}
+                  >
+                    {totalPages}
+                  </button>
+                );
+              }
+              return buttons;
+            })()}
             <button
               className="px-3 py-1 rounded bg-[var(--bg-elev-1)] hover:bg-[var(--bg-elev-1)] disabled:opacity-40"
               disabled={page === totalPages}

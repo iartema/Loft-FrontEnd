@@ -7,8 +7,10 @@ import ButtonAuth from "../atoms/ButtonAuth";
 import AccountPrompt from "../atoms/AccountPrompt";
 import FooterLinks from "../atoms/FooterLinks";
 import { registerUser } from "../lib/api";
+import { useLocale } from "../../i18n/LocaleProvider";
 
 export default function RegisterForm() {
+  const { t } = useLocale();
   const router = useRouter();
 
   const [email, setEmail] = useState("");
@@ -35,13 +37,13 @@ export default function RegisterForm() {
 
   return (
     <div className="max-w-md mx-auto w-full">
-      <h2 className="text-5xl mb-8 text-center font-semibold">Register</h2>
+      <h2 className="text-5xl mb-8 text-center font-semibold">{t("auth.registerTitle")}</h2>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <InputField
-          label="Enter your email"
+          label={t("auth.emailLabel")}
           type="email"
-          placeholder="Email"
+          placeholder={t("auth.emailPlaceholder")}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -59,9 +61,9 @@ export default function RegisterForm() {
         */}
 
         <InputField
-          label="Enter your password"
+          label={t("auth.passwordLabel")}
           type="password"
-          placeholder="Password"
+          placeholder={t("auth.passwordPlaceholder")}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
@@ -73,13 +75,13 @@ export default function RegisterForm() {
 
         <ButtonAuth
           type="submit"
-          label="Register"
+          label={loading ? t("auth.registering") : t("auth.register")}
         >
-          {loading ? "Registering..." : "Register"}
+          {loading ? t("auth.registering") : t("auth.register")}
         </ButtonAuth>
       </form>
 
-      <AccountPrompt message="Do you have an account?" linkText="Login" linkHref="/login" />
+      <AccountPrompt message={t("auth.haveAccount")} linkText={t("auth.login")} linkHref="/login" />
       <FooterLinks />
     </div>
   );

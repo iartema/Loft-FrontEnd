@@ -12,6 +12,7 @@ import {
 } from "../lib/api";
 import { getCurrentUserCached, setCurrentUserCached } from "../lib/userCache";
 import { resolveMediaUrl } from "../../lib/media";
+import { useLocale } from "../../i18n/LocaleProvider";
 
 const pickMediaPath = (payload: any): string | null => {
   if (!payload) return null;
@@ -53,6 +54,7 @@ const extractAvatarSources = (payload: any): { raw: string | null; resolved: str
 };
 
 export default function ProfileForm() {
+  const { t } = useLocale();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     name: "",
@@ -109,11 +111,11 @@ export default function ProfileForm() {
           }
         } catch (addrErr: any) {
           if (mounted && addrErr?.status !== 401) {
-            setError(addrErr?.message || "Failed to load shipping address");
+            setError(addrErr?.message || t("profile.addressLoadError"));
           }
         }
       } catch (e: any) {
-        if (mounted) setError(e?.message || "Failed to load profile");
+        if (mounted) setError(e?.message || t("profile.loadError"));
       } finally {
         if (mounted) setLoading(false);
       }
@@ -155,7 +157,7 @@ export default function ProfileForm() {
           }));
         } catch (err: any) {
           console.error("avatar upload failed", err);
-          setError(err?.message || "Failed to upload avatar");
+          setError(err?.message || t("profile.uploadError"));
           setFormData((prev) => ({ ...prev, avatar: fallbackAvatar }));
           setAvatarRemoteUrl(previousRemote || null);
         } finally {
@@ -170,7 +172,7 @@ export default function ProfileForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (avatarUploading) {
-      setError("Please wait until the avatar upload finishes.");
+      setError(t("profile.waitingAvatar"));
       return;
     }
     setSaving(true);
@@ -211,7 +213,7 @@ export default function ProfileForm() {
         }
       }
     } catch (e: any) {
-      setError(e?.message || "Failed to update profile");
+      setError(e?.message || t("profile.updateError"));
     } finally {
       setSaving(false);
     }
@@ -227,7 +229,7 @@ export default function ProfileForm() {
         onAvatarClick={handleAvatarClick}
         saveDisabled={saving || avatarUploading}
         saveLabel={
-          avatarUploading ? "Uploading avatar..." : saving ? "Saving..." : undefined
+          avatarUploading ? t("profile.uploadingAvatar") : saving ? t("profile.saving") : undefined
         }
       />
 
@@ -248,13 +250,13 @@ export default function ProfileForm() {
       {/* Change Information */}
       <section>
         <Title color="title-color" className="mb-4">
-          {loading ? "Loading profile..." : saving ? "Saving..." : "Change information"}
+          {loading ? t("profile.loadingProfile") : saving ? t("profile.saving") : t("profile.changeInfo")}
         </Title>
         <div className="grid grid-cols-2 gap-x-12 gap-y-1 ml-9 mt-8">
-          <InputField label="Name" type="text" placeholder="Enter..." value={formData.name} onChange={handleChange("name")} required shape="office" />
-          <InputField label="Surname" type="text" placeholder="Enter..." value={formData.surname} onChange={handleChange("surname")} shape="office" />
-          <InputField label="Email" type="email" placeholder="Enter..." value={formData.email} onChange={handleChange("email")} required shape="office" />
-          <InputField label="Phone Number" type="tel" placeholder="Enter..." value={formData.phone} onChange={handleChange("phone")} shape="office" />
+          <InputField label={t("profile.name")} type="text" placeholder={t("profile.enter")} value={formData.name} onChange={handleChange("name")} required shape="office" />
+          <InputField label={t("profile.surname")} type="text" placeholder={t("profile.enter")} value={formData.surname} onChange={handleChange("surname")} shape="office" />
+          <InputField label={t("profile.email")} type="email" placeholder={t("profile.enter")} value={formData.email} onChange={handleChange("email")} required shape="office" />
+          <InputField label={t("profile.phone")} type="tel" placeholder={t("profile.enter")} value={formData.phone} onChange={handleChange("phone")} shape="office" />
         </div>
       </section>
 
@@ -263,13 +265,13 @@ export default function ProfileForm() {
       {/* Address Information */}
       <section>
         <Title color="title-color" className="mb-4">
-          Shipping Address
+          {t("profile.shippingAddress")}
         </Title>
         <div className="grid grid-cols-2 gap-x-12 gap-y-1 ml-9 mt-8">
-          <InputField label="Postal Code" type="text" placeholder="Enter..." value={formData.postalcode} onChange={handleChange("postalcode")} shape="office" />
-          <InputField label="City" type="text" placeholder="Enter..." value={formData.city} onChange={handleChange("city")} shape="office" />
-          <InputField label="Country" type="text" placeholder="Enter..." value={formData.country} onChange={handleChange("country")} shape="office" />
-          <InputField label="Address" type="text" placeholder="Enter..." value={formData.address} onChange={handleChange("address")} shape="office" />
+          <InputField label={t("profile.postalCode")} type="text" placeholder={t("profile.enter")} value={formData.postalcode} onChange={handleChange("postalcode")} shape="office" />
+          <InputField label={t("profile.city")} type="text" placeholder={t("profile.enter")} value={formData.city} onChange={handleChange("city")} shape="office" />
+          <InputField label={t("profile.country")} type="text" placeholder={t("profile.enter")} value={formData.country} onChange={handleChange("country")} shape="office" />
+          <InputField label={t("profile.address")} type="text" placeholder={t("profile.enter")} value={formData.address} onChange={handleChange("address")} shape="office" />
         </div>
       </section>
     </form>

@@ -6,8 +6,10 @@ import RecoverLayout from "../components/organisms/RecoverLayout";
 import InputField from "../components/molecules/InputField";
 import ButtonAuth from "../components/atoms/ButtonAuth";
 import { requestPasswordReset } from "../components/lib/api";
+import { useLocale } from "../i18n/LocaleProvider";
 
 export default function ForgotPasswordEmailPage() {
+  const { t } = useLocale();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -18,7 +20,7 @@ export default function ForgotPasswordEmailPage() {
     setError("");
     const trimmedEmail = email.trim();
     if (!trimmedEmail) {
-      setError("Email is required");
+      setError(t("auth.emailRequired"));
       return;
     }
 
@@ -27,19 +29,19 @@ export default function ForgotPasswordEmailPage() {
       await requestPasswordReset(trimmedEmail);
       router.push(`/forgot-password/code?email=${encodeURIComponent(trimmedEmail)}`);
     } catch (err: any) {
-      setError(err?.message || "Failed to send reset link");
+      setError(err?.message || t("auth.resetPassword"));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <RecoverLayout subtitle="Enter your email address and we’ll send you a link to reset your password.">
+    <RecoverLayout subtitle={t("recover.subtitleEmail")}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <InputField
-          label="Enter your email"
+          label={t("auth.emailLabel")}
           type="email"
-          placeholder="Email"
+          placeholder={t("auth.emailPlaceholder")}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -47,7 +49,7 @@ export default function ForgotPasswordEmailPage() {
 
         {error && <p className="text-red-500 text-sm">{error}</p>}
 
-        <ButtonAuth type="submit" label={loading ? "Sending..." : "Next"} disabled={loading} />
+        <ButtonAuth type="submit" label={loading ? t("auth.sending") : t("auth.next")} disabled={loading} />
       </form>
     </RecoverLayout>
   );

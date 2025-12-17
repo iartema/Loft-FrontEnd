@@ -18,6 +18,7 @@ import {
 } from "../lib/api";
 import { getCurrentUserCached } from "../lib/userCache";
 import { Almarai } from "next/font/google";
+import { useLocale } from "../../i18n/LocaleProvider";
 
 const almarai = Almarai({
   subsets: ["latin"],
@@ -43,6 +44,7 @@ export default function ProductCard({
   sellerId: number;
   stockQuantity?: number | null;
 }) {
+  const { t } = useLocale();
   const sellerIdNum = Number(sellerId ?? 0);
   const hasSeller = Number.isFinite(sellerIdNum) && sellerIdNum > 0;
   const [seller, setSeller] = useState<PublicUserDto | null>(null);
@@ -52,6 +54,8 @@ export default function ProductCard({
   const [favoriteBusy, setFavoriteBusy] = useState(false);
   const [messaging, setMessaging] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [favAnim, setFavAnim] = useState(false);
+  const [cartAnim, setCartAnim] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -111,7 +115,7 @@ export default function ProductCard({
   const isOwner = currentUserId != null && hasSeller && sellerIdNum === currentUserId;
   const sellerName =
     [seller?.firstName, seller?.lastName].filter(Boolean).join(" ").trim() ||
-    "Seller";
+    t("product.card.seller");
 
   const avatarSrc =
     (seller?.avatarUrl && seller.avatarUrl.trim().length
@@ -119,27 +123,28 @@ export default function ProductCard({
       : "/default-avatar.jpg");
 
   const handleAddToCart = async () => {
-    if (!inStock || !productId) return;
+    if (!inStock || !productId || adding) return;
 
     try {
-      setAdding(true);
       const user = await getCurrentUserCached();
-
       if (!user?.id) {
         router.push("/login");
         return;
       }
+      setAdding(true);
+      setCartAnim(true);
 
       const meta: CartItemMeta = {
         productName: name,
         price: parseFloat(price) || undefined,
       };
       await addCartItem(user.id, productId, 1, meta);
-      setFeedback("Added to cart");
+      setFeedback(t("product.card.added"));
       setTimeout(() => setFeedback(null), 2500);
     } catch (err: any) {
-      setFeedback(err?.message || "Failed to add to cart");
+      setFeedback(err?.message || t("product.card.addFailed"));
     } finally {
+      setCartAnim(false);
       setAdding(false);
     }
   };
@@ -147,13 +152,15 @@ export default function ProductCard({
   const handleToggleFavorite = async () => {
     if (!productId || favoriteBusy) return;
     setFavoriteBusy(true);
+    const next = !isFavorite;
+    setIsFavorite(next);
+    setFavAnim(true);
+    setTimeout(() => setFavAnim(false), 280);
     try {
-      if (isFavorite) {
-        await removeFavoriteProduct(productId);
-        setIsFavorite(false);
-      } else {
+      if (next) {
         await addFavoriteProduct(productId);
-        setIsFavorite(true);
+      } else {
+        await removeFavoriteProduct(productId);
       }
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
@@ -161,6 +168,8 @@ export default function ProductCard({
       } else {
         console.error("Failed to toggle favorite", err);
       }
+      // revert on failure
+      setIsFavorite(!next);
     } finally {
       setFavoriteBusy(false);
     }
@@ -180,7 +189,7 @@ export default function ProductCard({
           ? window.location.origin
           : "https://loft-shop.pp.ua";
       const link = `${origin}/product/${productId}`;
-      await sendChatMessage(sellerIdNum, `Hello, I'm interested in this product. ${link}`);
+      await sendChatMessage(sellerIdNum, `${t("product.card.interestTemplate")} ${link}`);
       router.push(`/chat/${sellerIdNum}`);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
@@ -202,8 +211,8 @@ export default function ProductCard({
           type="button"
           className={`absolute top-4 right-4 p-2 rounded-full transition ${
             isFavorite ? "text-[var(--success)] favorite-on" : "text-white/70 hover:text-white favorite-off"
-          } ${favoriteBusy ? "opacity-60 pointer-events-none" : ""}`}
-          aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+          } ${favoriteBusy ? "opacity-60 pointer-events-none" : ""} ${favAnim ? "animate-pop" : ""}`}
+          aria-label={isFavorite ? t("product.card.favoriteRemove") : t("product.card.favoriteAdd")}
           onClick={handleToggleFavorite}
         >
           <svg
@@ -219,11 +228,13 @@ export default function ProductCard({
           </svg>
         </button>
         <h2 className="text-lg font-semibold">{name}</h2>
-        <div className="text-xs opacity-70">Code: {sku}</div>
-        <div className="text-xs">{views} views</div>
+        <div className="text-xs opacity-70">{t("product.card.code")}: {sku}</div>
+        <div className="text-xs">{views} {t("product.card.views")}</div>
 
         <div className={`text-lg ${inStock ? "text-[var(--success)]" : "text-red-400"}`}>
-          {inStock ? `In stock${stockQuantity != null ? ` (${stockQuantity})` : ""}` : "Out of stock"}
+          {inStock
+            ? `${t("product.card.inStock")}${stockQuantity != null ? ` (${stockQuantity})` : ""}`
+            : t("product.card.outOfStock")}
         </div>
 
         <Divider text="" className="[&>div]:bg-white" />
@@ -233,19 +244,19 @@ export default function ProductCard({
           {isOwner ? (
             <Button
               variant="submit"
-              className="w-full sm:w-[120px] sm:flex-shrink-0"
+              className={`w-full sm:w-auto sm:flex-shrink-0 min-w-[140px] whitespace-nowrap px-5 ${cartAnim ? "animate-pop" : ""}`}
               onClick={() => router.push(`/product/${productId}/edit`)}
             >
-              Edit product
+              {t("product.card.edit")}
             </Button>
           ) : (
             <Button
               variant="submit"
-              className="w-full sm:max-w-[150px] sm:min-w-[150px] sm:flex-shrink-0"
+              className={`w-full sm:w-auto sm:flex-shrink-0 min-w-[160px] whitespace-nowrap px-5 ${cartAnim ? "animate-pop" : ""}`}
               disabled={!inStock || adding}
               onClick={handleAddToCart}
             >
-              {adding ? "Adding..." : "Add to Cart"}
+              {adding ? t("product.card.adding") : t("product.card.addToCart")}
             </Button>
           )}
         </div>
@@ -268,7 +279,7 @@ export default function ProductCard({
           </div>
           <div>
             <div className="text-sm">{sellerName}</div>
-            <div className="text-xs opacity-70">Seller</div>
+            <div className="text-xs opacity-70">{t("product.card.seller")}</div>
           </div>
         </div>
 
@@ -278,7 +289,7 @@ export default function ProductCard({
             disabled={messaging}
             onClick={handleMessageSeller}
           >
-            {messaging ? "Opening..." : "Message"}
+            {messaging ? t("product.card.messaging") : t("product.card.message")}
           </Button>
         )}
       </div>

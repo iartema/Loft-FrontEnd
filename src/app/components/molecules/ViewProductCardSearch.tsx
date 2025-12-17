@@ -6,6 +6,7 @@ import { Almarai } from "next/font/google";
 import { addCartItem, type CartItemMeta } from "../lib/api";
 import { getCurrentUserCached } from "../lib/userCache";
 import { useRouter } from "next/navigation";
+import { useLocale } from "../../i18n/LocaleProvider";
 
 const almarai = Almarai({
   subsets: ["latin"],
@@ -41,6 +42,7 @@ export default function ViewProductCardSearch({
   favoriteBusy = false,
 }: ProductCardProps) {
   const router = useRouter();
+  const { t } = useLocale();
   const normalizeImageSrc = (src?: string) => {
     if (!src) return "/default-product.jpg";
     const trimmed = src.trim();
@@ -62,35 +64,39 @@ export default function ViewProductCardSearch({
   const [loading, setLoading] = useState<boolean>(true);
   const [added, setAdded] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [favAnim, setFavAnim] = useState(false);
+  const [cartAnim, setCartAnim] = useState(false);
 
 
   const handleAddToCart = async () => {
     if (adding) return;
-    console.log("productId:", productId);
-    console.log("imgSrc:", imgSrc);
-    console.log("adding:", adding);
 
     if (!productId) {
       onClick?.();
       return;
     }
     try {
-      setAdding(true);
       const user = await getCurrentUserCached();
       if (!user?.id) {
         router.push("/login");
         return;
       }
+      setAdding(true);
+      setCartAnim(true);
+      setAdded(true);
       const meta: CartItemMeta = {
         productName: name,
         price: parseFloat(price) || undefined,
         imageUrl: imgSrc,
       };
       await addCartItem(user.id, productId, 1, meta);
-      setAdded(true);
+      setCartAnim(true);
+      setTimeout(() => setCartAnim(false), 320);
       setTimeout(() => setAdded(false), 2000);
     } catch (err) {
       console.error(err);
+      setAdded(false);
+      setCartAnim(false);
     } finally {
       setAdding(false);
     }
@@ -138,9 +144,15 @@ export default function ViewProductCardSearch({
               aria-label="favorite"
               className={`p-1 rounded-full transition ${
                 isFavorite ? "text-[var(--success)] favorite-on" : "text-white/70 hover:text-white favorite-off"
-              } ${favoriteBusy ? "opacity-60 pointer-events-none" : ""}`}
-              title={isFavorite ? "Remove from favorites" : "Add to favorites"}
-              onClick={() => productId && onToggleFavorite?.(productId)}
+              } ${favoriteBusy ? "opacity-60 pointer-events-none" : ""} ${favAnim ? "animate-pop" : ""}`}
+              title={isFavorite ? t("product.card.favoriteRemove") : t("product.card.favoriteAdd")}
+              onClick={() => {
+                if (productId) {
+                  onToggleFavorite?.(productId);
+                  setFavAnim(true);
+                  setTimeout(() => setFavAnim(false), 280);
+                }
+              }}
               disabled={favoriteBusy}
             >
               <svg
@@ -160,14 +172,14 @@ export default function ViewProductCardSearch({
             <button
               aria-label="add-to-cart"
               className="p-1 rounded-full transition mb-[2px] hover:text-white"
-              title="Add to cart"
+              title={t("product.card.addToCart")}
               onClick={handleAddToCart}
               disabled={adding}
             >
               <img
                 src="/mynaui_cart-solid.svg"
-                alt="Cart"
-                className="w-5 h-5"
+                alt={t("cart.title")}
+                className={`w-5 h-5 cart-icon ${cartAnim ? "animate-pop" : ""}`}
                 style={{
                   filter: added
                     ? "brightness(0) saturate(100%) invert(71%) sepia(73%) saturate(322%) hue-rotate(92deg) brightness(95%) contrast(96%)"

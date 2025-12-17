@@ -14,8 +14,10 @@ import {
 import { normalizeProductType, type ProductTypeKind } from "../lib/productTypes";
 import CategoryModal, { type Category } from "./molecules/CategoryModal";
 import { getCurrentUserCached } from "./lib/userCache";
+import { useLocale } from "../i18n/LocaleProvider";
 
 export default function Header() {
+  const { t } = useLocale();
   const pathname = usePathname();
   const router = useRouter();
   const [hasUnread, setHasUnread] = React.useState(false);
@@ -60,10 +62,14 @@ export default function Header() {
   // theme: default dark; when toggled, set data-theme="light" on <html>
   React.useEffect(() => {
     try {
-      const saved = typeof window !== "undefined" ? localStorage.getItem("theme") : null;
-      if (saved === "light") {
-        document.documentElement.setAttribute("data-theme", "light");
-      }
+      const saved =
+        typeof window !== "undefined"
+          ? localStorage.getItem("theme") || document.cookie.match(/(?:^|; )theme=([^;]+)/)?.[1]
+          : null;
+      const initial = saved === "light" ? "light" : (document.documentElement.getAttribute("data-theme") ?? "dark");
+      document.documentElement.setAttribute("data-theme", initial);
+      localStorage.setItem("theme", initial);
+      document.cookie = `theme=${initial}; path=/; max-age=${60 * 60 * 24 * 365}`;
     } catch {}
   }, []);
 
@@ -73,9 +79,11 @@ export default function Header() {
       if (isLight) {
         document.documentElement.removeAttribute("data-theme");
         localStorage.setItem("theme", "dark");
+        document.cookie = `theme=dark; path=/; max-age=${60 * 60 * 24 * 365}`;
       } else {
         document.documentElement.setAttribute("data-theme", "light");
         localStorage.setItem("theme", "light");
+        document.cookie = `theme=light; path=/; max-age=${60 * 60 * 24 * 365}`;
       }
     } catch {}
   }, []);
@@ -100,6 +108,10 @@ export default function Header() {
     const load = async () => {
       try {
         const me = await getCurrentUserCached();
+        if (!me?.id) {
+          if (!cancelled) setHasUnread(false);
+          return;
+        }
         const chats = await fetchMyChats();
         const unread = chats.some(
           (c) => c.lastMessage && c.lastMessage.recipientId === me?.id && !c.lastMessage.isRead
@@ -165,7 +177,7 @@ export default function Header() {
           <form action="/search" method="GET" className="relative flex-1 max-w-none mr-23 hidden md:block mt-3 mb-3">
             <Input
               name="q"
-              placeholder="Search"
+              placeholder={t("header.searchPlaceholder")}
               className="header-search-input !rounded-[12px] bg-[var(--bg-input)] pr-20"
             />
             <button
@@ -184,20 +196,20 @@ export default function Header() {
         {/* Right icons */}
         <div className="hidden sm:flex items-center gap-8 text-[var(--fg-primary)] mr-10">
           {/* theme toggle */}
-          <button title="Theme" onClick={toggleTheme} className="cursor-pointer">
+          <button title={t("common.theme")} onClick={toggleTheme} className="cursor-pointer">
             <Image src="/Component 29.svg" alt="Theme" width={32} height={32}  className={iconClass} style={iconStyle} />
           </button>
           {/* store -> /product */}
-          <button title="My Products" onClick={() => router.push("/myproducts")} className="cursor-pointer">
+          <button title={t("header.store")} onClick={() => router.push("/myproducts")} className="cursor-pointer">
             <Image src="/iconoir_shop.svg" alt="Store" width={32} height={32}  className={iconClass} style={iconStyle} />
           </button>
           {/* favorites -> /myfavorites */}
-          <button title="Favorites" onClick={() => router.push("/myfavorites")} className="cursor-pointer">
+          <button title={t("header.favorites")} onClick={() => router.push("/myfavorites")} className="cursor-pointer">
             <Image src="/icon-park-solid_like.svg" alt="Favorites" width={32} height={32}  className={iconClass} style={iconStyle} />
           </button>
           {/* notifications -> chat/all */}
           <button
-            title="Messages"
+            title={t("header.messages")}
             onClick={() => router.push("/chat/all")}
             className="relative cursor-pointer"
           >
@@ -215,11 +227,11 @@ export default function Header() {
             )}
           </button>
           {/* cart -> /mycart */}
-          <button title="Cart" onClick={() => router.push("/mycart")} className="cursor-pointer">
+          <button title={t("header.cart")} onClick={() => router.push("/mycart")} className="cursor-pointer">
             <Image src="/mynaui_cart-solid.svg" alt="Cart" width={32} height={32}  className={iconClass} style={iconStyle} />
           </button>
           {/* account -> /profile */}
-          <button title="Account" onClick={() => router.push("/profile")} className="cursor-pointer">
+          <button title={t("header.account")} onClick={() => router.push("/profile")} className="cursor-pointer">
             <Image src="/iconamoon_profile-circle-fill.svg" alt="Account" width={32} height={32}  className={iconClass} style={iconStyle} />
           </button>
         </div>
@@ -235,21 +247,21 @@ export default function Header() {
               className="flex items-center gap-2 cursor-pointer opacity-90 hover:opacity-100"
             >
               <span className="text-xl">≡</span>
-              <span className="font-semibold text-xl">All categories</span>
+              <span className="font-semibold text-xl">{t("header.allCategories")}</span>
             </button>
             <button
               type="button"
               onClick={handlePopular}
               className="opacity-80 cursor-pointer hover:opacity-100"
             >
-              Popular
+              {t("header.popular")}
             </button>
             <button
               type="button"
               onClick={handleSeason}
               className="opacity-80 cursor-pointer hover:opacity-100"
             >
-              Season
+              {t("header.season")}
             </button>
           </div>
         </div>

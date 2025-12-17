@@ -23,6 +23,7 @@ import { saveRecentProduct } from "../../components/lib/recentlyViewed";
 import { getFirstPublicImageUrl, getPublicImageUrls, MEDIA_API_BASE } from "../../lib/media";
 import ViewProductCardSearch from "../../components/molecules/ViewProductCardSearch";
 import { getCurrentUserCached } from "../../components/lib/userCache";
+import { useLocale } from "../../i18n/LocaleProvider";
 
 type CurrencyInfo = { symbol: string };
 const CURRENCY_MAP: Record<string, CurrencyInfo> = {
@@ -33,7 +34,7 @@ const CURRENCY_MAP: Record<string, CurrencyInfo> = {
 function resolveCurrency(value: unknown): CurrencyInfo {
   if (value === null || value === undefined) return { symbol: "" };
   const key = typeof value === "number" ? String(value) : String(value).toUpperCase();
-  return CURRENCY_MAP[key] ?? { code: key, symbol: "" };
+  return CURRENCY_MAP[key] ?? { symbol: "" };
 }
 
 const almarai = Almarai({
@@ -47,6 +48,7 @@ const ysabeau = Ysabeau_Office({
 });
 
 export default function ProductViewPage() {
+  const { t } = useLocale();
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [data, setData] = useState<ProductDto | undefined>(undefined);
@@ -320,7 +322,7 @@ export default function ProductViewPage() {
   if (!data) {
     return (
       <div className={[almarai.className, "min-h-[calc(100dvh-80px)] text-[var(--fg-primary)] flex items-center justify-center"].join(" ")}>
-        <div className="opacity-70">Loading product…</div>
+        <div className="opacity-70">{t("product.loading")}</div>
       </div>
     );
   }
@@ -352,7 +354,7 @@ export default function ProductViewPage() {
                   className="px-4 py-2 rounded-lg bg-[var(--bg-input)] text-white border border-[var(--divider)] hover:border-[var(--success)] disabled:opacity-50"
                   disabled={downloading}
                 >
-                  {downloading ? "Preparing…" : "Download all attached files"}
+                  {downloading ? t("product.preparingDownloads") : t("product.downloadAll")}
                 </button>
               </div>
             )}
@@ -371,15 +373,15 @@ export default function ProductViewPage() {
         </section>
 
         <div className="hidden">
-          <Divider text="Comments" className="mt-12" />
+          <Divider text={t("product.comments")} className="mt-12" />
           <ProductComments productId={data.id} />
         </div>
 
-        {renderCarousel("Products of this seller", sellerProducts, data.idUser
-          ? { label: "View more", onClick: goToSellerListing }
+        {renderCarousel(t("product.sellerProducts"), sellerProducts, data.idUser
+          ? { label: t("product.viewMore"), onClick: goToSellerListing }
           : undefined)}
-        {renderCarousel("Similar products", similarProducts, data.categoryId
-          ? { label: "View more", onClick: goToSimilarListing }
+        {renderCarousel(t("product.similar"), similarProducts, data.categoryId
+          ? { label: t("product.viewMore"), onClick: goToSimilarListing }
           : undefined)}
       </div>
     </div>

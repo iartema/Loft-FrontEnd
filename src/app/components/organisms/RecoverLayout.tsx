@@ -2,6 +2,7 @@
 
 import OverlayPortal from "../OverlayPortal";
 import FooterLinks from "../atoms/FooterLinks";
+import { useLocale } from "../../i18n/LocaleProvider";
 
 type RecoverLayoutProps = {
   title?: string;
@@ -10,10 +11,11 @@ type RecoverLayoutProps = {
 };
 
 export default function RecoverLayout({
-  title = "Recover Password",
+  title,
   subtitle,
   children,
 }: RecoverLayoutProps) {
+  const { t } = useLocale();
   return (
     <main className="relative flex min-h-screen bg-[var(--bg-body)] text-white overflow-hidden mt-25">
       <OverlayPortal>
@@ -28,7 +30,7 @@ export default function RecoverLayout({
 
       <section className="flex flex-col justify-start px-12 w-full md:w-1/2 mt-35 z-10">
         <div className="max-w-md mx-auto w-full">
-          <h2 className="text-5xl mb-3 text-center font-semibold">{title}</h2>
+          <h2 className="text-5xl mb-3 text-center font-semibold">{title || t("recover.title")}</h2>
           {subtitle && (
             <p className="text-[var(--fg-muted)] text-sm mb-4 mt-15 leading-relaxed">
               {subtitle}

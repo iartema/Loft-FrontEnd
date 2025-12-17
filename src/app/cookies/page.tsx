@@ -1,65 +1,74 @@
 "use client";
 
+import { useMemo } from "react";
 import { Almarai } from "next/font/google";
+import { useLocale } from "../i18n/LocaleProvider";
 
 const almarai = Almarai({ subsets: ["latin"], weight: ["400", "700"] });
 
-const cookieBlocks = [
-  {
-    title: "What are cookies?",
-    text: "Small text files stored on your device to keep you signed in, remember preferences, and help us secure and improve Loft.",
-  },
-  {
-    title: "Types we use",
-    list: [
-      "Essential: keep sessions, cart, and security features working.",
-      "Performance: measure site speed and errors to improve reliability.",
-      "Analytics: understand feature usage; we aggregate where possible.",
-      "Marketing: only if you opt in; used to show relevant Loft campaigns.",
-    ],
-  },
-  {
-    title: "How we use them",
-    list: [
-      "Authenticate you safely while you navigate.",
-      "Remember language, theme, and recent filters.",
-      "Detect fraud and unusual activity.",
-      "Analyze what features are popular to guide improvements.",
-    ],
-  },
-  {
-    title: "Your control",
-    list: [
-      "Browser settings let you block or delete cookies; essential cookies are required for login and checkout.",
-      "Where required, we request consent for non-essential cookies; you can update choices in your browser or via the cookie banner (when shown).",
-    ],
-  },
-  {
-    title: "Retention",
-    text: "Session cookies expire when you close the browser. Others may persist (e.g., remember-me) but are cycled regularly or when you clear them.",
-  },
-  {
-    title: "Third parties",
-    text: "Some cookies come from trusted providers (e.g., payments, analytics). They follow their own policies and may change; we review them for security and privacy alignment.",
-  },
-];
+type Block = { title: string; text?: string; list?: string[] };
 
 export default function CookiesPage() {
+  const { t } = useLocale();
+
+  const blocks: Block[] = useMemo(
+    () => [
+      {
+        title: t("cookies.blocks.what.title"),
+        text: t("cookies.blocks.what.text"),
+      },
+      {
+        title: t("cookies.blocks.types.title"),
+        list: [
+          t("cookies.blocks.types.list.0"),
+          t("cookies.blocks.types.list.1"),
+          t("cookies.blocks.types.list.2"),
+          t("cookies.blocks.types.list.3"),
+        ],
+      },
+      {
+        title: t("cookies.blocks.use.title"),
+        list: [
+          t("cookies.blocks.use.list.0"),
+          t("cookies.blocks.use.list.1"),
+          t("cookies.blocks.use.list.2"),
+          t("cookies.blocks.use.list.3"),
+        ],
+      },
+      {
+        title: t("cookies.blocks.control.title"),
+        list: [
+          t("cookies.blocks.control.list.0"),
+          t("cookies.blocks.control.list.1"),
+        ],
+      },
+      {
+        title: t("cookies.blocks.retention.title"),
+        text: t("cookies.blocks.retention.text"),
+      },
+      {
+        title: t("cookies.blocks.third.title"),
+        text: t("cookies.blocks.third.text"),
+      },
+    ],
+    [t]
+  );
+
   return (
     <main className="min-h-screen bg-[var(--bg-body)] sort-label">
       <div className="max-w-5xl mx-auto px-6 md:px-10 py-12 space-y-8">
         <header className="space-y-3 !bg-[var(--bg-body)]">
           <p className={`${almarai.className} uppercase tracking-wide text-[var(--fg-muted)] text-sm sort-label`}>
-            Loft Marketplace
+            {t("cookies.hero.badge")}
           </p>
-          <h1 className="text-4xl font-semibold sort-label">Cookies & Tracking</h1>
+          <h1 className="text-4xl font-semibold sort-label">{t("cookies.hero.title")}</h1>
           <p className="max-w-3xl sort-label opacity-80">
-            How we use cookies and similar tech to keep your account secure, improve performance, and personalize your experience.
+            {t("cookies.hero.subtitle")}
           </p>
         </header>
 
         <div className="grid grid-cols-1 gap-4">
-          {cookieBlocks.map((block) => (
+          {blocks.map((block) => (
             <section
               key={block.title}
               className="bg-[var(--bg-elev-1)]/80 border border-[var(--divider)] rounded-2xl p-5 space-y-2"
