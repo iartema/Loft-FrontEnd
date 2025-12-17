@@ -14,7 +14,7 @@ COPY . .
 RUN npm run build
 
 # Drop dev deps to keep the runtime image slim
-RUN npm prune --omit=dev
+# RUN npm prune --omit=dev
 
 # Runtime image with only what is needed to serve the app
 FROM node:20-bookworm-slim AS runner
