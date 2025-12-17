@@ -195,7 +195,8 @@ export default function HomePage() {
   }, [products, kvProduct]);
 
   const interestIcons = useMemo(() => {
-    const base =
+    type IconEntry = { src: string; key?: string; label?: string };
+    const base: IconEntry[] =
       CATEGORY_ICONS.length > 0
         ? CATEGORY_ICONS
         : categories.map((cat) => ({
@@ -205,16 +206,17 @@ export default function HomePage() {
     const icons = base.slice(0, 18);
     let idx = 0;
     while (icons.length < 18) {
-      const fallback = CATEGORY_ICONS[idx % CATEGORY_ICONS.length] ?? {
-        src: "/categories/ri_shirt-fill.svg",
-        label: t("home.categoryFallback"),
-      };
+      const fallback: IconEntry =
+        CATEGORY_ICONS[idx % CATEGORY_ICONS.length] ?? {
+          src: "/categories/ri_shirt-fill.svg",
+          label: t("home.categoryFallback"),
+        };
       icons.push(fallback);
       idx += 1;
     }
     return icons.map((icon) => ({
       ...icon,
-      label: icon.key ? t(`home.categories.${icon.key}`) : icon.label,
+      label: icon.key ? t(`home.categories.${icon.key}`) : icon.label ?? t("home.categoryFallback"),
     }));
   }, [categories, t]);
 
