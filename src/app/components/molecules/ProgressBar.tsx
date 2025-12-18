@@ -2,14 +2,15 @@
 
 interface ProgressBarProps {
   value: number; // 0–100
+  label: string;
 }
 
-export default function ProgressBar({ value }: ProgressBarProps) {
+export default function ProgressBar({ value, label }: ProgressBarProps) {
   return (
     <div className="w-full bg-[var(--bg-elev-3)] rounded-lg p-4 mb-8"
     style={{boxShadow: "0 3px 3px 0px rgba(0, 0, 0, 0.25)"}}>
       {/* centered title */}
-      <div className="text-sm text-gray-300 text-center mb-2 sort-label">Progress</div>
+      <div className="text-sm text-gray-300 text-center mb-2 sort-label">{label}</div>
 
       {/* bar + percent in one row */}
       <div className="flex items-center w-full gap-2">

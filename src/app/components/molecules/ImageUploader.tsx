@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { useLocale } from "../../i18n/LocaleProvider";
 
 export type UploadPreview = {
   id: string;
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export default function ImageUploader({ files, onAdd, onRemove }: Props) {
+  const { t } = useLocale();
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -90,15 +92,15 @@ export default function ImageUploader({ files, onAdd, onRemove }: Props) {
                   event.stopPropagation();
                   onRemove(active.id);
                 }}
-                aria-label="Remove photo"
+                aria-label={t("product.form.removePhoto")}
               >
                 &times;
               </button>
             </>
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center p-8 text-[var(--fg-muted)]">
-              <p className="text-lg">Drop files here or click to upload</p>
-              <p className="text-sm opacity-80">Supported file types: png, jpg, jpeg...</p>
+              <p className="text-lg">{t("product.form.dropImages")}</p>
+              <p className="text-sm opacity-80">{t("product.form.imageTypes")}</p>
             </div>
           )}
           {dragActive && (
@@ -108,11 +110,18 @@ export default function ImageUploader({ files, onAdd, onRemove }: Props) {
 
         <div className="w-[80px] flex flex-col gap-3 max-h-[420px] overflow-y-auto pr-1">
           {files.map((file, index) => (
-            <button
+            <div
               key={file.id}
-              type="button"
+              role="button"
+              tabIndex={0}
               onClick={() => setActiveIndex(index)}
-              className={`group relative w-full aspect-square rounded-[8px] overflow-hidden border transition ${
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setActiveIndex(index);
+                }
+              }}
+              className={`group relative w-full aspect-square rounded-[8px] overflow-hidden border transition cursor-pointer ${
                 activeIndex === index
                   ? "border-[var(--brand,#9ef1c7)]"
                   : "border-[var(--border)] hover:border-[var(--fg-muted)]"
@@ -132,11 +141,11 @@ export default function ImageUploader({ files, onAdd, onRemove }: Props) {
                   event.stopPropagation();
                   onRemove(file.id);
                 }}
-                aria-label={`Remove ${file.name}`}
+                aria-label={`${t("product.form.removePhoto")}: ${file.name}`}
               >
                 &times;
               </button>
-            </button>
+            </div>
           ))}
 
           {files.length < 5 && (
@@ -144,7 +153,7 @@ export default function ImageUploader({ files, onAdd, onRemove }: Props) {
               type="button"
               className="w-full aspect-square rounded-2xl border border-dashed border-[var(--border)] text-white/70 hover:text-white hover:border-[var(--fg-muted)] flex items-center justify-center text-3xl  sort-label"
               onClick={() => fileRef.current?.click()}
-              aria-label="Add photo"
+              aria-label={t("product.form.addPhoto")}
             >
               +
             </button>

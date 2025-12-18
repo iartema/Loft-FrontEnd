@@ -77,6 +77,7 @@ export default function CategoryModal({
     if (!hasChildren) {
       onSelect(catId);
       setPath([]); // reset for next open
+      onClose();
     }
   };
 
@@ -87,6 +88,7 @@ export default function CategoryModal({
     } else {
       onSelect(catId);
       setPath([]);
+      onClose();
     }
   };
 

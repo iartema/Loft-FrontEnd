@@ -3,6 +3,7 @@
 import React, { useMemo, useRef, useState } from "react";
 import InputField from "../molecules/InputField";
 import { Akatab } from "next/font/google";
+import { useLocale } from "../../i18n/LocaleProvider";
 
 export interface AttributeDef {
   ID: number;
@@ -25,18 +26,19 @@ interface Props {
 }
 
 export default function AttributeFields({ attributes, values, onChange }: Props) {
+  const { t } = useLocale();
   if (!attributes.length) {
     return (
       <div
         className={`${akatab.className} text-[var(--fg-muted)] ml-0 md:ml-9`}
       >
-        Choose a category to see attributes.
+        {t("product.form.chooseCategoryAttributes")}
       </div>
     );
   }
 
   return (
-    <div className={`${akatab.className} flex flex-col gap-1 gap-y-6 ml-0 mt-2 w-[80%]`}>
+    <div className={`${akatab.className} flex flex-col gap-1 md:gap-y-3 ml-0 mt-2 md:w-[80%]`}>
       {attributes.map((a) => {
         const v =
           values[a.ID] ??
@@ -55,7 +57,7 @@ export default function AttributeFields({ attributes, values, onChange }: Props)
                   className={`appearance-none w-full bg-[var(--bg-input)] rounded-[15px] px-4 pr-12 py-2 text-[20px] text-white outline-none ${akatab.className}`}
                   style={{boxShadow: "0 3px 3px 0px rgba(0, 0, 0, 0.25)"}}
                 >
-                  <option value="">Choose…</option>
+                  <option value="">{t("product.form.chooseOption")}</option>
                   {options.map((o) => (
                     <option key={o} value={o}>
                       {o}
@@ -93,7 +95,7 @@ export default function AttributeFields({ attributes, values, onChange }: Props)
             <div key={a.ID} className="mb-4">
               <label className="block mb-2">{a.Name}</label>
               <div className="flex gap-3">
-                {[{ label: "Yes", val: true }, { label: "No", val: false }].map(
+                {[{ label: t("common.yes"), val: true }, { label: t("common.no"), val: false }].map(
                   ({ label, val }) => {
                     const active = boolVal === val;
                     return (

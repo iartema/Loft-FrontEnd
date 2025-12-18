@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useState } from "react";
+import { useLocale } from "../../i18n/LocaleProvider";
 
 export type DigitalUploadItem = {
   id: string;
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export default function DigitalFileUploader({ files, onAdd, onRemove }: Props) {
+  const { t } = useLocale();
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
 
@@ -54,11 +56,13 @@ export default function DigitalFileUploader({ files, onAdd, onRemove }: Props) {
         onClick={() => inputRef.current?.click()}
         {...commonDropHandlers}
       >
-        <p className="text-lg mb-1 text-white">Secure files</p>
-        <p className="text-sm opacity-70">Drop files here or click to select</p>
-        <p className="text-xs mt-3 opacity-60">All file types are supported</p>
+        <p className="text-lg mb-1 text-white">{t("product.form.secureFiles")}</p>
+        <p className="text-sm opacity-70">{t("product.form.dropSecure")}</p>
+        <p className="text-xs mt-3 opacity-60">{t("product.form.secureTypes")}</p>
         {dragActive && (
-          <div className="mt-4 text-[var(--brand,#9ef1c7)] font-semibold">Release to upload</div>
+          <div className="mt-4 text-[var(--brand,#9ef1c7)] font-semibold">
+            {t("product.form.releaseToUpload")}
+          </div>
         )}
       </div>
 
@@ -72,14 +76,15 @@ export default function DigitalFileUploader({ files, onAdd, onRemove }: Props) {
               <div className="flex-1 min-w-0 pr-4">
                 <p className="text-white truncate">{file.name}</p>
                 <p className="text-xs text-white/60 sort-label">
-                  {formatSize(file.size)} · {file.mediaId ? "Uploaded" : "Pending upload"}
+                  {formatSize(file.size)} •{" "}
+                  {file.mediaId ? t("product.form.uploaded") : t("product.form.pendingUpload")}
                 </p>
               </div>
               <button
                 type="button"
                 className="text-white/70 hover:text-white text-base sort-label"
                 onClick={() => onRemove(file.id)}
-                aria-label={`Remove ${file.name}`}
+                aria-label={`${t("product.form.removeFile")}: ${file.name}`}
               >
                 &times;
               </button>

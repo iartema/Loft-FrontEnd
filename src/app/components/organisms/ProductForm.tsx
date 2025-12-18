@@ -164,7 +164,7 @@ export default function ProductForm({
           rawUrl.trim()
         );
       const safeName =
-        (typeof rawUrl === "string" && rawUrl.split("/").pop()) || `File ${idx + 1}`;
+        (typeof rawUrl === "string" && rawUrl.split("/").pop()) || `${t("product.form.fileLabel")} ${idx + 1}`;
       const resolved =
         resolveMediaUrl(rawUrl) ||
         extractMediaUrl(entry) ||
@@ -342,7 +342,8 @@ export default function ProductForm({
         const attributeId = pickField<number>(enriched, "attributeId", "AttributeId", "id", "Id");
         if (attributeId == null) continue;
         const attributeName =
-          pickField<string>(enriched, "attributeName", "AttributeName", "name", "Name") ?? `Attribute ${attributeId}`;
+          pickField<string>(enriched, "attributeName", "AttributeName", "name", "Name") ??
+          `${t("product.form.attributeLabel")} ${attributeId}`;
         const rawOptions = pickField(enriched, "optionsJson", "OptionsJson", "value", "Value", "options", "Options");
         const opts = extractOptions(rawOptions);
         const rawType = pickField(enriched, "type", "Type", "attributeType", "AttributeType");
@@ -687,7 +688,7 @@ export default function ProductForm({
       });
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(text || (isEdit ? "Failed to update product" : "Failed to create product"));
+        throw new Error(text || (isEdit ? t("product.form.updateFailed") : t("product.form.createFailed")));
       }
       const data = await res.json().catch(() => null);
       const parsedId = Number((data as any)?.id ?? (data as any)?.Id);
@@ -747,19 +748,67 @@ export default function ProductForm({
 
   return (
     <>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-8">
-        <div className="sticky top-4 md:top-6 lg:top-10 z-30">
-          <ProgressBar value={calculateProgress()} />
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3 md:gap-8 overflow-x-hidden">
+        <div className="sticky top-0 left-0 right-0 z-50 bg-[var(--bg-body)] pb-2 pt-2">
+          <ProgressBar value={calculateProgress()} label={t("product.form.progress")} />
         </div>
-        <section className="grid grid-cols-12 gap-x-12 gap-y-8 w-full">
-          <div className="col-span-12 md:col-span-7">
-            <ImageUploader
-              files={form.photos}
-              onAdd={onAddPhotos}
-              onRemove={onRemovePhoto}
-            />
+        <section className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-x-12 md:gap-y-8 w-full overflow-hidden">
+          <div className="md:col-span-7 w-full">
+            <div className="md:hidden w-full">
+              <div className="overflow-x-auto no-scrollbar w-full">
+                <div className="flex gap-3 px-2 py-1 w-full">
+                  {form.photos.slice(0, 5).map((p, idx) => (
+                    <div key={p.previewUrl} className="relative w-28 h-34 flex-shrink-0 rounded-xl overflow-hidden bg-[var(--bg-elev-2)] border border-[var(--divider)]">
+                      <img src={p.previewUrl} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => onRemovePhoto(p.id)}
+                        className="absolute top-1 right-1 w-7 h-7 rounded-full bg-black/70 text-white flex items-center justify-center"
+                        aria-label="Remove"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  {form.photos.length < 5 && (
+                    <label
+                      htmlFor="product-photo-input"
+                      className="w-28 h-34 flex-shrink-0 rounded-xl border-2 border-dashed border-[var(--sort-label)] text-[var(--sort-label)] flex flex-col items-center justify-center bg-[var(--bg-elev-2)] cursor-pointer"
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M12 5v14" />
+                        <path d="M5 12h14" />
+                      </svg>
+                      <span className="text-xs mt-1">{t("product.form.photos") ?? "Photos"}</span>
+                    </label>
+                  )}
+                </div>
+                <input
+                  id="product-photo-input"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={async (e) => {
+                    const files = Array.from(e.target.files ?? []);
+                    if (!files.length) return;
+                    for (const file of files) {
+                      await onAddPhotos([file]);
+                    }
+                    e.target.value = "";
+                  }}
+                />
+              </div>
+            </div>
+            <div className="hidden md:block">
+              <ImageUploader
+                files={form.photos}
+                onAdd={onAddPhotos}
+                onRemove={onRemovePhoto}
+              />
+            </div>
             {form.productType === "digital" && (
-              <div className="mt-8">
+              <div className="mt-8 w-full">
                 <label className="block mb-2 text-white text-lg">{t("product.form.digitalFiles")}</label>
                 <p className="text-sm text-white/60 mb-3">
                   {t("product.form.digitalInfo")}
@@ -773,7 +822,7 @@ export default function ProductForm({
             )}
           </div>
 
-          <div className="col-span-12 md:col-span-5 flex flex-col w-[100%]">
+          <div className="md:col-span-5 flex flex-col w-full">
             <InputField
               label={t("product.form.name")}
               type="text"
@@ -797,7 +846,7 @@ export default function ProductForm({
               </div>
               <button
                 type="button"
-                className={`w-full bg-[var(--bg-input)] rounded-[15px] px-4 py-2 text-left text-[20px] ${
+                className={`w-full bg-[var(--bg-input)] rounded-[15px] px-4 py-2 text-left text-[18px] md:text-[20px] ${
                   categoryLocked ? "opacity-70 cursor-not-allowed" : ""
                 }`}
                 onClick={() => !categoryLocked && setCatOpen(true)}
@@ -837,8 +886,8 @@ export default function ProductForm({
 
         <section className="ml-0">
           <div className="bg-[var(--bg-elev-1)] border border-[var(--border)] rounded-2xl p-6 max-w-xl">
-            <div className="grid grid-cols-12 gap-6">
-              <div className="col-span-5">
+            <div className="grid grid-cols-12 gap-3">
+              <div className="col-span-4">
                 <InputField
                   label={t("product.form.price")}
                   type="number"
@@ -851,7 +900,7 @@ export default function ProductForm({
                   shape="office"
                 />
               </div>
-              <div className="col-span-4">
+              <div className="col-span-5">
                 <label className="block mb-2">{t("product.form.currency")}</label>
                 <div className="relative">
                   <select
@@ -879,7 +928,7 @@ export default function ProductForm({
                 <InputField
                   label={t("product.form.quantity")}
                   type="number"
-                  placeholder="1"
+                  placeholder="0"
                   value={form.quantity}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, quantity: e.target.value }))
