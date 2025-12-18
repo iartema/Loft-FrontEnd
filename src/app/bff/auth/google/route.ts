@@ -5,7 +5,7 @@ export async function POST(req: Request) {
 
   console.log(JSON.parse(atob(idToken.split('.')[1])));
 
-  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
   
   if (!clientId) {
     return NextResponse.json(

@@ -156,9 +156,15 @@ export default function Header() {
   if (isLogoOnly) {
     return (
       <header className="w-screen relative left-[50%] right-[50%] ml-[-50vw] mr-[-50vw] bg-[var(--bg-body)]">
-        <div className="flex items-center px-8 py-3">
+        <div className="flex items-center justify-center md:justify-start px-8 py-3 md:mt-0">
           <Link href="/" className="flex items-center" aria-label="Go to home">
-            <Image src="/loft-logo.svg" alt="Loft Logo" width={120} height={48} className="h-9 w-auto cursor-pointer" />
+            <Image
+              src="/loft-logo.svg"
+              alt="Loft Logo"
+              width={120}
+              height={48}
+              className="h-9 w-auto cursor-pointer"
+            />
           </Link>
         </div>
       </header>
@@ -168,17 +174,17 @@ export default function Header() {
   return (
     <header className="w-screen relative left-[50%] right-[50%] ml-[-50vw] mr-[-50vw] bg-[var(--bg-body)]">
       {/* Top row: logo, search, right icons */}
-      <div className="flex items-center justify-between px-3 md:px-6 lg:px-13 mt-4">
+      <div className="flex items-center justify-between px-3 md:px-6 lg:px-13 md:mt-4 pt-4 md:pt-0">
         <div className="flex items-center flex-1">
-          <Link href="/" className="flex items-center mt-2" aria-label="Go to home">
+          <Link href="/" className="hidden md:flex items-center mt-2" aria-label="Go to home">
             <Image src="/loft-logo.svg" alt="Loft Logo" width={50} height={48} className="h-15 w-auto cursor-pointer" />
           </Link>
           {/* Search bar with round green button (hidden on small screens) */}
-          <form action="/search" method="GET" className="relative flex-1 max-w-none mr-23 hidden md:block mt-3 mb-3">
+          <form action="/search" method="GET" className="relative flex-1 max-w-none mr-3 md:mr-23 md:block md:mt-3 mb-3">
             <Input
               name="q"
               placeholder={t("header.searchPlaceholder")}
-              className="header-search-input !rounded-[12px] bg-[var(--bg-input)] pr-20"
+              className="h-[10%] md:h-[100%] header-search-input !rounded-[12px] bg-[var(--bg-input)] pr-0 md:pr-20"
             />
             <button
               aria-label="search"
@@ -194,17 +200,17 @@ export default function Header() {
         </div>
 
         {/* Right icons */}
-        <div className="hidden sm:flex items-center gap-8 text-[var(--fg-primary)] mr-10">
+        <div className="flex items-center gap-3 md:gap-8 text-[var(--fg-primary)] md:mr-10 mb-3 md:mb-0">
           {/* theme toggle */}
-          <button title={t("common.theme")} onClick={toggleTheme} className="cursor-pointer">
+          <button title={t("common.theme")} onClick={toggleTheme} className="cursor-pointer hidden md:flex">
             <Image src="/Component 29.svg" alt="Theme" width={32} height={32}  className={iconClass} style={iconStyle} />
           </button>
           {/* store -> /product */}
-          <button title={t("header.store")} onClick={() => router.push("/myproducts")} className="cursor-pointer">
+          <button title={t("header.store")} onClick={() => router.push("/myproducts")} className="cursor-pointer hidden md:flex">
             <Image src="/iconoir_shop.svg" alt="Store" width={32} height={32}  className={iconClass} style={iconStyle} />
           </button>
           {/* favorites -> /myfavorites */}
-          <button title={t("header.favorites")} onClick={() => router.push("/myfavorites")} className="cursor-pointer">
+          <button title={t("header.favorites")} onClick={() => router.push("/myfavorites")} className="cursor-pointer hidden md:flex">
             <Image src="/icon-park-solid_like.svg" alt="Favorites" width={32} height={32}  className={iconClass} style={iconStyle} />
           </button>
           {/* notifications -> chat/all */}
@@ -227,11 +233,11 @@ export default function Header() {
             )}
           </button>
           {/* cart -> /mycart */}
-          <button title={t("header.cart")} onClick={() => router.push("/mycart")} className="cursor-pointer">
+          <button title={t("header.cart")} onClick={() => router.push("/mycart")} className="cursor-pointer hidden md:flex">
             <Image src="/mynaui_cart-solid.svg" alt="Cart" width={32} height={32}  className={iconClass} style={iconStyle} />
           </button>
           {/* account -> /profile */}
-          <button title={t("header.account")} onClick={() => router.push("/profile")} className="cursor-pointer">
+          <button title={t("header.account")} onClick={() => router.push("/profile")} className="cursor-pointer hidden md:flex">
             <Image src="/iconamoon_profile-circle-fill.svg" alt="Account" width={32} height={32}  className={iconClass} style={iconStyle} />
           </button>
         </div>
@@ -239,7 +245,7 @@ export default function Header() {
 
       {/* Bottom row: categories / quick links (hidden for profile area) */}
       {!isProfileArea && (
-        <div className="w-full bg-[var(--bg-body)] px-13">
+        <div className="w-full bg-[var(--bg-body)] px-13 hidden md:flex">
           <div className="pt-2 px-8 pb-2 ml-5 flex items-center gap-10 text-[var(--fg-primary)] ml-4">
             <button
               type="button"
@@ -267,6 +273,63 @@ export default function Header() {
         </div>
       )}
       <div className="w-full h-px bg-[var(--divider)]" />
+      {/* Mobile bottom bar */}
+      <div className="fixed bottom-0 left-0 right-0 md:hidden bg-[#222222] border-t border-[var(--divider)] z-40">
+        <div className="flex items-center justify-around py-3 px-6">
+          <button
+            type="button"
+            onClick={() => router.push("/")}
+            className="flex flex-col items-center gap-1 text-xs opacity-90"
+            aria-label="Home"
+          >
+            <svg
+              width="28"
+              height="28"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="white"
+              strokeWidth="2"
+              className={iconClass}
+              style={{ filter: "none" }}
+            >
+              <path d="M3 11.5 12 4l9 7.5" />
+              <path d="M5 10v10h5v-6h4v6h5V10" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push("/myfavorites")}
+            className="flex flex-col items-center gap-1 text-xs opacity-90"
+            aria-label={t("header.favorites")}
+          >
+            <Image src="/icon-park-solid_like.svg" alt={t("header.favorites")} width={28} height={28} className={iconClass} style={iconStyle} />
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push("/mycart")}
+            className="flex flex-col items-center gap-1 text-xs opacity-90"
+            aria-label={t("header.cart")}
+          >
+            <Image src="/mynaui_cart-solid.svg" alt={t("header.cart")} width={28} height={28} className={iconClass} style={iconStyle} />
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push("/myproducts")}
+            className="flex flex-col items-center gap-1 text-xs opacity-90"
+            aria-label={t("header.allCategories")}
+          >
+            <Image src="/iconoir_shop.svg" alt={t("header.allCategories")} width={28} height={28} className={iconClass} style={iconStyle} />
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push("/profile")}
+            className="flex flex-col items-center gap-1 text-xs opacity-90"
+            aria-label={t("header.account")}
+          >
+            <Image src="/iconamoon_profile-circle-fill.svg" alt={t("header.account")} width={28} height={28} className={iconClass} style={iconStyle} />
+          </button>
+        </div>
+      </div>
       <CategoryModal
         open={catModalOpen}
         categories={allCategories}

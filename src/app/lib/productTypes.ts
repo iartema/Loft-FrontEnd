@@ -19,9 +19,13 @@ export function normalizeProductType(value: unknown): ProductTypeKind | undefine
   return undefined;
 }
 
-export function productTypeLabel(type: ProductTypeKind | null | undefined): string {
-  if (!type) return "Not selected";
-  return type === "physical" ? "Physical product" : "Digital product";
+export function productTypeLabel(
+  type: ProductTypeKind | null | undefined,
+  t?: (key: string) => string
+): string {
+  if (!type) return t ? t("product.categoryModal.notSelected") : "Not selected";
+  if (type === "physical") return t ? t("product.categoryModal.physical") : "Physical product";
+  return t ? t("product.categoryModal.digital") : "Digital product";
 }
 
 export function productTypeToEnumValue(type: ProductTypeKind | null | undefined): number {

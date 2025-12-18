@@ -6,11 +6,19 @@ import Footer from "./components/Footer";
 import { LocaleProvider } from "./i18n/LocaleProvider";
 import { cookies } from "next/headers";
 
-const ysabeau = Ysabeau_Infant({ subsets: ["latin"], weight: ["400", "600"] });
+const ysabeau = Ysabeau_Infant({
+  subsets: ["latin"],
+  weight: ["400", "600"],
+});
 
 export const metadata = {
   title: "Loft",
   description: "Sell and buy easily and safely!",
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default async function RootLayout({
@@ -26,7 +34,12 @@ export default async function RootLayout({
   return (
     <html lang={lang} data-theme={theme}>
       <head>
-        <link rel="icon" type="image/png" sizes="32x32" href="/loft-logo-circle.png" />
+        <link
+          rel="icon"
+          type="image/png"
+          sizes="32x32"
+          href="/loft-logo-circle.png"
+        />
         <link rel="shortcut icon" href="/loft-logo-circle.png" />
         <Script
           src="https://accounts.google.com/gsi/client"
@@ -35,7 +48,7 @@ export default async function RootLayout({
       </head>
       <body
         suppressHydrationWarning
-        className={`${ysabeau.className} bg-[var(--bg-body)] text-[var(--fg-primary)] overflow-x-hidden px-3 md:px-6 lg:px-13`}
+        className={`${ysabeau.className} bg-[var(--bg-body)] text-[var(--fg-primary)] overflow-x-hidden md:px-6 lg:px-13`}
       >
         <LocaleProvider initialLocale={lang}>
           <Header />

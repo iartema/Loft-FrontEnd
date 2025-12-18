@@ -39,6 +39,27 @@ const CATEGORY_ICONS = [
   { src: "/categories/streamline-block_shopping-furniture.svg", key: "home" },
 ];
 
+const INTEREST_QUERY_MAP: Record<string, string> = {
+  auto: "car",
+  apparel: "clothes",
+  dresses: "dress",
+  toys: "toy",
+  cycling: "bike",
+  gaming: "gaming",
+  art: "art",
+  beauty: "beauty",
+  mobile: "phone",
+  fashion: "fashion",
+  sport: "sport",
+  lifestyle: "lifestyle",
+  tools: "tools",
+  audio: "audio",
+  kids: "kids",
+  pets: "pet",
+  home: "home",
+  events: "event",
+};
+
 type ProductCardItem = {
   id?: number;
   productId?: number;
@@ -220,6 +241,15 @@ export default function HomePage() {
     }));
   }, [categories, t]);
 
+  const handleInterestClick = (icon: { key?: string; label?: string }) => {
+    const query =
+      (icon.key && INTEREST_QUERY_MAP[icon.key]) ||
+      icon.label ||
+      t("home.categoryFallback");
+    if (!query) return;
+    router.push(`/search?q=${encodeURIComponent(query)}`);
+  };
+
   const handleToggleFavorite = useCallback(
     async (productId: number) => {
       if (!productId) return;
@@ -260,23 +290,28 @@ export default function HomePage() {
 
   return (
     <main className="bg-[var(--bg-body)] text-white min-h-screen">
-      <div className="max-w-[1400px] mx-auto px-8 py-10 space-y-10">
-        <section className="px-8 py-6 flex items-center gap-8 overflow-hidden">
-          <div className="flex-shrink-0 w-full md:w-auto ml-30">
+      <div className="max-w-[1400px] mx-auto md:px-8 md:py-10 space-y-10">
+        <section className="py-6 flex flex-col md:flex-row items-center md:justify-between w-full px-3 md:px-40">
+          <div className="flex-shrink-0 w-full md:w-auto flex justify-center md:justify-start">
             <Image
               src="/start-selling.svg"
-            alt={t("home.heroTitle")}
+              alt={t("home.heroTitle")}
               width={520}
               height={220}
-              className="w-full max-w-[520px] h-auto object-contain"
+              className="w-full max-w-[200px] md:max-w-[520px] h-auto object-contain"
               priority
             />
           </div>
-          <div className="flex flex-col items-center md:items-end text-center md:text-left gap-4 w-full mr-30">
-            <h2 className="text-3xl font-semibold text-end">{t("home.heroTitle")}</h2>
+
+          <div className="flex flex-col items-center md:items-end text-center md:text-right gap-4 w-full md:w-auto">
+            <h2 className="text-3xl font-semibold">
+              {t("home.heroTitle")}
+            </h2>
+
             <p className="sort-label max-w-md">
               {t("home.heroSubtitle")}
             </p>
+
             <button
               onClick={() => router.push("/product/new")}
               className="px-16 py-4 rounded-full border-[2px] border-yellow-400 text-white text-2xl font-semibold hover:bg-yellow-400 hover:text-black transition"
@@ -286,14 +321,18 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="space-y-4">
+        <section className="space-y-4 md:px-0 px-3">
           <h2 className="text-lg text-[var(--success)]">{t("home.interestTitle")}</h2>
-          <div className="grid grid-cols-3 sm:grid-cols-6 lg:grid-cols-9 gap-4">
+          <div
+            className="flex gap-3 overflow-x-auto sm:overflow-visible sm:grid sm:grid-cols-6 lg:grid-cols-9 sm:gap-4"
+            style={{ scrollbarWidth: "none" }}
+          >
             {interestIcons.map((icon, idx) => (
               <button
                 key={`${icon.src}-${idx}`}
-                className="w-16 h-16 rounded-full bg-white text-black flex items-center justify-center shadow hover:scale-105 transition mx-auto"
+                className="w-16 h-16 rounded-full bg-white text-black flex items-center justify-center shadow hover:scale-105 transition mx-auto flex-shrink-0"
                 title={icon.label}
+                onClick={() => handleInterestClick(icon)}
               >
                 <Image src={icon.src} alt={icon.label} width={32} height={32} />
               </button>
@@ -390,7 +429,7 @@ function ProductSection({
 
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-4 md:px-0 px-3">
       <div className="flex items-baseline gap-3">
         <h3 className="text-xl font-semibold">{title}</h3>
         {subtitle && <span className="text-sm opacity-70">{subtitle}</span>}
@@ -413,7 +452,7 @@ function ProductSection({
                 price={product.price}
                 image={product.image}
                 onClick={() => product.id && (window.location.href = `/product/${product.id}`)}
-                className="min-w-[220px] w-[220px] snap-start"
+                className="min-w-[200px] w-[200px] snap-start md:mr-0 mr-2"
                 isFavorite={favoriteIds.has(pid)}
                 favoriteBusy={favoriteBusyIds.has(pid)}
                 onToggleFavorite={onToggleFavorite}

@@ -788,7 +788,7 @@ export default function ProductForm({
               <label className="block mb-2">{t("product.form.category")}</label>
               <div className="text-sm text-[var(--fg-muted)] mb-2">
                 {t("product.form.type")}:{" "}
-                <span className="text-white">{productTypeLabel(form.productType)}</span>
+                <span className="text-white">{productTypeLabel(form.productType, t)}</span>
                 {categoryLocked && (
                   <span className="ml-2 text-xs text-white/60">
                     {t("product.form.categoryLocked")}

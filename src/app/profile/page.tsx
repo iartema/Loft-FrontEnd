@@ -44,7 +44,7 @@ export default function ProfilePage() {
   return (
     <main className="relative flex min-h-screen bg-[var(--bg-body)] text-white">
       {/* Main Section */}
-      <section className="flex flex-col flex-1 px-16 py-10">
+      <section className="flex flex-col flex-1 px-4 py-6 md:px-16 md:py-10">
         <ProfileForm />
       </section>
 

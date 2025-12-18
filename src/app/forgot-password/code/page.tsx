@@ -6,10 +6,12 @@ import { Almarai } from "next/font/google";
 import RecoverLayout from "../../components/organisms/RecoverLayout";
 import ButtonAuth from "../../components/atoms/ButtonAuth";
 import OtpInput from "../../components/molecules/OtpInput";
+import { useLocale } from "../../i18n/LocaleProvider";
 
 const almarai = Almarai({ subsets: ["latin"], weight: ["400", "700"] });
 
 function ForgotPasswordCodeContent() {
+  const { t } = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email") ?? "";
@@ -32,7 +34,7 @@ function ForgotPasswordCodeContent() {
     setSubmitting(true);
     const trimmed = code.trim();
     if (!/^\d{6}$/.test(trimmed)) {
-      setError("Enter the 6-digit code from your email");
+      setError(t("recover.codeError"));
       setSubmitting(false);
       return;
     }
@@ -44,9 +46,9 @@ function ForgotPasswordCodeContent() {
   };
 
   return (
-    <RecoverLayout subtitle={`A code has been sent to your email. Please enter it.`}>
+    <RecoverLayout subtitle={t("recover.codeSubtitle")}>
       <form onSubmit={handleSubmit} className="space-y-6">
-        <p className={`${almarai.className} mb-3 text-lg`}>Enter code</p>
+        <p className={`${almarai.className} mb-3 text-lg`}>{t("recover.enterCode")}</p>
         <div className="flex flex-col items-center">
           <OtpInput
             length={6}
@@ -59,7 +61,7 @@ function ForgotPasswordCodeContent() {
 
         {error && <p className="text-red-500 text-sm">{error}</p>}
 
-        <ButtonAuth type="submit" label="Next" disabled={!isValidCode || submitting} />
+        <ButtonAuth type="submit" label={t("auth.next")} disabled={!isValidCode || submitting} />
       </form>
     </RecoverLayout>
   );

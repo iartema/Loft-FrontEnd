@@ -9,8 +9,9 @@ import {
   fetchMyDefaultShippingAddress,
   createShippingAddress,
   updateShippingAddress,
+  logout,
 } from "../lib/api";
-import { getCurrentUserCached, setCurrentUserCached } from "../lib/userCache";
+import { getCurrentUserCached, setCurrentUserCached, clearCurrentUserCache } from "../lib/userCache";
 import { resolveMediaUrl } from "../../lib/media";
 import { useLocale } from "../../i18n/LocaleProvider";
 
@@ -54,7 +55,7 @@ const extractAvatarSources = (payload: any): { raw: string | null; resolved: str
 };
 
 export default function ProfileForm() {
-  const { t } = useLocale();
+  const { t, locale, setLocale } = useLocale();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     name: "",
@@ -74,6 +75,7 @@ export default function ProfileForm() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [theme, setTheme] = useState<"light" | "dark">("dark");
 
   useEffect(() => {
     let mounted = true;
@@ -125,6 +127,12 @@ export default function ProfileForm() {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const attr = document.documentElement.getAttribute("data-theme");
+    setTheme(attr === "light" ? "light" : "dark");
+  }, []);
+
   const handleChange =
     (field: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
       setFormData({ ...formData, [field]: e.target.value });
@@ -166,6 +174,18 @@ export default function ProfileForm() {
       };
 
       void uploadTask();
+    }
+  };
+
+  const handleToggleTheme = () => {
+    const next = theme === "light" ? "dark" : "light";
+    setTheme(next);
+    try {
+      document.documentElement.setAttribute("data-theme", next === "light" ? "light" : "dark");
+      localStorage.setItem("theme", next);
+      document.cookie = `theme=${next}; path=/; max-age=${60 * 60 * 24 * 365}`;
+    } catch {
+      // ignore
     }
   };
 
@@ -220,19 +240,7 @@ export default function ProfileForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-      <ProfileHeader
-        name={formData.name}
-        surname={formData.surname}
-        email={formData.email}
-        avatar={formData.avatar}
-        onAvatarClick={handleAvatarClick}
-        saveDisabled={saving || avatarUploading}
-        saveLabel={
-          avatarUploading ? t("profile.uploadingAvatar") : saving ? t("profile.saving") : undefined
-        }
-      />
-
+    <form onSubmit={handleSubmit} className="flex flex-col gap-6 mb-15">
       <input
         ref={fileInputRef}
         type="file"
@@ -240,40 +248,160 @@ export default function ProfileForm() {
         className="hidden"
         onChange={handleAvatarChange}
       />
-
-      <div className="border-t border-[var(--divider)]" />
-
-      {error && (
-        <div className="text-red-500 text-sm ml-1">{error}</div>
-      )}
-
-      {/* Change Information */}
-      <section>
-        <Title color="title-color" className="mb-4">
-          {loading ? t("profile.loadingProfile") : saving ? t("profile.saving") : t("profile.changeInfo")}
-        </Title>
-        <div className="grid grid-cols-2 gap-x-12 gap-y-1 ml-9 mt-8">
-          <InputField label={t("profile.name")} type="text" placeholder={t("profile.enter")} value={formData.name} onChange={handleChange("name")} required shape="office" />
-          <InputField label={t("profile.surname")} type="text" placeholder={t("profile.enter")} value={formData.surname} onChange={handleChange("surname")} shape="office" />
-          <InputField label={t("profile.email")} type="email" placeholder={t("profile.enter")} value={formData.email} onChange={handleChange("email")} required shape="office" />
-          <InputField label={t("profile.phone")} type="tel" placeholder={t("profile.enter")} value={formData.phone} onChange={handleChange("phone")} shape="office" />
+      {/* Mobile layout */}
+      <div className="md:hidden -mx-2">
+        <div className="sticky top-0 z-10 bg-[var(--bg-body)] pb-3">
+          <div className="flex items-center justify-between px-2 py-3">
+            <button
+              type="button"
+              onClick={() => window.history.back()}
+              className="p-2 -ml-2 rounded-full hover:bg-[var(--bg-elev-2)]"
+              aria-label={t("common.back")}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+            <div className="text-lg font-semibold">{t("sidebar.profile")}</div>
+            <div className="w-6" />
+          </div>
         </div>
-      </section>
 
-      <div className="border-t border-[var(--divider)]" />
+        <div className="px-2 space-y-3">
+          <div className="flex items-center gap-3 px-3 py-3 rounded-2xl bg-[var(--bg-elev-2)] border border-[var(--divider)]">
+            <div className="w-12 h-12 rounded-full overflow-hidden bg-[var(--bg-elev-3)] relative">
+              <img src={formData.avatar || "/default-avatar.jpg"} alt="Avatar" className="w-full h-full object-cover" />
+            </div>
+            <div className="flex flex-col leading-tight">
+              <div className="font-semibold">
+                {[formData.name, formData.surname].filter(Boolean).join(" ") || t("profile.name")}
+              </div>
+              <div className="text-sm text-white/70">{formData.email || t("profile.email")}</div>
+            </div>
+            <button
+              type="button"
+              onClick={handleAvatarClick}
+              className="ml-auto px-3 py-1 text-sm rounded-full bg-[var(--bg-elev-3)] border border-[var(--divider)]"
+            >
+              {t("profile.changeInfo")}
+            </button>
+          </div>
 
-      {/* Address Information */}
-      <section>
-        <Title color="title-color" className="mb-4">
-          {t("profile.shippingAddress")}
-        </Title>
-        <div className="grid grid-cols-2 gap-x-12 gap-y-1 ml-9 mt-8">
-          <InputField label={t("profile.postalCode")} type="text" placeholder={t("profile.enter")} value={formData.postalcode} onChange={handleChange("postalcode")} shape="office" />
-          <InputField label={t("profile.city")} type="text" placeholder={t("profile.enter")} value={formData.city} onChange={handleChange("city")} shape="office" />
-          <InputField label={t("profile.country")} type="text" placeholder={t("profile.enter")} value={formData.country} onChange={handleChange("country")} shape="office" />
-          <InputField label={t("profile.address")} type="text" placeholder={t("profile.enter")} value={formData.address} onChange={handleChange("address")} shape="office" />
+          {[
+            { label: t("profile.name"), field: "name", type: "text" as const, placeholder: t("profile.enter") },
+            { label: t("profile.surname"), field: "surname", type: "text" as const, placeholder: t("profile.enter") },
+            { label: t("profile.email"), field: "email", type: "email" as const, placeholder: t("profile.enter") },
+            { label: t("profile.phone"), field: "phone", type: "tel" as const, placeholder: t("profile.enter") },
+            { label: t("profile.postalCode"), field: "postalcode", type: "text" as const, placeholder: t("profile.enter") },
+            { label: t("profile.country"), field: "country", type: "text" as const, placeholder: t("profile.enter") },
+            { label: t("profile.city"), field: "city", type: "text" as const, placeholder: t("profile.enter") },
+            { label: t("profile.address"), field: "address", type: "text" as const, placeholder: t("profile.enter") },
+          ].map(({ label, field, type, placeholder }) => (
+            <label
+              key={field}
+              className="flex items-center gap-3 px-3 py-3 rounded-2xl bg-[var(--bg-elev-2)] border border-[var(--divider)]"
+            >
+              <div className="text-sm sort-label">{label}</div>
+              <input
+                type={type}
+                value={(formData as any)[field]}
+                onChange={handleChange(field)}
+                placeholder={placeholder}
+                className="flex-1 bg-transparent border-none text-right placeholder-[var(--sort-label)] focus:outline-none"
+              />
+            </label>
+          ))}
+
+          {error && <div className="text-red-500 text-sm px-1">{error}</div>}
+
+          <button
+            type="submit"
+            disabled={saving || avatarUploading}
+            className="w-full mt-2 py-3 rounded-xl bg-[#ffcc00] text-black font-semibold disabled:opacity-60"
+          >
+            {avatarUploading ? t("profile.uploadingAvatar") : saving ? t("profile.saving") : t("common.saveChanges")}
+          </button>
+
+          <div className="flex flex-col gap-2 mt-4">
+            <button
+              type="button"
+              onClick={() => setLocale(locale === "en" ? "uk" : "en")}
+              className="w-full py-3 rounded-xl bg-[var(--bg-elev-2)] border border-[var(--divider)] text-white"
+            >
+              {locale === "en" ? t("sidebar.ukrainian") : t("sidebar.english")}
+            </button>
+            <button
+              type="button"
+              onClick={handleToggleTheme}
+              className="w-full py-3 rounded-xl bg-[var(--bg-elev-2)] border border-[var(--divider)] text-white"
+            >
+              {t("common.theme") ?? "Theme"}: {theme === "light" ? "Light" : "Dark"}
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await logout();
+                } catch {}
+                clearCurrentUserCache();
+                window.location.href = "/login";
+              }}
+              className="w-full py-3 rounded-xl bg-[var(--bg-elev-2)] border border-[var(--divider)] text-red-400"
+            >
+              {t("sidebar.logout")}
+            </button>
+          </div>
         </div>
-      </section>
+      </div>
+
+      {/* Desktop layout */}
+      <div className="hidden md:flex flex-col gap-6">
+        <ProfileHeader
+          name={formData.name}
+          surname={formData.surname}
+          email={formData.email}
+          avatar={formData.avatar}
+          onAvatarClick={handleAvatarClick}
+          saveDisabled={saving || avatarUploading}
+          saveLabel={
+            avatarUploading ? t("profile.uploadingAvatar") : saving ? t("profile.saving") : undefined
+          }
+        />
+
+        <div className="border-t border-[var(--divider)]" />
+
+        {error && (
+          <div className="text-red-500 text-sm ml-1">{error}</div>
+        )}
+
+        {/* Change Information */}
+        <section>
+          <Title color="title-color" className="mb-4">
+            {loading ? t("profile.loadingProfile") : saving ? t("profile.saving") : t("profile.changeInfo")}
+          </Title>
+          <div className="grid grid-cols-2 gap-x-12 gap-y-1 ml-9 mt-8">
+            <InputField label={t("profile.name")} type="text" placeholder={t("profile.enter")} value={formData.name} onChange={handleChange("name")} required shape="office" />
+            <InputField label={t("profile.surname")} type="text" placeholder={t("profile.enter")} value={formData.surname} onChange={handleChange("surname")} shape="office" />
+            <InputField label={t("profile.email")} type="email" placeholder={t("profile.enter")} value={formData.email} onChange={handleChange("email")} required shape="office" />
+            <InputField label={t("profile.phone")} type="tel" placeholder={t("profile.enter")} value={formData.phone} onChange={handleChange("phone")} shape="office" />
+          </div>
+        </section>
+
+        <div className="border-t border-[var(--divider)]" />
+
+        {/* Address Information */}
+        <section>
+          <Title color="title-color" className="mb-4">
+            {t("profile.shippingAddress")}
+          </Title>
+          <div className="grid grid-cols-2 gap-x-12 gap-y-1 ml-9 mt-8">
+            <InputField label={t("profile.postalCode")} type="text" placeholder={t("profile.enter")} value={formData.postalcode} onChange={handleChange("postalcode")} shape="office" />
+            <InputField label={t("profile.city")} type="text" placeholder={t("profile.enter")} value={formData.city} onChange={handleChange("city")} shape="office" />
+            <InputField label={t("profile.country")} type="text" placeholder={t("profile.enter")} value={formData.country} onChange={handleChange("country")} shape="office" />
+            <InputField label={t("profile.address")} type="text" placeholder={t("profile.enter")} value={formData.address} onChange={handleChange("address")} shape="office" />
+          </div>
+        </section>
+      </div>
     </form>
   );
 }

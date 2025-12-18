@@ -311,7 +311,7 @@ export default function ChatConversationPage() {
       <div key={message.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}
       >
         <div
-          className={`max-w-[70%] rounded-3xl px-4 py-2 text-sm pt-3 pb-3 pl-4 pr-4 ml-3 mb-1 mt-1 ${
+          className={`max-w-[70%] rounded-3xl md:px-4 py-2 text-sm pt-3 pb-3 pl-4 pr-4 md:ml-3 mb-1 mt-1 ${
             isMine ? "bg-[var(--bg-elev-3)] text-white" : "bg-[var(--bg-elev-2)]"
           }`}
           style={{boxShadow: "0 2px 3px 2px rgba(0, 0, 0, 0.25)"}}
@@ -408,9 +408,9 @@ export default function ChatConversationPage() {
   };
 
   return (
-    <main className="relative flex min-h-screen !bg-[var(--bg-body)] text-white">
-      <section className="flex flex-col flex-1 px-6 md:px-12 py-6 gap-4">
-        <header className="flex items-center gap-4 !bg-[var(--bg-body)]">
+    <main className="relative flex min-h-screen !bg-[var(--bg-body)] text-white overflow-y-hidden overflow-x-hidden">
+      <section className="flex flex-col flex-1 px-3 md:px-12 py-2 md:py-6 gap-2 md:gap-4">
+        <header className="hidden md:flex items-center gap-4 !bg-[var(--bg-body)]">
           <button
             className="sort-label"
             onClick={() => router.push("/chat/all")}
@@ -456,9 +456,9 @@ export default function ChatConversationPage() {
         <Divider text=""/>
 
         <div
-        className={`${almarai.className} flex-1 overflow-y-auto space-y-2 pr-2 mt-4 max-h-[60vh]`}
-        ref={messagesRef}
-      >
+          className={`${almarai.className} flex-1 overflow-y-auto space-y-2 pr-2 mt-4 overflow-x-hidden max-h-[63vh] md:max-h-[60vh]`}
+          ref={messagesRef}
+        >
           {loading ? (
             <div className="text-center opacity-70 mt-10">{t("chats.loadingThread")}</div>
           ) : messages.length === 0 ? (

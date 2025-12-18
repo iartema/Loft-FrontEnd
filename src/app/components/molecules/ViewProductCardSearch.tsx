@@ -105,7 +105,7 @@ export default function ViewProductCardSearch({
   return (
     <div
       className={`${almarai.className} view-product-card-search bg-[var(--bg-input)] rounded-[10px] overflow-hidden 
-      shadow-lg hover:shadow-xl transition-all flex flex-col ${className} mb-4 mr-5 max-w-60 min-w-50`}
+      shadow-lg hover:shadow-xl transition-all flex flex-col ${className} min-w-48 max-w-48 mb-2 md:mb-4 md:mr-5 md:max-w-60 md:min-w-55`}
       style={{ boxShadow: "0 5px 5px -2px rgba(0, 0, 0, 0.45)" }}
     >
       <div className="relative w-full h-[200px] flex-shrink-0 cursor-pointer" onClick={onClick}>

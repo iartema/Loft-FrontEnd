@@ -7,7 +7,7 @@ export default function MyFavoritesPage() {
   return (
     <main className="relative flex min-h-screen bg-[var(--bg-body)] text-white">
       {/* Main section */}
-      <section className="flex flex-col flex-1 px-16 py-10">
+      <section className="flex flex-col flex-1 px-3 md:px-16 py-10">
         <MyFavorites />
       </section>
 

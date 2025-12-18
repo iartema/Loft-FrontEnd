@@ -6,6 +6,7 @@ const en = {
     back: "Back",
     theme: "Theme",
     search: "Search",
+    close: "Close",
     details: "Details",
   },
   header: {
@@ -196,6 +197,9 @@ const en = {
     },
     categoryModal: {
       title: "Choose category",
+      physical: "Physical product",
+      digital: "Digital product",
+      notSelected: "Not selected",
       typePrompt: "Select product type to filter categories",
       typeOverlay: "Choose a product type above to browse matching categories.",
       empty: "No items",
@@ -590,9 +594,13 @@ const en = {
     title: "Recover Password",
     subtitleEmail: "Enter your email address and we'll send you a link to reset your password.",
     subtitleNewPassword: "Enter a new password to secure your account.",
+    codeSubtitle: "A code has been sent to your email. Please enter it.",
+    enterCode: "Enter code",
+    codeError: "Enter the 6-digit code from your email",
   },
   search: {
     loading: "Loading search...",
+    filter: "Filters",
     sortBy: "Sort by:",
     sortViews: "Views",
     sortSeason: "Season (popular & recent)",
@@ -610,7 +618,7 @@ const en = {
     clearFilters: "Clear filters",
     noResults: "No products match your filters.",
     viewsSuffix: "views",
-    viewButton: "View",
+    viewButton: "View"
   },
   chats: {
     title: "My chats",

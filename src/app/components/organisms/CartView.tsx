@@ -205,11 +205,13 @@ export default function CartView() {
       </div>
 
       <div className="flex justify-center">
-        <div className="bg-[var(--bg-elev-2)]/60 rounded-2xl px-6 py-3 flex items-center gap-6">
+        <div className="bg-[var(--bg-elev-2)]/60 rounded-2xl px-6 py-3 flex items-center gap-6"
+        style={{boxShadow: "0 3px 3px 0px rgba(0, 0, 0, 0.25)"}}>
           <div className="text-xl font-semibold">{total.toFixed(2)}$</div>
           <button
             className="px-6 py-2 rounded-[12px] bg-white/80 text-black font-semibold hover:bg-white"
             onClick={() => router.push("/checkout")}
+            style={{boxShadow: "0 3px 3px 0px rgba(0, 0, 0, 0.25)"}}
           >
             {t("cart.checkout")}
           </button>
@@ -245,35 +247,40 @@ function CartRow({
         type="checkbox"
         checked={selected}
         onChange={onToggle}
-        className="accent-[var(--brand)]"
+        className="flex accent-[var(--brand)]"
       />
-      <div className="w-16 h-16 rounded-xl overflow-hidden bg-[var(--bg-elev-2)] relative">
+      <div className="w-16 h-16 min-w-[64px] rounded-xl overflow-hidden bg-[var(--bg-elev-2)] relative aspect-square">
         <Image src={imgSrc} alt={item.productName ?? "Product"} fill sizes="64px" className="object-cover" />
       </div>
-      <div className="flex-1">
-        <div className="font-semibold">{item.productName ?? `Product ${item.productId}`}</div>
-        <div className="opacity-70 text-sm">{priceLabel}</div>
-        {item.attributeValues && item.attributeValues.length > 0 && (
-          <div className="opacity-60 text-xs mt-1">
-            {item.attributeValues.map((attr) => `${attr.attributeId}: ${attr.value}`).join(", ")}
-          </div>
-        )}
+      <div className="flex flex-col md:flex-row md:justify-between w-full gap-4">
+        <div className="flex-1">
+          <div className="font-semibold">{item.productName ?? `Product ${item.productId}`}</div>
+          <div className="opacity-70 text-sm">{priceLabel}</div>
+          {item.attributeValues && item.attributeValues.length > 0 && (
+            <div className="opacity-60 text-xs mt-1">
+              {item.attributeValues.map((attr) => `${attr.attributeId}: ${attr.value}`).join(", ")}
+            </div>
+          )}
+        </div>
+        <div className="flex gap-3 justify-end">
+          <QuantityControl
+            quantity={item.quantity}
+            onChange={onQuantityChange}
+            disabled={disabled}
+          />
+          <button
+            className="w-10 h-10 rounded-full border border-[var(--brand)] flex items-center justify-center text-[var(--brand)] hover:text-black hover:bg-[var(--brand)] transition"
+            onClick={onRemove}
+            disabled={disabled}
+            title="Remove item"
+            style={{boxShadow: "0 3px 10px 4px rgba(0, 0, 0, 0.15)"}}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M6 7h12M9 7V5h6v2m-7 3v8m4-8v8m4-8v8M7 7h10l-1 13H8L7 7z" />
+            </svg>
+          </button>
+        </div>
       </div>
-      <QuantityControl
-        quantity={item.quantity}
-        onChange={onQuantityChange}
-        disabled={disabled}
-      />
-      <button
-        className="w-10 h-10 rounded-full border border-[var(--brand)] flex items-center justify-center text-[var(--brand)] hover:text-black hover:bg-[var(--brand)] transition"
-        onClick={onRemove}
-        disabled={disabled}
-        title="Remove item"
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <path d="M6 7h12M9 7V5h6v2m-7 3v8m4-8v8m4-8v8M7 7h10l-1 13H8L7 7z" />
-        </svg>
-      </button>
     </div>
   );
 }
@@ -288,7 +295,7 @@ function QuantityControl({
   disabled: boolean;
 }) {
   return (
-    <div className="flex items-center rounded-[12px] border border-white overflow-hidden text-lg">
+    <div className="flex flex-row items-center rounded-[12px] border border-[var(--sort-label)] overflow-hidden text-lg max-w-[110px]">
       <button
         type="button"
         className="px-3 py-2 hover:bg-white hover:text-black transition"

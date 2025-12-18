@@ -23,12 +23,12 @@ export default function RecoverLayout({
           <img
             src="/gradient.svg"
             alt="Decorative art"
-            className="relative right-[-5%] top-[0%] w-[60%] max-w-none"
+            className="relative right-[-40%] top-[25%] w-[100%] max-w-none md:w-[60%] md:top-[0%] md:right-[-5%]"
           />
         </div>
       </OverlayPortal>
 
-      <section className="flex flex-col justify-start px-12 w-full md:w-1/2 mt-35 z-10">
+      <section className="flex flex-col justify-start px-5 w-full md:w-1/2 mt-25 z-10">
         <div className="max-w-md mx-auto w-full">
           <h2 className="text-5xl mb-3 text-center font-semibold">{title || t("recover.title")}</h2>
           {subtitle && (

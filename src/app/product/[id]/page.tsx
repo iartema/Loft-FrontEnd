@@ -51,6 +51,7 @@ export default function ProductViewPage() {
   const { t } = useLocale();
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const [mobileTab, setMobileTab] = useState<"product" | "description">("product");
   const [data, setData] = useState<ProductDto | undefined>(undefined);
   const [attrNames, setAttrNames] = useState<Record<number, string>>({});
   const [sellerProducts, setSellerProducts] = useState<ProductDto[]>([]);
@@ -237,7 +238,7 @@ export default function ProductViewPage() {
   ) => {
     if (!items?.length) return null;
     return (
-      <section className="mt-12">
+      <section className="mt-12 overflow-x-hidden">
         <div className="flex items-center justify-between mb-4">
           <h3 className={`${ysabeau.className} text-lg font-semibold text-[var(--success,#9ef1c7)]`}>
             {title}
@@ -263,7 +264,7 @@ export default function ProductViewPage() {
                 price={formatProductPrice(item)}
                 image={getFirstPublicImageUrl(item.mediaFiles) || "/default-product.jpg"}
                 onClick={() => router.push(`/product/${item.id}`)}
-                className="min-w-[220px]"
+                className="min-w-[220px] mr-3 md:mr-0"
                 isFavorite={favoriteIds.has(item.id)}
                 favoriteBusy={favoriteBusyIds.has(item.id)}
                 onToggleFavorite={handleToggleFavorite}
@@ -328,61 +329,140 @@ export default function ProductViewPage() {
   }
 
   return (
-    <div className={[almarai.className, "min-h-[calc(100dvh-80px)] text-[var(--fg-primary)]"].join(" ")}>
-      <div className="max-w-[1400px] mx-auto px-10 py-10">
-        {/* top grid */}
-        <section className="grid grid-cols-12 gap-8">
-          <div className="col-span-12 md:col-span-7">
-            <ProductGallery images={getPublicImageUrls(data.mediaFiles)} />
+    <div className={[almarai.className, "min-h-[calc(100dvh-80px)] text-[var(--fg-primary)] overflow-x-hidden"].join(" ")}>
+      <div className="max-w-[1400px] mx-auto px-3 md:px-10 py-3 md:py-10">
+        {/* Mobile tabbed view */}
+        <div className="md:hidden mb-4">
+          <div className="flex bg-[var(--bg-input)] rounded-2xl p-1 border border-[var(--divider)]">
+            {(["product", "description"] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setMobileTab(tab)}
+                className={`flex-1 py-2 rounded-xl text-sm font-semibold ${
+                  mobileTab === tab ? "bg-[var(--bg-body)] text-white" : "text-white/70"
+                }`}
+              >
+                {tab === "product" ? t("product.info.title") : t("product.info.description")}
+              </button>
+            ))}
           </div>
-          <div className="col-span-12 md:col-span-5">
-            <ProductCard
-              productId={data.id}
-              name={data.name}
-              sku={`${data.id}`}
-              views={data.viewCount ?? 0}
-              inStock={(data.quantity ?? 0) > 0}
-              price={priceLabel}
-              sellerId={data.idUser ?? 0}
-              stockQuantity={data.quantity ?? null}
-            />
-            {isModerator && privateMediaIds.length > 0 && (
-              <div className="mt-4 flex justify-end">
-                <button
-                  type="button"
-                  onClick={handleDownloadAll}
-                  className="px-4 py-2 rounded-lg bg-[var(--bg-input)] text-white border border-[var(--divider)] hover:border-[var(--success)] disabled:opacity-50"
-                  disabled={downloading}
-                >
-                  {downloading ? t("product.preparingDownloads") : t("product.downloadAll")}
-                </button>
-              </div>
-            )}
-          </div>
-        </section>
-
-        <section className="mt-10">
-          <ProductInfo
-            description={data.name}
-            longDescription={data.description ?? ""}
-            specs={(data.attributeValues ?? []).map(a => ({
-              label: attrNames[a.attributeId] ?? String(a.attributeId),
-              value: a.value,
-            }))}
-          />
-        </section>
-
-        <div className="hidden">
-          <Divider text={t("product.comments")} className="mt-12" />
-          <ProductComments productId={data.id} />
         </div>
 
-        {renderCarousel(t("product.sellerProducts"), sellerProducts, data.idUser
-          ? { label: t("product.viewMore"), onClick: goToSellerListing }
-          : undefined)}
-        {renderCarousel(t("product.similar"), similarProducts, data.categoryId
-          ? { label: t("product.viewMore"), onClick: goToSimilarListing }
-          : undefined)}
+        <div className="md:hidden space-y-6">
+          {mobileTab === "product" ? (
+            <>
+              <ProductGallery images={getPublicImageUrls(data.mediaFiles)} />
+              <div>
+                <ProductCard
+                  productId={data.id}
+                  name={data.name}
+                  sku={`${data.id}`}
+                  views={data.viewCount ?? 0}
+                  inStock={(data.quantity ?? 0) > 0}
+                  price={priceLabel}
+                  sellerId={data.idUser ?? 0}
+                  stockQuantity={data.quantity ?? null}
+                />
+                {isModerator && privateMediaIds.length > 0 && (
+                  <div className="mt-4 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleDownloadAll}
+                      className="px-4 py-2 rounded-lg bg-[var(--bg-input)] text-white border border-[var(--divider)] hover:border-[var(--success)] disabled:opacity-50"
+                      disabled={downloading}
+                    >
+                      {downloading ? t("product.preparingDownloads") : t("product.downloadAll")}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {renderCarousel(
+                t("product.sellerProducts"),
+                sellerProducts,
+                data.idUser ? { label: t("product.viewMore"), onClick: goToSellerListing } : undefined
+              )}
+              {renderCarousel(
+                t("product.similar"),
+                similarProducts,
+                data.categoryId ? { label: t("product.viewMore"), onClick: goToSimilarListing } : undefined
+              )}
+            </>
+          ) : (
+            <ProductInfo
+              description={data.name}
+              longDescription={data.description ?? ""}
+              specs={(data.attributeValues ?? []).map((a) => ({
+                label: attrNames[a.attributeId] ?? String(a.attributeId),
+                value: a.value,
+              }))}
+              forceExpanded
+              hideToggle
+            />
+          )}
+        </div>
+
+        {/* Desktop layout remains unchanged */}
+        <div className="hidden md:block">
+          {/* top grid */}
+          <section className="grid grid-cols-12 gap-3 md:gap-8">
+            <div className="col-span-12 md:col-span-7">
+              <ProductGallery images={getPublicImageUrls(data.mediaFiles)} />
+            </div>
+            <div className="col-span-12 md:col-span-5">
+              <ProductCard
+                productId={data.id}
+                name={data.name}
+                sku={`${data.id}`}
+                views={data.viewCount ?? 0}
+                inStock={(data.quantity ?? 0) > 0}
+                price={priceLabel}
+                sellerId={data.idUser ?? 0}
+                stockQuantity={data.quantity ?? null}
+              />
+              {isModerator && privateMediaIds.length > 0 && (
+                <div className="mt-4 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleDownloadAll}
+                    className="px-4 py-2 rounded-lg bg-[var(--bg-input)] text-white border border-[var(--divider)] hover:border-[var(--success)] disabled:opacity-50"
+                    disabled={downloading}
+                  >
+                    {downloading ? t("product.preparingDownloads") : t("product.downloadAll")}
+                  </button>
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section className="mt-10">
+            <ProductInfo
+              description={data.name}
+              longDescription={data.description ?? ""}
+              specs={(data.attributeValues ?? []).map((a) => ({
+                label: attrNames[a.attributeId] ?? String(a.attributeId),
+                value: a.value,
+              }))}
+            />
+          </section>
+
+          <div className="hidden">
+            <Divider text={t("product.comments")} className="mt-12" />
+            <ProductComments productId={data.id} />
+          </div>
+
+          {renderCarousel(
+            t("product.sellerProducts"),
+            sellerProducts,
+            data.idUser ? { label: t("product.viewMore"), onClick: goToSellerListing } : undefined
+          )}
+          {renderCarousel(
+            t("product.similar"),
+            similarProducts,
+            data.categoryId ? { label: t("product.viewMore"), onClick: goToSimilarListing } : undefined
+          )}
+        </div>
       </div>
     </div>
   );

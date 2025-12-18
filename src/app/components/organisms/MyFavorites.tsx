@@ -147,7 +147,7 @@ export default function MyFavorites() {
       return <div className="text-white/60 text-sm">{t("favorites.empty")}</div>;
     }
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 md:gap-6">
         {items.map((item, idx) => (
           <ViewProductCardSearch
             key={`${item.id}-${idx}`}

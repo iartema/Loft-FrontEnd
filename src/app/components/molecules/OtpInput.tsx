@@ -60,7 +60,7 @@ export default function OtpInput({ length = 6, onChange, disabled = false }: Otp
   };
 
   return (
-    <div className="flex items-center gap-5">
+    <div className="flex items-center gap-1">
       {values.map((digit, idx) => (
         <input
           key={idx}

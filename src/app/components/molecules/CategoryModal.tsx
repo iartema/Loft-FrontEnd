@@ -58,6 +58,12 @@ export default function CategoryModal({
   const level1 = roots;
   const level2 = path[0] ? childrenOf(path[0]) : [];
   const level3 = path[1] ? childrenOf(path[1]) : [];
+  const currentMobileItems = useMemo(() => {
+    if (!productType) return [];
+    if (path.length === 0) return level1;
+    const parentId = path[path.length - 1];
+    return childrenOf(parentId);
+  }, [level1, path, productType]);
 
   const handleClick = (levelIndex: number, catId: number) => {
     const nextPath = [...path];
@@ -74,15 +80,33 @@ export default function CategoryModal({
     }
   };
 
+  const handleMobileClick = (catId: number) => {
+    const hasChildren = childrenOf(catId).length > 0;
+    if (hasChildren) {
+      setPath((p) => [...p, catId]);
+    } else {
+      onSelect(catId);
+      setPath([]);
+    }
+  };
+
+  const handleBackMobile = () => {
+    setPath((p) => p.slice(0, -1));
+  };
+
   if (!open) return null;
 
   const renderTypeSelector = () => (
     <div className="mb-6">
-      <p className="text-sm text-[var(--fg-muted)] mb-3">
+      <p className="text-sm sort-label mb-3">
         {t("product.categoryModal.typePrompt")}
       </p>
       <div className="flex gap-4">
         {PRODUCT_TYPE_OPTIONS.map((option) => {
+          const localizedLabel =
+            option.value === "physical"
+              ? t("product.categoryModal.physical")
+              : t("product.categoryModal.digital");
           const active = productType === option.value;
           return (
             <button
@@ -95,10 +119,10 @@ export default function CategoryModal({
               }`}
               onClick={() => onSelectType(option.value)}
             >
-              <div className="text-sm uppercase tracking-wide opacity-70">
+              <div className="text-sm uppercase tracking-wide opacity-70 sort-label">
                 {option.value}
               </div>
-              <div className="text-lg font-semibold">{option.label}</div>
+              <div className="text-lg font-semibold sort-label">{localizedLabel}</div>
             </button>
           );
         })}
@@ -116,16 +140,17 @@ export default function CategoryModal({
         }}
       />
 
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--bg-elev-1)] border border-[var(--border)] rounded-2xl p-6 w-[900px] max-w-[95vw]">
+      {/* Desktop modal */}
+      <div className="hidden md:block absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--bg-elev-1)] border border-[var(--border)] rounded-2xl p-6 w-[900px] max-w-[95vw]">
         <div className="flex justify-between items-center mb-4">
           <div>
-            <h3 className="text-xl font-bold">{t("product.categoryModal.title")}</h3>
-            <p className="text-sm text-[var(--fg-muted)]">
-              {productTypeLabel(productType)}
+            <h3 className="text-xl font-bold sort-label">{t("product.categoryModal.title")}</h3>
+            <p className="text-sm sort-label">
+              {productTypeLabel(productType, t)}
             </p>
           </div>
           <button
-            className="opacity-70 hover:opacity-100"
+            className="opacity-70 hover:opacity-100 sort-label"
             onClick={() => {
               setPath([]);
               onClose();
@@ -175,6 +200,72 @@ export default function CategoryModal({
           )}
         </div>
       </div>
+
+      {/* Mobile full-screen flow */}
+      <div className="md:hidden absolute inset-0 bg-[var(--bg-elev-1)] border-t border-[var(--border)] rounded-t-2xl flex flex-col">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--divider)]">
+          <div className="flex items-center gap-2">
+            {path.length > 0 ? (
+              <button
+                type="button"
+                onClick={handleBackMobile}
+                className="p-2 -ml-2 rounded-full hover:bg-[var(--bg-hover)]"
+                aria-label={t("common.back")}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M15 18l-6-6 6-6" />
+                </svg>
+              </button>
+            ) : null}
+            <div className="flex flex-col">
+              <span className="text-lg font-semibold sort-label">{t("product.categoryModal.title")}</span>
+              <span className="text-xs text-[var(--fg-muted)] sort-label">{productTypeLabel(productType, t)}</span>
+            </div>
+          </div>
+          <button
+            className="text-sm text-[var(--fg-muted)]"
+            onClick={() => {
+              setPath([]);
+              onClose();
+            }}
+            aria-label={t("product.categoryModal.close")}
+          >
+            {t("common.close") ?? "Close"}
+          </button>
+        </div>
+
+        <div className="px-4 py-3 overflow-y-auto flex-1">
+          {renderTypeSelector()}
+
+          <div className="relative">
+            {!productType && (
+              <div className="absolute inset-0 z-10 rounded-2xl bg-[var(--bg-elev-1)]/90 backdrop-blur-[2px] flex items-center justify-center text-center px-6">
+                <div className="text-base text-[var(--fg-muted)]">
+                  {t("product.categoryModal.typeOverlay")}
+                </div>
+              </div>
+            )}
+            <div className="space-y-2">
+              {currentMobileItems.length === 0 && (
+                <div className="text-[var(--fg-muted)] text-sm">{t("product.categoryModal.empty")}</div>
+              )}
+              {currentMobileItems.map((c) => (
+                <button
+                  key={c.ID}
+                  type="button"
+                  onClick={() => handleMobileClick(c.ID)}
+                  className="w-full text-left px-3 py-3 rounded-2xl bg-[var(--bg-elev-2)] hover:bg-[var(--bg-hover)] flex items-center justify-between"
+                >
+                  <span className="text-sm sort-label">{c.Name}</span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M9 6l6 6-6 6" />
+                  </svg>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -210,8 +301,8 @@ function Column({
             }`}
             onClick={() => onClick(c.ID)}
           >
-            <span>{c.Name}</span>
-            <span className="opacity-70">
+            <span className="sort-label">{c.Name}</span>
+            <span className="opacity-70 sort-label">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>

@@ -100,6 +100,7 @@ export default function SearchView() {
   const [sellerLoading, setSellerLoading] = useState(false);
   const [productType, setProductType] = useState<ProductTypeKind | null>("physical");
   const [catModalOpen, setCatModalOpen] = useState(false);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   useEffect(() => {
     setQuery(qParam);
@@ -554,6 +555,20 @@ export default function SearchView() {
     [allCategories]
   );
 
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (categoryId) count += 1;
+    if (priceMin !== null) count += 1;
+    if (priceMax !== null) count += 1;
+    Object.values(attrFilters).forEach((val) => {
+      if (val == null) return;
+      if (typeof val === "string" && val.trim() === "") return;
+      if (Array.isArray(val) && val.length === 0) return;
+      count += 1;
+    });
+    return count;
+  }, [attrFilters, categoryId, priceMax, priceMin]);
+
   const handleSelectCategory = useCallback(
     (id: number) => {
       setCategoryId(id);
@@ -564,10 +579,180 @@ export default function SearchView() {
     [allCategories]
   );
 
+  const renderFilters = (extraClass = "") => (
+    <aside
+      className={`search-sidebar p-0 space-y-0 h-fit w-full max-w-full overflow-y-auto overflow-x-auto ${almarai.className} ${extraClass}`}
+    >
+      <FilterSection title={t("search.category")}>
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => setCatModalOpen(true)}
+            className="w-full bg-[var(--bg-filter-inner)] text-white px-3 py-2 text-sm rounded-[12px] border border-[var(--divider)] hover:border-[var(--brand)] text-left"
+            style={{ boxShadow: "0 2px 6px -2px rgba(0, 0, 0, 0.45)" }}
+          >
+            {categoryName || t("search.all")}
+          </button>
+          {productType && (
+            <div className="text-xs text-white/60 sort-label">
+              {t("search.typeLabel")}: {productTypeLabel(productType)}
+            </div>
+          )}
+        </div>
+      </FilterSection>
+      {categoryId &&
+        categoryAttrs.length > 0 &&
+        categoryAttrs.map((a) => {
+          const suggestions = attributeSuggestions[a.ID] ?? [];
+          return (
+            <FilterSection key={a.ID} title={a.Name}>
+          {a.Type === "text" && (
+            <input
+              type="text"
+              placeholder={t("search.attributePlaceholder")}
+              value={(attrFilters[a.ID] as string) ?? ""}
+              onChange={(e) => setAttrFilters((s) => ({ ...s, [a.ID]: e.target.value }))}
+              className={`w-full bg-[var(--bg-filter-inner)] text-white px-3 py-2 text-sm rounded-[12px] outline-none border border-transparent focus:outline-none focus:border-[var(--divider)] ${almarai.className}`}
+              style={{ boxShadow: "0 2px 6px -2px rgba(0, 0, 0, 0.45)" }}
+            />
+          )}
+          {a.Type === "number" && (
+            <input
+              type="number"
+              placeholder={`Type the ${a.Name.toLowerCase()}...`}
+              value={String((attrFilters[a.ID] as number) ?? "")}
+              onChange={(e) => setAttrFilters((s) => ({ ...s, [a.ID]: e.target.value }))}
+              className={`w-full bg-[var(--bg-filter-inner)] text-white px-3 py-2 text-sm rounded-[12px] outline-none border border-transparent focus:outline-none focus:border-[var(--divider)] ${almarai.className}`}
+            />
+          )}
+          {a.Type === "select" && (
+            <SimpleSelect
+              value={String((attrFilters[a.ID] as string) ?? "")}
+              onChange={(val) => setAttrFilters((s) => ({ ...s, [a.ID]: val }))}
+              options={(a.Value || "").split("|").filter(Boolean).map((opt) => ({ value: opt, label: opt }))}
+              placeholder="Any"
+              className={`${almarai.className}`}
+            />
+          )}
+          {a.Type === "multiselect" && (
+            <div className="space-y-1">
+              {(a.Value || "").split("|").filter(Boolean).map((opt) => {
+                const arr = (attrFilters[a.ID] as string[]) || [];
+                const checked = arr.includes(opt);
+                return (
+                  <label key={opt} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => {
+                        setAttrFilters((s) => {
+                          const cur = (s[a.ID] as string[]) || [];
+                          const next = checked ? cur.filter((v) => v !== opt) : [...cur, opt];
+                          return { ...s, [a.ID]: next };
+                        });
+                      }}
+                    />
+                    <span className="opacity-80">{opt}</span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+          {a.Type === "boolean" && (
+            <div className="flex gap-2">
+              {[{ label: "Yes", val: true }, { label: "No", val: false }].map(({ label, val }) => (
+                <button
+                  key={String(val)}
+                  type="button"
+                  className={`px-3 py-1 rounded ${attrFilters[a.ID] === val ? "bg-[var(--brand)] text-black" : "bg-[var(--bg-elev-3)]"}`}
+                  onClick={() => setAttrFilters((s) => ({ ...s, [a.ID]: val }))}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+          {a.Type === "color" && (
+            <div className="flex flex-wrap gap-2">
+              {(a.Value || "").split("|").filter(Boolean).map((opt) => {
+                const arr = (attrFilters[a.ID] as string[]) || [];
+                const active = arr.includes(opt);
+                return (
+                  <button
+                    type="button"
+                    key={opt}
+                    onClick={() =>
+                      setAttrFilters((s) => {
+                        const cur = (s[a.ID] as string[]) || [];
+                        const next = active ? cur.filter((v) => v !== opt) : [...cur, opt];
+                        return { ...s, [a.ID]: next };
+                      })
+                    }
+                    className={`px-2 py-1 rounded ${active ? "bg-[var(--brand)] text-black" : "bg-[var(--bg-elev-3)]"}`}
+                  >
+                    {opt}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {a.Type !== "boolean" && suggestions.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {suggestions.map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => applySuggestionValue(a, opt)}
+                  className="px-3 py-1 text-xs rounded-full bg-[var(--bg-filter-inner)] border border-[var(--divider)] hover:border-[var(--brand)]"
+                  style={{ boxShadow: "0 2px 6px -2px rgba(0, 0, 0, 0.45)" }}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          )}
+            </FilterSection>
+          );
+        })}
+      {categoryId && categoryAttrs.length === 0 && (
+        <FilterSection title={t("search.attributes")} defaultOpen>
+          <p className="text-xs opacity-70">{t("search.noFilters")}</p>
+        </FilterSection>
+      )}
+      <FilterSection title={t("search.price")}>
+    <div className={`flex items-center gap-2 ${almarai.className}`}>
+          <input
+            type="number"
+            placeholder={t("search.min")}
+            value={priceMin ?? ""}
+            onChange={(e) => setPriceMin(e.target.value === "" ? null : Number(e.target.value))}
+            className={`w-full bg-[var(--bg-filter-inner)] text-white px-3 py-2 text-sm rounded-[12px] outline-none border border-transparent focus:ring-0 focus:outline-none focus:border-[var(--divider)] ${almarai.className}` }
+            style={{ boxShadow: "0 2px 6px -2px rgba(0, 0, 0, 0.45)" }}
+          />
+          <span className="opacity-50">-</span>
+          <input
+            type="number"
+            placeholder={t("search.max")}
+            value={priceMax ?? ""}
+            onChange={(e) => setPriceMax(e.target.value === "" ? null : Number(e.target.value))}
+            className={`w-full bg-[var(--bg-filter-inner)] text-white px-3 py-2 text-sm rounded-[12px] outline-none border border-transparent focus:ring-0 focus:outline-none focus:border-[var(--divider)] ${almarai.className}` }
+            style={{ boxShadow: "0 2px 6px -2px rgba(0, 0, 0, 0.45)" }}
+          />
+        </div>
+      </FilterSection>
+      <button
+        onClick={clearFilters}
+        className={`w-full bg-[var(--bg-filter)] text-white px-3 py-2 text-sm border-b border-[var(--divider)] ${almarai.className}` }
+      >
+        {t("search.clearFilters")}
+      </button>
+    </aside>
+  );
+
   return (
-    <main className="min-h-screen w-[97.5%] bg-[var(--bg-body)] text-white ml-12">
+    <main className="min-h-screen overflow-x-hidden w-[100%] md:w-[97.5%] bg-[var(--bg-body)] text-white md:ml-12">
       {/* Active filters chips spanning full width, above sidebar/results */}
-      <div className="flex flex-row items-center justify-between gap-4 w-full border-b border-[var(--divider)]">
+      <div className="hidden md:flex flex-row items-center justify-between gap-4 w-[101%] border-b border-[var(--divider)]">
         <ActiveFilterChips
           query={query}
           categoryName={categoryName}
@@ -607,183 +792,87 @@ export default function SearchView() {
         </div>
       </div>
 
-      <div className="grid grid-cols-[240px_1fr] gap-6">
-        {/* Filters (no local search field here as per spec) */}
-        <aside className={`search-sidebar rounded-2xl p-0 space-y-0 h-fit sticky top-4 ${almarai.className}` }>
-          <FilterSection title={t("search.category")}>
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => setCatModalOpen(true)}
-                className="w-full bg-[var(--bg-filter-inner)] text-white px-3 py-2 text-sm rounded-[12px] border border-[var(--divider)] hover:border-[var(--brand)] text-left"
-                style={{ boxShadow: "0 2px 6px -2px rgba(0, 0, 0, 0.45)" }}
-              >
-                {categoryName || t("search.all")}
-              </button>
-              {productType && (
-                <div className="text-xs text-white/60 sort-label">
-                  {t("search.typeLabel")}: {productTypeLabel(productType)}
-                </div>
-              )}
-            </div>
-          </FilterSection>
-          {categoryId &&
-            categoryAttrs.length > 0 &&
-            categoryAttrs.map((a) => {
-              const suggestions = attributeSuggestions[a.ID] ?? [];
-              return (
-                <FilterSection key={a.ID} title={a.Name}>
-              {a.Type === "text" && (
-                <input
-                  type="text"
-                  placeholder={t("search.attributePlaceholder")}
-                  value={(attrFilters[a.ID] as string) ?? ""}
-                  onChange={(e) => setAttrFilters((s) => ({ ...s, [a.ID]: e.target.value }))}
-                  className={`w-full bg-[var(--bg-filter-inner)] text-white px-3 py-2 text-sm rounded-[12px] outline-none border border-transparent focus:outline-none focus:border-[var(--divider)] ${almarai.className}`}
-                  style={{ boxShadow: "0 2px 6px -2px rgba(0, 0, 0, 0.45)" }}
-                />
-              )}
-              {a.Type === "number" && (
-                <input
-                  type="number"
-                  placeholder={`Type the ${a.Name.toLowerCase()}...`}
-                  value={String((attrFilters[a.ID] as number) ?? "")}
-                  onChange={(e) => setAttrFilters((s) => ({ ...s, [a.ID]: e.target.value }))}
-                  className={`w-full bg-[var(--bg-filter-inner)] text-white px-3 py-2 text-sm rounded-[12px] outline-none border border-transparent focus:outline-none focus:border-[var(--divider)] ${almarai.className}`}
-                />
-              )}
-              {a.Type === "select" && (
-                <SimpleSelect
-                  value={String((attrFilters[a.ID] as string) ?? "")}
-                  onChange={(val) => setAttrFilters((s) => ({ ...s, [a.ID]: val }))}
-                  options={(a.Value || "").split("|").filter(Boolean).map((opt) => ({ value: opt, label: opt }))}
-                  placeholder="Any"
-                  className={`${almarai.className}`}
-                />
-              )}
-              {a.Type === "multiselect" && (
-                <div className="space-y-1">
-                  {(a.Value || "").split("|").filter(Boolean).map((opt) => {
-                    const arr = (attrFilters[a.ID] as string[]) || [];
-                    const checked = arr.includes(opt);
-                    return (
-                      <label key={opt} className="flex items-center gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => {
-                            setAttrFilters((s) => {
-                              const cur = (s[a.ID] as string[]) || [];
-                              const next = checked ? cur.filter((v) => v !== opt) : [...cur, opt];
-                              return { ...s, [a.ID]: next };
-                            });
-                          }}
-                        />
-                        <span className="opacity-80">{opt}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              )}
-              {a.Type === "boolean" && (
-                <div className="flex gap-2">
-                  {[{ label: "Yes", val: true }, { label: "No", val: false }].map(({ label, val }) => (
-                    <button
-                      key={String(val)}
-                      type="button"
-                      className={`px-3 py-1 rounded ${attrFilters[a.ID] === val ? "bg-[var(--brand)] text-black" : "bg-[var(--bg-elev-3)]"}`}
-                      onClick={() => setAttrFilters((s) => ({ ...s, [a.ID]: val }))}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {a.Type === "color" && (
-                <div className="flex flex-wrap gap-2">
-                  {(a.Value || "").split("|").filter(Boolean).map((opt) => {
-                    const arr = (attrFilters[a.ID] as string[]) || [];
-                    const active = arr.includes(opt);
-                    return (
-                      <button
-                        type="button"
-                        key={opt}
-                        onClick={() =>
-                          setAttrFilters((s) => {
-                            const cur = (s[a.ID] as string[]) || [];
-                            const next = active ? cur.filter((v) => v !== opt) : [...cur, opt];
-                            return { ...s, [a.ID]: next };
-                          })
-                        }
-                        className={`px-2 py-1 rounded ${active ? "bg-[var(--brand)] text-black" : "bg-[var(--bg-elev-3)]"}`}
-                      >
-                        {opt}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-              {a.Type !== "boolean" && suggestions.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {suggestions.map((opt) => (
-                    <button
-                      key={opt}
-                      type="button"
-                      onClick={() => applySuggestionValue(a, opt)}
-                      className="px-3 py-1 text-xs rounded-full bg-[var(--bg-filter-inner)] border border-[var(--divider)] hover:border-[var(--brand)]"
-                      style={{ boxShadow: "0 2px 6px -2px rgba(0, 0, 0, 0.45)" }}
-                    >
-                      {opt}
-                    </button>
-                  ))}
-                </div>
-              )}
-                </FilterSection>
-              );
-            })}
-          {categoryId && categoryAttrs.length === 0 && (
-            <FilterSection title={t("search.attributes")} defaultOpen>
-              <p className="text-xs opacity-70">{t("search.noFilters")}</p>
-            </FilterSection>
-          )}
-          <FilterSection title={t("search.price")}>
-        <div className={`flex items-center gap-2 ${almarai.className}`}>
-              <input
-                type="number"
-                placeholder={t("search.min")}
-                value={priceMin ?? ""}
-                onChange={(e) => setPriceMin(e.target.value === "" ? null : Number(e.target.value))}
-                className={`w-full bg-[var(--bg-filter-inner)] text-white px-3 py-2 text-sm rounded-[12px] outline-none border border-transparent focus:ring-0 focus:outline-none focus:border-[var(--divider)] ${almarai.className}` }
-                style={{ boxShadow: "0 2px 6px -2px rgba(0, 0, 0, 0.45)" }}
-              />
-              <span className="opacity-50">-</span>
-              <input
-                type="number"
-                placeholder={t("search.max")}
-                value={priceMax ?? ""}
-                onChange={(e) => setPriceMax(e.target.value === "" ? null : Number(e.target.value))}
-                className={`w-full bg-[var(--bg-filter-inner)] text-white px-3 py-2 text-sm rounded-[12px] outline-none border border-transparent focus:ring-0 focus:outline-none focus:border-[var(--divider)] ${almarai.className}` }
-                style={{ boxShadow: "0 2px 6px -2px rgba(0, 0, 0, 0.45)" }}
-              />
-            </div>
-          </FilterSection>
+      {/* Mobile quick filters bar */}
+      <div className="md:hidden sticky top-0 z-30 bg-[var(--bg-body)] py-3 w-full overflow-x-auto">
+        <div className="flex gap-1 px-2 flex-nowrap">
           <button
-            onClick={clearFilters}
-            className={`w-full bg-[var(--bg-filter)] text-white px-3 py-2 text-sm border-b border-[var(--divider)] ${almarai.className}` }
+            type="button"
+            onClick={() => setMobileFiltersOpen(true)}
+            className="relative flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[var(--bg-filter)] border border-[var(--divider)]"
           >
-            {t("search.clearFilters")}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M4 4h16" />
+              <path d="M6 12h12" />
+              <path d="M10 20h4" />
+            </svg>
+            <span className="text-sm">{t("search.filter") ?? "Filters"}</span>
+            {activeFiltersCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-[10px] font-semibold grid place-items-center">
+                {activeFiltersCount}
+              </span>
+            )}
           </button>
+          <button
+            type="button"
+            onClick={() => setSortBy("views")}
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[var(--bg-filter)] border border-[var(--divider)]"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M7 7l-3 3 3 3" />
+              <path d="M17 7l3 3-3 3" />
+              <path d="M10 5h4" />
+              <path d="M10 19h4" />
+            </svg>
+            <span className="text-sm">{t("search.sortViews")}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSortBy((prev) => (prev === "price_asc" ? "price_desc" : "price_asc"))}
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[var(--bg-filter)] border border-[var(--divider)]"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M7 10h14" />
+              <path d="M7 6h14" />
+              <path d="M7 14h14" />
+              <path d="M7 18h14" />
+              <path d="M3 6h0.01" />
+              <path d="M3 10h0.01" />
+              <path d="M3 14h0.01" />
+              <path d="M3 18h0.01" />
+            </svg>
+            <span className="text-sm">{t("search.price")}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setCatModalOpen(true)}
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[var(--bg-filter)] border border-[var(--divider)]"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M4 4h6v6H4z" />
+              <path d="M14 4h6v6h-6z" />
+              <path d="M4 14h6v6H4z" />
+              <path d="M14 14h6v6h-6z" />
+            </svg>
+            <span className="text-sm">{t("search.category")}</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-6">
+        {/* Filters (no local search field here as per spec) */}
+        <aside className="hidden md:block sticky top-4 w-[110%]">
+          {renderFilters("md:max-h-[calc(100vh-5rem)]")}
         </aside>
 
         {/* Results */}
-        <section className="space-y-4 flex flex-col min-h-[100vh]">
+        <section className="md:space-y-4 flex flex-col min-h-[100vh] ml-2 md:ml-5">
           <div className="flex items-center justify-between">
           </div>
 
 
 
           {/* Responsive product grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-y-3 w-[98%]">
+          <div className="grid grid-cols-2 md:[grid-template-columns:repeat(auto-fill,minmax(220px,1fr))] gap-y-1 md:gap-y-3 gap-x-3 md:gap-x-4 w-[97.5%]">
             {paged.length === 0 && (
               <div className="opacity-70 col-span-full">{t("search.noResults")}</div>
             )}
@@ -814,7 +903,7 @@ export default function SearchView() {
               {"<"}
             </button>
             {(() => {
-              const windowSize = 9;
+              const windowSize = 5;
               const start = Math.max(1, Math.min(page - Math.floor(windowSize / 2), totalPages - windowSize + 1));
               const end = Math.min(totalPages, start + windowSize - 1);
               const buttons = [];
@@ -871,6 +960,27 @@ export default function SearchView() {
           </div>
         </section>
       </div>
+      {mobileFiltersOpen && (
+        <div className="md:hidden fixed inset-0 z-40">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setMobileFiltersOpen(false)}
+          />
+          <div className="absolute inset-x-0 bottom-0 max-h-[80vh] bg-[var(--bg-body)] rounded-t-2xl p-4 overflow-hidden border-t border-[var(--divider)]">
+            <div className="flex items-center justify-between mb-3">
+              <span className="font-semibold">{t("search.filter") ?? "Filters"}</span>
+              <button
+                type="button"
+                className="text-sm text-[var(--success)]"
+                onClick={() => setMobileFiltersOpen(false)}
+              >
+                {t("common.close") ?? "Close"}
+              </button>
+            </div>
+            {renderFilters("max-h-[calc(80vh-56px)]")}
+          </div>
+        </div>
+      )}
       <CategoryModal
         open={catModalOpen}
         categories={availableCategories}
